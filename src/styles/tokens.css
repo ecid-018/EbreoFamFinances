@@ -1,4 +1,6 @@
 :root {
+  color-scheme: light;
+
   /* iOS system colors */
   --color-bg: #f2f2f7;
   --color-card: #ffffff;
@@ -11,6 +13,9 @@
   --color-destructive: #ff3b30;
   --color-warning: #ff9500;
   --color-fill-track: rgba(120, 120, 128, 0.2);
+  --color-segment-selected: #ffffff;
+  --color-letterbox: #e3e3e8;
+  --color-overlay: rgba(0, 0, 0, 0.35);
 
   /* Type */
   --font-system:
@@ -38,4 +43,48 @@
   /* Safe areas */
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Auto dark mode: system prefers dark AND no explicit override to light */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --color-bg: #000000;
+    --color-card: #1c1c1e;
+    --color-text: #ffffff;
+    --color-text-secondary: #8e8e93;
+    --color-separator: #38383a;
+    --color-separator-strong: #48484a;
+    --color-accent: #e2472b;
+    --color-accent-pressed: #ff6b4f;
+    --color-destructive: #ff453a;
+    --color-warning: #ff9f0a;
+    --color-fill-track: rgba(120, 120, 128, 0.36);
+    --color-segment-selected: #636366;
+    --color-letterbox: #161618;
+    --color-overlay: rgba(0, 0, 0, 0.55);
+    --blur-navbar-bg: rgba(0, 0, 0, 0.72);
+    --blur-tabbar-bg: rgba(20, 20, 22, 0.78);
+  }
+}
+
+/* Explicit override to dark, regardless of system preference */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --color-bg: #000000;
+  --color-card: #1c1c1e;
+  --color-text: #ffffff;
+  --color-text-secondary: #8e8e93;
+  --color-separator: #38383a;
+  --color-separator-strong: #48484a;
+  --color-accent: #e2472b;
+  --color-accent-pressed: #ff6b4f;
+  --color-destructive: #ff453a;
+  --color-warning: #ff9f0a;
+  --color-fill-track: rgba(120, 120, 128, 0.36);
+  --color-segment-selected: #636366;
+  --color-letterbox: #161618;
+  --color-overlay: rgba(0, 0, 0, 0.55);
+  --blur-navbar-bg: rgba(0, 0, 0, 0.72);
+  --blur-tabbar-bg: rgba(20, 20, 22, 0.78);
 }

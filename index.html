@@ -2,10 +2,27 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      (function () {
+        var theme = 'system';
+        try {
+          var stored = localStorage.getItem('ebreo-family-finances:theme');
+          if (stored === 'light' || stored === 'dark') theme = stored;
+        } catch (e) {
+          /* localStorage unavailable — falls back to system preference */
+        }
+        if (theme !== 'system') document.documentElement.dataset.theme = theme;
+        var systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var isDark = theme === 'dark' || (theme === 'system' && systemDark);
+        var meta = document.createElement('meta');
+        meta.setAttribute('name', 'theme-color');
+        meta.setAttribute('content', isDark ? '#000000' : '#f2f2f7');
+        document.head.appendChild(meta);
+      })();
+    </script>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0" />
-    <meta name="theme-color" content="#F2F2F7" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Family Finances" />
