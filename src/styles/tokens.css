@@ -45,6 +45,16 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+/* Tablet: widen the content column for touch devices with real screen space
+   to work with. Gated on (pointer: coarse) rather than viewport width alone
+   so a genuine tablet adapts, while a mouse-driven desktop browser resized to
+   the same width still gets the intentional narrow "phone" frame below. */
+@media (pointer: coarse) and (min-width: 600px) {
+  :root {
+    --max-content-width: 760px;
+  }
+}
+
 /* Auto dark mode: system prefers dark AND no explicit override to light */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
