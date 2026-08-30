@@ -3,7 +3,7 @@ import { formatPHP } from '../../utils/currency.js';
 import { SwipeToDeleteRow } from '../shared/SwipeToDeleteRow.jsx';
 import { StatusBar } from './StatusBar.jsx';
 
-export function EnvelopeRow({ envelope }) {
+export function EnvelopeRow({ envelope, indented = false }) {
   const { dispatch, openModal } = useApp();
   const { id, name, monthlyBudget, spent, isOver } = envelope;
 
@@ -13,7 +13,7 @@ export function EnvelopeRow({ envelope }) {
       onDelete={() => dispatch({ type: 'envelope/remove', payload: { id } })}
       onTap={() => openModal('envelopeForm', { mode: 'edit', envelope })}
     >
-      <div className="stack-row">
+      <div className={`stack-row ${indented ? 'stack-row--indented' : ''}`.trim()}>
         <div className="stack-row__top">
           <span className="stack-row__name">{name}</span>
           <span className={`stack-row__amount ${isOver ? 'stack-row__amount--over' : ''}`.trim()}>

@@ -226,6 +226,31 @@ svg {
   padding: 18px 16px;
 }
 
+.ios-card + .ios-card {
+  margin-top: 12px;
+}
+
+.ledger-fallback {
+  padding: 12px 16px 16px;
+}
+
+.ledger-fallback__hint {
+  margin-bottom: 8px;
+}
+
+.ledger-fallback__text {
+  width: 100%;
+  min-height: 100px;
+  padding: 10px;
+  border: 1px solid var(--color-separator);
+  border-radius: var(--radius-control);
+  background: var(--color-bg);
+  font-family: ui-monospace, 'SF Mono', monospace;
+  font-size: 12px;
+  color: var(--color-text);
+  resize: vertical;
+}
+
 /* ---------- Hero + stats cards ---------- */
 
 .hero__eyebrow {
@@ -482,6 +507,106 @@ svg {
   color: var(--color-accent);
 }
 
+.stack-row--indented {
+  padding-left: 28px;
+}
+
+.group-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 16px 6px;
+  background: var(--color-card);
+}
+
+.group-header-row__name {
+  font-size: var(--caption-size);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+}
+
+.group-header-row__amount {
+  font-size: var(--footnote-size);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.group-header-row__amount--over {
+  color: var(--color-destructive);
+}
+
+/* ---------- Alert rows (Needs Attention) ---------- */
+
+.alert-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: var(--row-min-height);
+  padding: 11px 16px;
+  background: var(--color-card);
+  border: none;
+  text-align: left;
+}
+
+.alert-row__icon {
+  color: var(--color-warning);
+  flex-shrink: 0;
+}
+
+/* ---------- Spending by envelope chart ---------- */
+
+.chart-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 16px;
+  background: var(--color-card);
+}
+
+.chart-row__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.chart-row__name {
+  font-size: var(--body-size);
+  font-weight: 500;
+}
+
+.chart-row__amount {
+  font-size: var(--footnote-size);
+  color: var(--color-text-secondary);
+}
+
+.chart-row__amount--over {
+  color: var(--color-destructive);
+  font-weight: 600;
+}
+
+.chart-row__track {
+  width: 100%;
+  height: 5px;
+  border-radius: var(--radius-pill);
+  background: var(--color-fill-track);
+  overflow: hidden;
+}
+
+.chart-row__fill {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+}
+
+.chart-row__fill--over {
+  background: var(--color-destructive);
+}
+
 /* ---------- Chips (category picker) ---------- */
 
 .chip-grid {
@@ -681,6 +806,10 @@ svg {
   border-color: var(--color-accent);
 }
 
+.form__input--stacked {
+  margin-top: 8px;
+}
+
 .form__error {
   color: var(--color-destructive);
   font-size: 13px;
@@ -716,6 +845,153 @@ svg {
   font-size: 16px;
   font-weight: 600;
   border: none;
+}
+
+/* ---------- Allocate Monthly Budget sheet ---------- */
+
+.allocate-header {
+  padding: 4px 4px 4px;
+}
+
+.allocate-header__row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  font-size: var(--body-size);
+}
+
+.allocate-header__row--total {
+  font-weight: 700;
+  border-top: 1px solid var(--color-separator);
+  margin-top: 2px;
+  padding-top: 10px;
+}
+
+.allocate-status {
+  margin-top: 12px;
+  padding: 14px;
+  border-radius: var(--radius-control);
+  background: var(--color-fill-track);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.allocate-status__text {
+  font-size: var(--body-size);
+  font-weight: 600;
+}
+
+.allocate-status__text--danger {
+  color: var(--color-destructive);
+}
+
+.allocate-status__text--accent {
+  color: var(--color-accent);
+}
+
+.allocate-group-title {
+  padding: 16px 4px 4px;
+  font-size: var(--caption-size);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-secondary);
+  font-weight: 700;
+}
+
+.allocate-add-form {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-separator);
+}
+
+.slider-row {
+  padding: 10px 4px;
+  background: transparent;
+}
+
+.slider-row__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.slider-row__name {
+  font-size: var(--body-size);
+  font-weight: 500;
+}
+
+.slider-row__value {
+  font-size: var(--body-size);
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+.slider-row__controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.slider-row__move-select {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  font-size: 12px;
+  border: 1px solid var(--color-separator);
+  border-radius: 8px;
+  background: var(--color-card);
+  color: var(--color-text);
+}
+
+.slider-row__remove {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-destructive);
+  background: none;
+  border: none;
+  padding: 6px 4px;
+}
+
+.ios-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--color-fill-track);
+  outline: none;
+  margin: 10px 0 2px;
+}
+
+.ios-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+}
+
+.ios-slider::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+}
+
+.ios-slider::-moz-range-track {
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--color-fill-track);
 }
 
 @media (min-width: 480px) {

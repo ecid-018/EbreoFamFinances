@@ -7,6 +7,7 @@ const AppContext = createContext(null);
 export function AppProvider({ children }) {
   const [state, dispatch] = useReducer(appReducer, undefined, initState);
   const [modal, setModal] = useState({ activeModal: null, modalProps: null });
+  const [activeTab, setActiveTabState] = useState('home');
 
   useEffect(() => {
     persistData(state);
@@ -20,9 +21,14 @@ export function AppProvider({ children }) {
     setModal({ activeModal: null, modalProps: null });
   }, []);
 
+  const setActiveTab = useCallback((tab) => {
+    setActiveTabState(tab);
+    window.scrollTo(0, 0);
+  }, []);
+
   const value = useMemo(
-    () => ({ state, dispatch, modal, openModal, closeModal }),
-    [state, modal, openModal, closeModal]
+    () => ({ state, dispatch, modal, openModal, closeModal, activeTab, setActiveTab }),
+    [state, modal, openModal, closeModal, activeTab, setActiveTab]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

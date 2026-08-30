@@ -98,6 +98,16 @@ export function ChevronRightIcon(props) {
   );
 }
 
+export function WarningIcon(props) {
+  return (
+    <Svg {...props}>
+      <path d="M12 4.5 21 19H3z" />
+      <path d="M12 10v4" />
+      <circle cx="12" cy="16.6" r="0.9" fill="currentColor" stroke="none" />
+    </Svg>
+  );
+}
+
 export function ChevronDownIcon(props) {
   return (
     <Svg {...props}>

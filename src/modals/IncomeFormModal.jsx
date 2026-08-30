@@ -3,11 +3,12 @@ import { useApp } from '../context/AppContext.jsx';
 import { toISODateString } from '../utils/date.js';
 import { BottomSheet } from './BottomSheet.jsx';
 
-export function AddIncomeModal() {
+export function IncomeFormModal({ mode = 'add', entry }) {
   const { dispatch, closeModal } = useApp();
-  const [date, setDate] = useState(toISODateString());
-  const [source, setSource] = useState('');
-  const [amount, setAmount] = useState('');
+  const isEdit = mode === 'edit';
+  const [date, setDate] = useState(isEdit ? entry.date : toISODateString());
+  const [source, setSource] = useState(isEdit ? entry.source : '');
+  const [amount, setAmount] = useState(isEdit ? String(entry.amount) : '');
   const [error, setError] = useState('');
 
   function handleSubmit(e) {
@@ -21,12 +22,19 @@ export function AddIncomeModal() {
       setError('Enter an amount greater than ₱0.');
       return;
     }
-    dispatch({ type: 'income/add', payload: { date, source: source.trim(), amount: amountValue } });
+    if (isEdit) {
+      dispatch({
+        type: 'income/update',
+        payload: { id: entry.id, date, source: source.trim(), amount: amountValue },
+      });
+    } else {
+      dispatch({ type: 'income/add', payload: { date, source: source.trim(), amount: amountValue } });
+    }
     closeModal();
   }
 
   return (
-    <BottomSheet title="Add Income" onClose={closeModal}>
+    <BottomSheet title={isEdit ? 'Edit Income' : 'Add Income'} onClose={closeModal}>
       <form className="form" onSubmit={handleSubmit}>
         <label className="form__field">
           <span className="form__label">Date</span>
@@ -65,7 +73,7 @@ export function AddIncomeModal() {
         </label>
         {error && <p className="form__error">{error}</p>}
         <button type="submit" className="btn-block">
-          Add Income
+          {isEdit ? 'Save Changes' : 'Add Income'}
         </button>
       </form>
     </BottomSheet>

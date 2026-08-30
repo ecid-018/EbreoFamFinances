@@ -20,7 +20,7 @@ export function IncomeList() {
         <button
           type="button"
           className="ios-row-wrap list-row-plain"
-          onClick={() => openModal('addIncome')}
+          onClick={() => openModal('incomeForm', { mode: 'add' })}
         >
           + Add Income
         </button>

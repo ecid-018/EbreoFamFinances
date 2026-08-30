@@ -3,11 +3,12 @@ import { useApp } from '../context/AppContext.jsx';
 import { SegmentedControl } from '../components/shared/SegmentedControl.jsx';
 import { BottomSheet } from './BottomSheet.jsx';
 
-export function AddAccountModal() {
+export function AccountFormModal({ mode = 'add', account }) {
   const { dispatch, closeModal } = useApp();
-  const [name, setName] = useState('');
-  const [type, setType] = useState('bank');
-  const [balance, setBalance] = useState('');
+  const isEdit = mode === 'edit';
+  const [name, setName] = useState(isEdit ? account.name : '');
+  const [type, setType] = useState(isEdit ? account.type : 'bank');
+  const [balance, setBalance] = useState(isEdit ? String(account.balance) : '');
   const [error, setError] = useState('');
 
   function handleSubmit(e) {
@@ -21,12 +22,19 @@ export function AddAccountModal() {
       setError('Enter a starting balance.');
       return;
     }
-    dispatch({ type: 'account/add', payload: { name: name.trim(), type, balance: balanceValue } });
+    if (isEdit) {
+      dispatch({
+        type: 'account/update',
+        payload: { id: account.id, name: name.trim(), type, balance: balanceValue },
+      });
+    } else {
+      dispatch({ type: 'account/add', payload: { name: name.trim(), type, balance: balanceValue } });
+    }
     closeModal();
   }
 
   return (
-    <BottomSheet title="Add Account" onClose={closeModal}>
+    <BottomSheet title={isEdit ? 'Edit Account' : 'Add Account'} onClose={closeModal}>
       <form className="form" onSubmit={handleSubmit}>
         <label className="form__field">
           <span className="form__label">Name</span>
@@ -65,7 +73,7 @@ export function AddAccountModal() {
         </label>
         {error && <p className="form__error">{error}</p>}
         <button type="submit" className="btn-block">
-          Add Account
+          {isEdit ? 'Save Changes' : 'Add Account'}
         </button>
       </form>
     </BottomSheet>

@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'ebreo-family-finances:v1';
+const STORAGE_KEY = 'ebreo-family-finances:v2';
 
 export function loadPersistedData() {
   try {
@@ -13,20 +13,11 @@ export function loadPersistedData() {
 }
 
 export function persistData(domainState) {
-  const { envelopes, transactions, income, accounts, goals, tithesSetAside, tithesAllocations } =
-    domainState;
+  const { envelopes, transactions, income, accounts, goals, ledger } = domainState;
   try {
     localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify({
-        envelopes,
-        transactions,
-        income,
-        accounts,
-        goals,
-        tithesSetAside,
-        tithesAllocations,
-      })
+      JSON.stringify({ envelopes, transactions, income, accounts, goals, ledger })
     );
   } catch {
     // localStorage unavailable (e.g. private browsing quota) — fail silently, in-memory state still works

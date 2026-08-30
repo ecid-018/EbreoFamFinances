@@ -1,16 +1,17 @@
 import { useApp } from '../../context/AppContext.jsx';
 import { formatPHP } from '../../utils/currency.js';
 import { SwipeToDeleteRow } from '../shared/SwipeToDeleteRow.jsx';
-import { BankIcon, WalletIcon } from '../shared/Icon.jsx';
+import { BankIcon, WalletIcon, ChevronRightIcon } from '../shared/Icon.jsx';
 
 export function AccountRow({ account }) {
-  const { dispatch } = useApp();
+  const { dispatch, openModal } = useApp();
   const isEwallet = account.type === 'ewallet';
 
   return (
     <SwipeToDeleteRow
       className="ios-row-wrap"
       onDelete={() => dispatch({ type: 'account/remove', payload: { id: account.id } })}
+      onTap={() => openModal('accountForm', { mode: 'edit', account })}
     >
       <div className="list-row">
         <div className="list-row__main">
@@ -21,6 +22,7 @@ export function AccountRow({ account }) {
           </span>
         </div>
         <span className="list-row__value">{formatPHP(account.balance)}</span>
+        <ChevronRightIcon size={16} className="list-row__chevron" />
       </div>
     </SwipeToDeleteRow>
   );

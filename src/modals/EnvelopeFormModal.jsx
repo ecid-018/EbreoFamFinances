@@ -1,13 +1,17 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext.jsx';
+import { GroupSelect } from '../components/shared/GroupSelect.jsx';
 import { BottomSheet } from './BottomSheet.jsx';
 
 export function EnvelopeFormModal({ mode, envelope }) {
-  const { dispatch, closeModal } = useApp();
+  const { state, dispatch, closeModal } = useApp();
   const isEdit = mode === 'edit';
   const [name, setName] = useState(isEdit ? envelope.name : '');
   const [monthlyBudget, setMonthlyBudget] = useState(isEdit ? String(envelope.monthlyBudget) : '');
+  const [group, setGroup] = useState(isEdit ? envelope.group : '');
   const [error, setError] = useState('');
+
+  const existingGroups = [...new Set(state.envelopes.map((env) => env.group))];
 
   function handleSubmit(e) {
     e.preventDefault();
@@ -20,15 +24,19 @@ export function EnvelopeFormModal({ mode, envelope }) {
       setError('Enter a monthly budget greater than ₱0.');
       return;
     }
+    if (!group.trim()) {
+      setError('Choose or create a group.');
+      return;
+    }
     if (isEdit) {
       dispatch({
         type: 'envelope/update',
-        payload: { id: envelope.id, name: name.trim(), monthlyBudget: budgetValue },
+        payload: { id: envelope.id, name: name.trim(), monthlyBudget: budgetValue, group: group.trim() },
       });
     } else {
       dispatch({
         type: 'envelope/add',
-        payload: { name: name.trim(), monthlyBudget: budgetValue },
+        payload: { name: name.trim(), monthlyBudget: budgetValue, group: group.trim() },
       });
     }
     closeModal();
@@ -62,6 +70,10 @@ export function EnvelopeFormModal({ mode, envelope }) {
             required
           />
         </label>
+        <div className="form__field">
+          <span className="form__label">Group</span>
+          <GroupSelect groups={existingGroups} value={group} onChange={setGroup} />
+        </div>
         {error && <p className="form__error">{error}</p>}
         <button type="submit" className="btn-block">
           {isEdit ? 'Save Changes' : 'Add Envelope'}

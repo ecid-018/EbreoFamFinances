@@ -1,13 +1,12 @@
 import { useApp } from '../context/AppContext.jsx';
 import { AddExpenseModal } from './AddExpenseModal.jsx';
 import { EnvelopeFormModal } from './EnvelopeFormModal.jsx';
-import { AddIncomeModal } from './AddIncomeModal.jsx';
-import { AddAccountModal } from './AddAccountModal.jsx';
+import { IncomeFormModal } from './IncomeFormModal.jsx';
+import { AccountFormModal } from './AccountFormModal.jsx';
 import { GoalFormModal } from './GoalFormModal.jsx';
 import { AddContributionModal } from './AddContributionModal.jsx';
 import { CategoryPickerModal } from './CategoryPickerModal.jsx';
-import { EditTithesSetAsideModal } from './EditTithesSetAsideModal.jsx';
-import { AddTithesAllocationModal } from './AddTithesAllocationModal.jsx';
+import { AllocateBudgetSheet } from './AllocateBudgetSheet.jsx';
 
 export function ModalRoot() {
   const { modal } = useApp();
@@ -18,20 +17,18 @@ export function ModalRoot() {
       return <AddExpenseModal />;
     case 'envelopeForm':
       return <EnvelopeFormModal {...modalProps} />;
-    case 'addIncome':
-      return <AddIncomeModal />;
-    case 'addAccount':
-      return <AddAccountModal />;
+    case 'incomeForm':
+      return <IncomeFormModal {...modalProps} />;
+    case 'accountForm':
+      return <AccountFormModal {...modalProps} />;
     case 'goalForm':
       return <GoalFormModal />;
     case 'addContribution':
       return <AddContributionModal {...modalProps} />;
     case 'categoryPicker':
       return <CategoryPickerModal {...modalProps} />;
-    case 'tithesSetAside':
-      return <EditTithesSetAsideModal {...modalProps} />;
-    case 'tithesAllocation':
-      return <AddTithesAllocationModal />;
+    case 'allocateBudget':
+      return <AllocateBudgetSheet />;
     default:
       return null;
   }

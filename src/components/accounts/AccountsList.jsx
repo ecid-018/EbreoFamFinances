@@ -16,7 +16,7 @@ export function AccountsList() {
         <button
           type="button"
           className="ios-row-wrap list-row-plain"
-          onClick={() => openModal('addAccount')}
+          onClick={() => openModal('accountForm', { mode: 'add' })}
         >
           + Add Account
         </button>

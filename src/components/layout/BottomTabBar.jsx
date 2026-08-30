@@ -1,23 +1,8 @@
-import { useState } from 'react';
 import { useApp } from '../../context/AppContext.jsx';
 import { HomeIcon, BudgetIcon, PlusIcon, ActivityIcon, MoreIcon } from '../shared/Icon.jsx';
 
-function scrollToSection(id) {
-  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
 export function BottomTabBar() {
-  const { openModal } = useApp();
-  const [activeTab, setActiveTab] = useState('home');
-
-  function handleTabClick(tab, sectionId) {
-    setActiveTab(tab);
-    if (sectionId === null) {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } else {
-      scrollToSection(sectionId);
-    }
-  }
+  const { activeTab, setActiveTab, openModal } = useApp();
 
   return (
     <nav className="tabbar" aria-label="Primary">
@@ -25,7 +10,7 @@ export function BottomTabBar() {
         <button
           type="button"
           className={`tabbar__item ${activeTab === 'home' ? 'tabbar__item--active' : ''}`.trim()}
-          onClick={() => handleTabClick('home', null)}
+          onClick={() => setActiveTab('home')}
         >
           <HomeIcon size={22} />
           Home
@@ -33,7 +18,7 @@ export function BottomTabBar() {
         <button
           type="button"
           className={`tabbar__item ${activeTab === 'budget' ? 'tabbar__item--active' : ''}`.trim()}
-          onClick={() => handleTabClick('budget', 'section-envelopes')}
+          onClick={() => setActiveTab('budget')}
         >
           <BudgetIcon size={22} />
           Budget
@@ -51,7 +36,7 @@ export function BottomTabBar() {
         <button
           type="button"
           className={`tabbar__item ${activeTab === 'activity' ? 'tabbar__item--active' : ''}`.trim()}
-          onClick={() => handleTabClick('activity', 'section-needs-category')}
+          onClick={() => setActiveTab('activity')}
         >
           <ActivityIcon size={22} />
           Activity
@@ -59,7 +44,7 @@ export function BottomTabBar() {
         <button
           type="button"
           className={`tabbar__item ${activeTab === 'more' ? 'tabbar__item--active' : ''}`.trim()}
-          onClick={() => handleTabClick('more', 'section-accounts')}
+          onClick={() => setActiveTab('more')}
         >
           <MoreIcon size={22} />
           More
