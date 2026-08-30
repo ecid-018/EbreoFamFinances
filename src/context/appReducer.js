@@ -89,37 +89,75 @@ export function appReducer(state, action) {
     }
 
     case 'transaction/add': {
-      const { date, amount, note, categoryId = null } = action.payload;
-      const transaction = { id: generateId('txn'), date, amount, note, categoryId };
+      const { date, amount, note, categoryId = null, accountId = null } = action.payload;
+      const transaction = { id: generateId('txn'), date, amount, note, categoryId, accountId };
       const envelope = categoryId ? state.envelopes.find((env) => env.id === categoryId) : null;
+      const account = accountId ? state.accounts.find((a) => a.id === accountId) : null;
+
+      const labelParts = [envelope?.name, account?.name].filter(Boolean);
+      const expenseName =
+        labelParts.length > 0 ? `${note || 'Expense'} (${labelParts.join(' · ')})` : note || 'Expense';
+
+      let ledger = logEntry(state.ledger, {
+        domain: 'Expense',
+        type: 'Expense logged',
+        name: expenseName,
+        amount,
+        date,
+      });
+      if (account) {
+        ledger = logEntry(ledger, {
+          domain: 'Account',
+          type: 'Deducted for expense',
+          name: account.name,
+          amount,
+          date,
+        });
+      }
+
       return {
         ...state,
         transactions: [...state.transactions, transaction],
-        ledger: logEntry(state.ledger, {
-          domain: 'Expense',
-          type: 'Expense logged',
-          name: envelope ? `${note || 'Expense'} (${envelope.name})` : note || 'Expense',
-          amount,
-          date,
-        }),
+        accounts: account
+          ? state.accounts.map((a) => (a.id === accountId ? { ...a, balance: a.balance - amount } : a))
+          : state.accounts,
+        ledger,
       };
     }
 
     case 'transaction/remove': {
       const { id } = action.payload;
       const existing = state.transactions.find((t) => t.id === id);
+      if (!existing) return state;
+
+      const account = existing.accountId ? state.accounts.find((a) => a.id === existing.accountId) : null;
+
+      let ledger = logEntry(state.ledger, {
+        domain: 'Expense',
+        type: 'Expense removed',
+        name: existing.note || 'Expense',
+        amount: existing.amount,
+        date: existing.date,
+      });
+      if (account) {
+        ledger = logEntry(ledger, {
+          domain: 'Account',
+          type: 'Refunded (expense removed)',
+          name: account.name,
+          amount: existing.amount,
+          date: existing.date,
+        });
+      }
+
       return {
         ...state,
         transactions: state.transactions.filter((t) => t.id !== id),
-        ledger: existing
-          ? logEntry(state.ledger, {
-              domain: 'Expense',
-              type: 'Expense removed',
-              name: existing.note || 'Expense',
-              amount: existing.amount,
-              date: existing.date,
-            })
-          : state.ledger,
+        accounts: account
+          ? state.accounts.map((a) =>
+              a.id === existing.accountId ? { ...a, balance: a.balance + existing.amount } : a
+            )
+          : state.accounts,
+        ledger,
       };
     }
 
@@ -229,6 +267,9 @@ export function appReducer(state, action) {
       return {
         ...state,
         accounts: state.accounts.filter((a) => a.id !== id),
+        transactions: state.transactions.map((t) =>
+          t.accountId === id ? { ...t, accountId: null } : t
+        ),
         ledger: existing
           ? logEntry(state.ledger, {
               domain: 'Account',

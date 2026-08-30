@@ -82,6 +82,16 @@ export function WalletIcon(props) {
   );
 }
 
+export function CashIcon(props) {
+  return (
+    <Svg {...props}>
+      <rect x="3.5" y="7" width="17" height="10" rx="1.5" />
+      <circle cx="12" cy="12" r="2.4" />
+      <path d="M6 9v0M18 15v0" />
+    </Svg>
+  );
+}
+
 export function ChevronLeftIcon(props) {
   return (
     <Svg {...props}>

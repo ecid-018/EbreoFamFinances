@@ -55,6 +55,7 @@ export function AccountFormModal({ mode = 'add', account }) {
             options={[
               { value: 'bank', label: 'Bank' },
               { value: 'ewallet', label: 'E-wallet' },
+              { value: 'cash', label: 'Cash' },
             ]}
           />
         </div>

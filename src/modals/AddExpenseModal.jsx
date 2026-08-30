@@ -9,6 +9,7 @@ export function AddExpenseModal() {
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [categoryId, setCategoryId] = useState('');
+  const [accountId, setAccountId] = useState(state.accounts[0]?.id ?? '');
   const [fundGoalId, setFundGoalId] = useState('');
   const [error, setError] = useState('');
 
@@ -22,6 +23,10 @@ export function AddExpenseModal() {
       setError('Enter an amount greater than ₱0.');
       return;
     }
+    if (state.accounts.length > 0 && !accountId) {
+      setError('Choose which account or cash this was paid from.');
+      return;
+    }
     if (isSavingsEnvelope && state.goals.length > 0 && !fundGoalId) {
       setError('Choose which goal this funds.');
       return;
@@ -29,7 +34,13 @@ export function AddExpenseModal() {
 
     dispatch({
       type: 'transaction/add',
-      payload: { date, amount: amountValue, note: note.trim(), categoryId: categoryId || null },
+      payload: {
+        date,
+        amount: amountValue,
+        note: note.trim(),
+        categoryId: categoryId || null,
+        accountId: accountId || null,
+      },
     });
 
     if (isSavingsEnvelope && fundGoalId) {
@@ -75,6 +86,24 @@ export function AddExpenseModal() {
             onChange={(e) => setNote(e.target.value)}
             placeholder="What was this for?"
           />
+        </label>
+        <label className="form__field">
+          <span className="form__label">Paid From</span>
+          {state.accounts.length > 0 ? (
+            <select
+              className="form__input"
+              value={accountId}
+              onChange={(e) => setAccountId(e.target.value)}
+            >
+              {state.accounts.map((account) => (
+                <option key={account.id} value={account.id}>
+                  {account.name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <p className="form__label">No accounts yet — add one in More first.</p>
+          )}
         </label>
         <label className="form__field">
           <span className="form__label">Envelope</span>

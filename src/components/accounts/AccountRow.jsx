@@ -1,11 +1,14 @@
 import { useApp } from '../../context/AppContext.jsx';
 import { formatPHP } from '../../utils/currency.js';
 import { SwipeToDeleteRow } from '../shared/SwipeToDeleteRow.jsx';
-import { BankIcon, WalletIcon, ChevronRightIcon } from '../shared/Icon.jsx';
+import { BankIcon, WalletIcon, CashIcon, ChevronRightIcon } from '../shared/Icon.jsx';
+
+const TYPE_LABELS = { bank: 'Bank', ewallet: 'E-Wallet', cash: 'Cash' };
+const TYPE_ICONS = { bank: BankIcon, ewallet: WalletIcon, cash: CashIcon };
 
 export function AccountRow({ account }) {
   const { dispatch, openModal } = useApp();
-  const isEwallet = account.type === 'ewallet';
+  const TypeIcon = TYPE_ICONS[account.type] ?? BankIcon;
 
   return (
     <SwipeToDeleteRow
@@ -17,8 +20,8 @@ export function AccountRow({ account }) {
         <div className="list-row__main">
           <span className="list-row__title">{account.name}</span>
           <span className="tag">
-            {isEwallet ? <WalletIcon size={13} /> : <BankIcon size={13} />}
-            {isEwallet ? 'E-Wallet' : 'Bank'}
+            <TypeIcon size={13} />
+            {TYPE_LABELS[account.type] ?? 'Account'}
           </span>
         </div>
         <span className="list-row__value">{formatPHP(account.balance)}</span>
