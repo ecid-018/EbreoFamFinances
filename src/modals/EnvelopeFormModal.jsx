@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext.jsx';
-import { Modal } from './Modal.jsx';
+import { BottomSheet } from './BottomSheet.jsx';
 
 export function EnvelopeFormModal({ mode, envelope }) {
   const { dispatch, closeModal } = useApp();
@@ -35,10 +35,10 @@ export function EnvelopeFormModal({ mode, envelope }) {
   }
 
   return (
-    <Modal title={isEdit ? 'Edit envelope' : 'Add envelope'} onClose={closeModal}>
+    <BottomSheet title={isEdit ? 'Edit Envelope' : 'Add Envelope'} onClose={closeModal}>
       <form className="form" onSubmit={handleSubmit}>
         <label className="form__field">
-          <span className="form__label eyebrow">Name</span>
+          <span className="form__label">Name</span>
           <input
             type="text"
             className="form__input"
@@ -49,7 +49,7 @@ export function EnvelopeFormModal({ mode, envelope }) {
           />
         </label>
         <label className="form__field">
-          <span className="form__label eyebrow">Monthly budget (₱)</span>
+          <span className="form__label">Monthly budget (₱)</span>
           <input
             type="number"
             inputMode="decimal"
@@ -63,15 +63,10 @@ export function EnvelopeFormModal({ mode, envelope }) {
           />
         </label>
         {error && <p className="form__error">{error}</p>}
-        <div className="form__actions">
-          <button type="button" className="btn btn-secondary" onClick={closeModal}>
-            Cancel
-          </button>
-          <button type="submit" className="btn btn-primary">
-            {isEdit ? 'Save changes' : 'Add envelope'}
-          </button>
-        </div>
+        <button type="submit" className="btn-block">
+          {isEdit ? 'Save Changes' : 'Add Envelope'}
+        </button>
       </form>
-    </Modal>
+    </BottomSheet>
   );
 }

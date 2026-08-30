@@ -2,24 +2,24 @@ import { useState } from 'react';
 import { useApp } from '../context/AppContext.jsx';
 import { BottomSheet } from './BottomSheet.jsx';
 
-export function AddContributionModal({ goalId, goalName }) {
+export function EditTithesSetAsideModal({ current }) {
   const { dispatch, closeModal } = useApp();
-  const [amount, setAmount] = useState('');
+  const [amount, setAmount] = useState(current > 0 ? String(current) : '');
   const [error, setError] = useState('');
 
   function handleSubmit(e) {
     e.preventDefault();
-    const amountValue = Number(amount);
-    if (!amountValue || amountValue <= 0) {
-      setError('Enter an amount greater than ₱0.');
+    const value = Number(amount);
+    if (amount === '' || Number.isNaN(value) || value < 0) {
+      setError('Enter a valid amount.');
       return;
     }
-    dispatch({ type: 'goal/contribute', payload: { id: goalId, amount: amountValue } });
+    dispatch({ type: 'tithes/setAside', payload: { amount: value } });
     closeModal();
   }
 
   return (
-    <BottomSheet title={`Contribute to ${goalName}`} onClose={closeModal}>
+    <BottomSheet title="Set Aside This Month" onClose={closeModal}>
       <form className="form" onSubmit={handleSubmit}>
         <label className="form__field">
           <span className="form__label">Amount (₱)</span>
@@ -38,7 +38,7 @@ export function AddContributionModal({ goalId, goalName }) {
         </label>
         {error && <p className="form__error">{error}</p>}
         <button type="submit" className="btn-block">
-          Add Contribution
+          Save
         </button>
       </form>
     </BottomSheet>

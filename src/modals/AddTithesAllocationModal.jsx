@@ -2,34 +2,29 @@ import { useState } from 'react';
 import { useApp } from '../context/AppContext.jsx';
 import { BottomSheet } from './BottomSheet.jsx';
 
-export function GoalFormModal() {
+export function AddTithesAllocationModal() {
   const { dispatch, closeModal } = useApp();
   const [name, setName] = useState('');
-  const [target, setTarget] = useState('');
-  const [saved, setSaved] = useState('');
+  const [amount, setAmount] = useState('');
   const [error, setError] = useState('');
 
   function handleSubmit(e) {
     e.preventDefault();
-    const targetValue = Number(target);
-    const savedValue = saved === '' ? 0 : Number(saved);
+    const amountValue = Number(amount);
     if (!name.trim()) {
-      setError('Give this goal a name.');
+      setError('Give this allocation a name.');
       return;
     }
-    if (!targetValue || targetValue <= 0) {
-      setError('Enter a target amount greater than ₱0.');
+    if (!amountValue || amountValue <= 0) {
+      setError('Enter an amount greater than ₱0.');
       return;
     }
-    dispatch({
-      type: 'goal/add',
-      payload: { name: name.trim(), target: targetValue, saved: savedValue },
-    });
+    dispatch({ type: 'tithes/addAllocation', payload: { name: name.trim(), amount: amountValue } });
     closeModal();
   }
 
   return (
-    <BottomSheet title="Add Savings Goal" onClose={closeModal}>
+    <BottomSheet title="Allocate to Activity" onClose={closeModal}>
       <form className="form" onSubmit={handleSubmit}>
         <label className="form__field">
           <span className="form__label">Name</span>
@@ -38,40 +33,27 @@ export function GoalFormModal() {
             className="form__input"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Emergency Fund"
+            placeholder="e.g. Sunday Offering"
             required
           />
         </label>
         <label className="form__field">
-          <span className="form__label">Target amount (₱)</span>
+          <span className="form__label">Amount (₱)</span>
           <input
             type="number"
             inputMode="decimal"
             min="0"
             step="1"
             className="form__input"
-            value={target}
-            onChange={(e) => setTarget(e.target.value)}
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
             placeholder="0"
             required
-          />
-        </label>
-        <label className="form__field">
-          <span className="form__label">Already saved (₱)</span>
-          <input
-            type="number"
-            inputMode="decimal"
-            min="0"
-            step="1"
-            className="form__input"
-            value={saved}
-            onChange={(e) => setSaved(e.target.value)}
-            placeholder="0"
           />
         </label>
         {error && <p className="form__error">{error}</p>}
         <button type="submit" className="btn-block">
-          Add Goal
+          Add Allocation
         </button>
       </form>
     </BottomSheet>

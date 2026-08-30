@@ -5,22 +5,22 @@ export function GoalsList() {
   const { state, openModal } = useApp();
 
   return (
-    <section className="section" id="section-goals">
-      <div className="section__header">
-        <h2 className="section__title">Savings goals</h2>
+    <div className="ios-group" id="section-goals">
+      <div className="ios-group__header">
+        <span className="ios-group__title">Savings Goals</span>
       </div>
-      <div className="goal-list">
+      <div className="ios-card">
         {state.goals.map((goal) => (
           <GoalRow key={goal.id} goal={goal} />
         ))}
+        <button
+          type="button"
+          className="ios-row-wrap list-row-plain"
+          onClick={() => openModal('goalForm')}
+        >
+          + Add Goal
+        </button>
       </div>
-      <button
-        type="button"
-        className="btn btn-secondary section__add"
-        onClick={() => openModal('goalForm')}
-      >
-        + Add goal
-      </button>
-    </section>
+    </div>
   );
 }

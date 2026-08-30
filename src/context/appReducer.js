@@ -12,6 +12,8 @@ export function initState() {
     income: domain.income ?? [],
     accounts: domain.accounts ?? [],
     goals: domain.goals ?? [],
+    tithesSetAside: domain.tithesSetAside ?? 0,
+    tithesAllocations: domain.tithesAllocations ?? [],
     month: getCurrentMonth(),
   };
 }
@@ -49,6 +51,11 @@ export function appReducer(state, action) {
       const { date, amount, note, categoryId = null } = action.payload;
       const transaction = { id: generateId('txn'), date, amount, note, categoryId };
       return { ...state, transactions: [...state.transactions, transaction] };
+    }
+
+    case 'transaction/remove': {
+      const { id } = action.payload;
+      return { ...state, transactions: state.transactions.filter((t) => t.id !== id) };
     }
 
     case 'transaction/assignCategory': {
@@ -101,6 +108,25 @@ export function appReducer(state, action) {
         goals: state.goals.map((g) =>
           g.id === id ? { ...g, saved: g.saved + amount } : g
         ),
+      };
+    }
+
+    case 'tithes/setAside': {
+      const { amount } = action.payload;
+      return { ...state, tithesSetAside: amount };
+    }
+
+    case 'tithes/addAllocation': {
+      const { name, amount } = action.payload;
+      const allocation = { id: generateId('tithe'), name, amount };
+      return { ...state, tithesAllocations: [...state.tithesAllocations, allocation] };
+    }
+
+    case 'tithes/removeAllocation': {
+      const { id } = action.payload;
+      return {
+        ...state,
+        tithesAllocations: state.tithesAllocations.filter((a) => a.id !== id),
       };
     }
 

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext.jsx';
 import { toISODateString } from '../utils/date.js';
-import { Modal } from './Modal.jsx';
+import { BottomSheet } from './BottomSheet.jsx';
 
 export function AddIncomeModal() {
   const { dispatch, closeModal } = useApp();
@@ -26,10 +26,10 @@ export function AddIncomeModal() {
   }
 
   return (
-    <Modal title="Add income" onClose={closeModal}>
+    <BottomSheet title="Add Income" onClose={closeModal}>
       <form className="form" onSubmit={handleSubmit}>
         <label className="form__field">
-          <span className="form__label eyebrow">Date</span>
+          <span className="form__label">Date</span>
           <input
             type="date"
             className="form__input"
@@ -39,7 +39,7 @@ export function AddIncomeModal() {
           />
         </label>
         <label className="form__field">
-          <span className="form__label eyebrow">Source</span>
+          <span className="form__label">Source</span>
           <input
             type="text"
             className="form__input"
@@ -50,7 +50,7 @@ export function AddIncomeModal() {
           />
         </label>
         <label className="form__field">
-          <span className="form__label eyebrow">Amount (₱)</span>
+          <span className="form__label">Amount (₱)</span>
           <input
             type="number"
             inputMode="decimal"
@@ -64,15 +64,10 @@ export function AddIncomeModal() {
           />
         </label>
         {error && <p className="form__error">{error}</p>}
-        <div className="form__actions">
-          <button type="button" className="btn btn-secondary" onClick={closeModal}>
-            Cancel
-          </button>
-          <button type="submit" className="btn btn-primary">
-            Add income
-          </button>
-        </div>
+        <button type="submit" className="btn-block">
+          Add Income
+        </button>
       </form>
-    </Modal>
+    </BottomSheet>
   );
 }

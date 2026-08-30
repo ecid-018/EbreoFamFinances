@@ -8,7 +8,7 @@ function sumBy(items, field) {
 
 export function useDerivedFinancials() {
   const { state } = useApp();
-  const { envelopes, transactions, income, month } = state;
+  const { envelopes, transactions, income, month, tithesSetAside, tithesAllocations } = state;
 
   return useMemo(() => {
     const monthTransactions = filterByMonth(transactions, month.year, month.monthIndex);
@@ -17,8 +17,11 @@ export function useDerivedFinancials() {
     const totalIncome = sumBy(monthIncomeEntries, 'amount');
     const totalSpent = sumBy(monthTransactions, 'amount');
     const totalBudget = sumBy(envelopes, 'monthlyBudget');
-    const unassigned = totalIncome - totalBudget;
+    const unassigned = totalIncome - totalBudget - tithesSetAside;
     const safeToSpend = totalIncome - totalSpent;
+
+    const tithesAllocated = sumBy(tithesAllocations, 'amount');
+    const tithesUnallocated = tithesSetAside - tithesAllocated;
 
     const envelopeStats = envelopes
       .map((env) => {
@@ -51,6 +54,8 @@ export function useDerivedFinancials() {
       isPastMonth,
       tightestEnvelope,
       monthIncomeEntries,
+      tithesAllocated,
+      tithesUnallocated,
     };
-  }, [envelopes, transactions, income, month]);
+  }, [envelopes, transactions, income, month, tithesSetAside, tithesAllocations]);
 }

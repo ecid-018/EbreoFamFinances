@@ -11,27 +11,31 @@ export function EnvelopeList() {
   const visibleEnvelopes = expanded ? envelopeStats : envelopeStats.slice(0, 3);
 
   return (
-    <section className="section" id="section-envelopes">
-      <div className="section__header">
-        <h2 className="section__title">Tightest envelopes</h2>
-        {envelopeStats.length > 3 && (
-          <button type="button" className="btn-text" onClick={() => setExpanded((v) => !v)}>
-            {expanded ? '← Show top 3' : `All ${envelopeStats.length} →`}
-          </button>
-        )}
+    <div className="ios-group" id="section-envelopes">
+      <div className="ios-group__header">
+        <span className="ios-group__title">Tightest Envelopes</span>
       </div>
-      <div className="envelope-list">
+      <div className="ios-card">
         {visibleEnvelopes.map((envelope) => (
           <EnvelopeRow key={envelope.id} envelope={envelope} />
         ))}
+        {envelopeStats.length > 3 && (
+          <button
+            type="button"
+            className="ios-row-wrap list-row-plain"
+            onClick={() => setExpanded((v) => !v)}
+          >
+            {expanded ? 'Show Top 3' : `Show All ${envelopeStats.length}`}
+          </button>
+        )}
+        <button
+          type="button"
+          className="ios-row-wrap list-row-plain"
+          onClick={() => openModal('envelopeForm', { mode: 'add' })}
+        >
+          + Add Envelope
+        </button>
       </div>
-      <button
-        type="button"
-        className="btn btn-secondary section__add"
-        onClick={() => openModal('envelopeForm', { mode: 'add' })}
-      >
-        + Add envelope
-      </button>
-    </section>
+    </div>
   );
 }

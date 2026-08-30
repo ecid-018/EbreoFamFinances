@@ -25,6 +25,12 @@ export const seedData = {
     { id: 'goal-boracay', name: 'Boracay Trip', target: 30000, saved: 12500 },
   ],
 
+  tithesSetAside: 5000,
+  tithesAllocations: [
+    { id: 'tithe-sunday', name: 'Sunday Offering', amount: 2000 },
+    { id: 'tithe-building', name: 'Building Fund', amount: 1500 },
+  ],
+
   transactions: [
     { id: 'txn-001', date: '2026-08-03', amount: 2450, note: 'Puregold grocery run', categoryId: 'env-groceries' },
     { id: 'txn-002', date: '2026-08-10', amount: 3100, note: 'SM Supermarket', categoryId: 'env-groceries' },

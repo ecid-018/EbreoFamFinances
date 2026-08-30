@@ -8,28 +8,23 @@ export function IncomeList() {
   const { monthIncomeEntries, totalIncome } = useDerivedFinancials();
 
   return (
-    <section className="section" id="section-income">
-      <div className="section__header">
-        <h2 className="section__title">Income</h2>
+    <div className="ios-group" id="section-income">
+      <div className="ios-group__header">
+        <span className="ios-group__title">Income</span>
+        <span className="ios-group__title">{formatPHP(totalIncome)}</span>
       </div>
-      <div className="list">
+      <div className="ios-card">
         {monthIncomeEntries.map((entry) => (
           <IncomeRow key={entry.id} entry={entry} />
         ))}
+        <button
+          type="button"
+          className="ios-row-wrap list-row-plain"
+          onClick={() => openModal('addIncome')}
+        >
+          + Add Income
+        </button>
       </div>
-      {monthIncomeEntries.length > 0 && (
-        <div className="list__total">
-          <span>Total</span>
-          <span>{formatPHP(totalIncome)}</span>
-        </div>
-      )}
-      <button
-        type="button"
-        className="btn btn-secondary section__add"
-        onClick={() => openModal('addIncome')}
-      >
-        + Add income
-      </button>
-    </section>
+    </div>
   );
 }

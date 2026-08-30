@@ -13,11 +13,20 @@ export function loadPersistedData() {
 }
 
 export function persistData(domainState) {
-  const { envelopes, transactions, income, accounts, goals } = domainState;
+  const { envelopes, transactions, income, accounts, goals, tithesSetAside, tithesAllocations } =
+    domainState;
   try {
     localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify({ envelopes, transactions, income, accounts, goals })
+      JSON.stringify({
+        envelopes,
+        transactions,
+        income,
+        accounts,
+        goals,
+        tithesSetAside,
+        tithesAllocations,
+      })
     );
   } catch {
     // localStorage unavailable (e.g. private browsing quota) — fail silently, in-memory state still works

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext.jsx';
 import { toISODateString } from '../utils/date.js';
-import { Modal } from './Modal.jsx';
+import { BottomSheet } from './BottomSheet.jsx';
 
 export function AddExpenseModal() {
   const { state, dispatch, closeModal } = useApp();
@@ -26,10 +26,10 @@ export function AddExpenseModal() {
   }
 
   return (
-    <Modal title="Add expense" onClose={closeModal}>
+    <BottomSheet title="Add Expense" onClose={closeModal}>
       <form className="form" onSubmit={handleSubmit}>
         <label className="form__field">
-          <span className="form__label eyebrow">Date</span>
+          <span className="form__label">Date</span>
           <input
             type="date"
             className="form__input"
@@ -39,7 +39,7 @@ export function AddExpenseModal() {
           />
         </label>
         <label className="form__field">
-          <span className="form__label eyebrow">Amount (₱)</span>
+          <span className="form__label">Amount (₱)</span>
           <input
             type="number"
             inputMode="decimal"
@@ -53,7 +53,7 @@ export function AddExpenseModal() {
           />
         </label>
         <label className="form__field">
-          <span className="form__label eyebrow">Note</span>
+          <span className="form__label">Note</span>
           <input
             type="text"
             className="form__input"
@@ -63,7 +63,7 @@ export function AddExpenseModal() {
           />
         </label>
         <label className="form__field">
-          <span className="form__label eyebrow">Envelope</span>
+          <span className="form__label">Envelope</span>
           <select
             className="form__input"
             value={categoryId}
@@ -78,15 +78,10 @@ export function AddExpenseModal() {
           </select>
         </label>
         {error && <p className="form__error">{error}</p>}
-        <div className="form__actions">
-          <button type="button" className="btn btn-secondary" onClick={closeModal}>
-            Cancel
-          </button>
-          <button type="submit" className="btn btn-primary">
-            Add expense
-          </button>
-        </div>
+        <button type="submit" className="btn-block">
+          Add Expense
+        </button>
       </form>
-    </Modal>
+    </BottomSheet>
   );
 }

@@ -1,17 +1,25 @@
 import { useApp } from '../../context/AppContext.jsx';
 import { formatPHP } from '../../utils/currency.js';
+import { SwipeToDeleteRow } from '../shared/SwipeToDeleteRow.jsx';
+import { ChevronRightIcon } from '../shared/Icon.jsx';
 
 export function NeedsCategoryRow({ transaction }) {
-  const { openModal } = useApp();
+  const { dispatch, openModal } = useApp();
 
   return (
-    <button
-      type="button"
-      className="needs-category-row"
-      onClick={() => openModal('categoryPicker', { transactionId: transaction.id })}
+    <SwipeToDeleteRow
+      className="ios-row-wrap"
+      onDelete={() => dispatch({ type: 'transaction/remove', payload: { id: transaction.id } })}
+      onTap={() => openModal('categoryPicker', { transactionId: transaction.id })}
     >
-      <span className="needs-category-row__note">{transaction.note || 'Untitled transaction'}</span>
-      <span className="needs-category-row__amount">{formatPHP(transaction.amount)}</span>
-    </button>
+      <div className="list-row">
+        <span className="status-dot" />
+        <div className="list-row__main">
+          <span className="list-row__title">{transaction.note || 'Untitled transaction'}</span>
+        </div>
+        <span className="list-row__value">{formatPHP(transaction.amount)}</span>
+        <ChevronRightIcon size={16} className="list-row__chevron" />
+      </div>
+    </SwipeToDeleteRow>
   );
 }

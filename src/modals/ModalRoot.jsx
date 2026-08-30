@@ -6,6 +6,8 @@ import { AddAccountModal } from './AddAccountModal.jsx';
 import { GoalFormModal } from './GoalFormModal.jsx';
 import { AddContributionModal } from './AddContributionModal.jsx';
 import { CategoryPickerModal } from './CategoryPickerModal.jsx';
+import { EditTithesSetAsideModal } from './EditTithesSetAsideModal.jsx';
+import { AddTithesAllocationModal } from './AddTithesAllocationModal.jsx';
 
 export function ModalRoot() {
   const { modal } = useApp();
@@ -26,6 +28,10 @@ export function ModalRoot() {
       return <AddContributionModal {...modalProps} />;
     case 'categoryPicker':
       return <CategoryPickerModal {...modalProps} />;
+    case 'tithesSetAside':
+      return <EditTithesSetAsideModal {...modalProps} />;
+    case 'tithesAllocation':
+      return <AddTithesAllocationModal />;
     default:
       return null;
   }

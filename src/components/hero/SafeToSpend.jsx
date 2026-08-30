@@ -1,6 +1,5 @@
 import { useDerivedFinancials } from '../../hooks/useDerivedFinancials.js';
 import { formatPHP } from '../../utils/currency.js';
-import { Eyebrow } from '../shared/Eyebrow.jsx';
 
 function buildSummary({ safeToSpend, daysLeft, isPastMonth, tightestEnvelope }) {
   if (isPastMonth) {
@@ -25,10 +24,12 @@ export function SafeToSpend() {
   const financials = useDerivedFinancials();
 
   return (
-    <section className="hero">
-      <Eyebrow>Safe to spend</Eyebrow>
-      <div className="hero__amount">{formatPHP(financials.safeToSpend)}</div>
-      <p className="hero__summary">{buildSummary(financials)}</p>
-    </section>
+    <div className="ios-group">
+      <div className="ios-card ios-card--padded">
+        <div className="hero__eyebrow">Safe to spend</div>
+        <div className="hero__amount">{formatPHP(financials.safeToSpend)}</div>
+        <p className="hero__summary">{buildSummary(financials)}</p>
+      </div>
+    </div>
   );
 }

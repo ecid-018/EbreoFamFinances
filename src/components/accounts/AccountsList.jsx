@@ -5,22 +5,22 @@ export function AccountsList() {
   const { state, openModal } = useApp();
 
   return (
-    <section className="section" id="section-accounts">
-      <div className="section__header">
-        <h2 className="section__title">Accounts &amp; e-wallets</h2>
+    <div className="ios-group" id="section-accounts">
+      <div className="ios-group__header">
+        <span className="ios-group__title">Accounts &amp; E-wallets</span>
       </div>
-      <div className="list">
+      <div className="ios-card">
         {state.accounts.map((account) => (
           <AccountRow key={account.id} account={account} />
         ))}
+        <button
+          type="button"
+          className="ios-row-wrap list-row-plain"
+          onClick={() => openModal('addAccount')}
+        >
+          + Add Account
+        </button>
       </div>
-      <button
-        type="button"
-        className="btn btn-secondary section__add"
-        onClick={() => openModal('addAccount')}
-      >
-        + Add account
-      </button>
-    </section>
+    </div>
   );
 }

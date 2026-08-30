@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext.jsx';
-import { Modal } from './Modal.jsx';
+import { SegmentedControl } from '../components/shared/SegmentedControl.jsx';
+import { BottomSheet } from './BottomSheet.jsx';
 
 export function AddAccountModal() {
   const { dispatch, closeModal } = useApp();
@@ -25,10 +26,10 @@ export function AddAccountModal() {
   }
 
   return (
-    <Modal title="Add account" onClose={closeModal}>
+    <BottomSheet title="Add Account" onClose={closeModal}>
       <form className="form" onSubmit={handleSubmit}>
         <label className="form__field">
-          <span className="form__label eyebrow">Name</span>
+          <span className="form__label">Name</span>
           <input
             type="text"
             className="form__input"
@@ -39,34 +40,18 @@ export function AddAccountModal() {
           />
         </label>
         <div className="form__field">
-          <span className="form__label eyebrow">Type</span>
-          <div className="form__radio-group">
-            <label className={`form__radio-option ${type === 'bank' ? 'form__radio-option--checked' : ''}`.trim()}>
-              <input
-                type="radio"
-                name="account-type"
-                value="bank"
-                checked={type === 'bank'}
-                onChange={() => setType('bank')}
-              />
-              Bank
-            </label>
-            <label
-              className={`form__radio-option ${type === 'ewallet' ? 'form__radio-option--checked' : ''}`.trim()}
-            >
-              <input
-                type="radio"
-                name="account-type"
-                value="ewallet"
-                checked={type === 'ewallet'}
-                onChange={() => setType('ewallet')}
-              />
-              E-wallet
-            </label>
-          </div>
+          <span className="form__label">Type</span>
+          <SegmentedControl
+            value={type}
+            onChange={setType}
+            options={[
+              { value: 'bank', label: 'Bank' },
+              { value: 'ewallet', label: 'E-wallet' },
+            ]}
+          />
         </div>
         <label className="form__field">
-          <span className="form__label eyebrow">Balance (₱)</span>
+          <span className="form__label">Balance (₱)</span>
           <input
             type="number"
             inputMode="decimal"
@@ -79,15 +64,10 @@ export function AddAccountModal() {
           />
         </label>
         {error && <p className="form__error">{error}</p>}
-        <div className="form__actions">
-          <button type="button" className="btn btn-secondary" onClick={closeModal}>
-            Cancel
-          </button>
-          <button type="submit" className="btn btn-primary">
-            Add account
-          </button>
-        </div>
+        <button type="submit" className="btn-block">
+          Add Account
+        </button>
       </form>
-    </Modal>
+    </BottomSheet>
   );
 }
