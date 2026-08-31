@@ -5,6 +5,7 @@ import { SegmentedControl } from '../shared/SegmentedControl.jsx';
 import { getPeriodRange, isDateInRange, getMonthName } from '../../utils/date.js';
 import { buildLedgerCsv, downloadCsv } from '../../utils/csv.js';
 import { computePeriodSummary } from '../../utils/analytics.js';
+import { buildFullBackupJson, downloadBackup } from '../../utils/backup.js';
 
 const PERIOD_OPTIONS = [
   { value: 'daily', label: 'Daily' },
@@ -37,6 +38,12 @@ export function ExportSection() {
   function handleExportCsv() {
     downloadCsv(`ebreo-family-finances-${period}.csv`, csv);
     setShowExportText(true);
+  }
+
+  function handleExportBackup() {
+    const json = buildFullBackupJson(state);
+    const stamp = new Date().toISOString().slice(0, 10);
+    downloadBackup(`ebreo-family-finances-backup-${stamp}.json`, json);
   }
 
   async function handleExportPdf() {
@@ -94,6 +101,20 @@ export function ExportSection() {
           <textarea className="ledger-fallback__text" readOnly value={csv} onFocus={(e) => e.target.select()} />
         </div>
       )}
+
+      <div className="ios-group__header">
+        <span className="ios-group__title">Full Backup</span>
+      </div>
+      <div className="ios-card ledger-fallback">
+        <p className="list-row__meta ledger-fallback__hint">
+          A complete copy of everything — every envelope, transaction, income entry,
+          account, goal, and ledger record — saved as one file, regardless of the period
+          selected above. Keep this somewhere safe.
+        </p>
+        <button type="button" className="btn-block" onClick={handleExportBackup}>
+          Export Full Backup (JSON)
+        </button>
+      </div>
     </div>
   );
 }
