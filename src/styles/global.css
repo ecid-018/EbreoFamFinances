@@ -143,6 +143,26 @@ svg {
   flex-shrink: 0;
 }
 
+.navbar__avatar-btn {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-accent);
+  color: #fff;
+  border: none;
+  font-size: 12px;
+  font-weight: 700;
+  margin-left: 2px;
+}
+
+.navbar__avatar-btn:active {
+  opacity: 0.7;
+}
+
 .navbar__small-title {
   flex: 1;
   min-width: 0;

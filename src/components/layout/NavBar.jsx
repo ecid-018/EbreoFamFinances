@@ -1,4 +1,5 @@
 import { useApp } from '../../context/AppContext.jsx';
+import { useAuth } from '../../context/AuthContext.jsx';
 import { useDerivedFinancials } from '../../hooks/useDerivedFinancials.js';
 import { useScrollCollapse } from '../../hooks/useScrollCollapse.js';
 import { getMonthName, addDays, getWeekdayName, getDayLabel, isToday } from '../../utils/date.js';
@@ -7,6 +8,7 @@ import { ChevronLeftIcon, ChevronRightIcon, SettingsIcon } from '../shared/Icon.
 
 export function NavBar() {
   const { state, dispatch, openModal, viewMode, setViewMode, viewDay, setViewDay } = useApp();
+  const { currentProfile } = useAuth();
   const { daysLeft, isPastMonth } = useDerivedFinancials();
   const collapsed = useScrollCollapse();
   const isDayMode = viewMode === 'day';
@@ -48,6 +50,17 @@ export function NavBar() {
             {nextLabel}
             <ChevronRightIcon size={13} />
           </button>
+          {currentProfile && (
+            <button
+              type="button"
+              className="navbar__avatar-btn"
+              aria-label={`Signed in as ${currentProfile.displayName}`}
+              title={`Signed in as ${currentProfile.displayName}`}
+              onClick={() => openModal('settings')}
+            >
+              {currentProfile.displayName.charAt(0)}
+            </button>
+          )}
           <button
             type="button"
             className="navbar__icon-btn"
