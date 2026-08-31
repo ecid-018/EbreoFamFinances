@@ -43,7 +43,10 @@ export function useUsdToPhpRate(enabled) {
     }
 
     let cancelled = false;
-    fetch('https://api.frankfurter.app/latest?from=USD&to=PHP')
+    // frankfurter.app (the old domain) 301-redirects here without CORS headers on
+    // the redirect itself, which browsers block before ever reaching the real
+    // response — hitting the current domain directly avoids that entirely.
+    fetch('https://api.frankfurter.dev/v1/latest?from=USD&to=PHP')
       .then((res) => {
         if (!res.ok) throw new Error(`Rate API responded ${res.status}`);
         return res.json();
