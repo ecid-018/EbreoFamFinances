@@ -50,7 +50,14 @@ export function useDerivedFinancials() {
     const tightestEnvelope = envelopeStats[0] ?? null;
     const overBudgetEnvelopes = envelopeStats.filter((env) => env.isOver);
 
-    const totalAccountBalance = sumBy(accounts, 'balance');
+    const totalPhpAccountBalance = sumBy(
+      accounts.filter((a) => (a.currency ?? 'PHP') === 'PHP'),
+      'balance'
+    );
+    const totalUsdAccountBalance = sumBy(
+      accounts.filter((a) => a.currency === 'USD'),
+      'balance'
+    );
     const totalGoalsSaved = sumBy(goals, 'saved');
     const totalGoalsTarget = sumBy(goals, 'target');
     const goalsProgressPct = totalGoalsTarget > 0 ? (totalGoalsSaved / totalGoalsTarget) * 100 : 0;
@@ -75,7 +82,8 @@ export function useDerivedFinancials() {
       tightestEnvelope,
       overBudgetEnvelopes,
       monthIncomeEntries,
-      totalAccountBalance,
+      totalPhpAccountBalance,
+      totalUsdAccountBalance,
       goalsProgressPct,
       savingsFundedThisMonth,
     };

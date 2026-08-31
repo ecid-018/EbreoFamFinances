@@ -339,8 +339,8 @@ export function appReducer(state, action) {
     }
 
     case 'account/add': {
-      const { id, name, type, balance, ownerId } = action.payload;
-      const account = { id, name, type, balance, ownerId };
+      const { id, name, type, balance, currency, ownerId } = action.payload;
+      const account = { id, name, type, balance, currency: currency ?? 'PHP', ownerId };
       return {
         ...state,
         accounts: [...state.accounts, account],
@@ -354,10 +354,12 @@ export function appReducer(state, action) {
     }
 
     case 'account/update': {
-      const { id, name, type, balance } = action.payload;
+      const { id, name, type, balance, currency } = action.payload;
       return {
         ...state,
-        accounts: state.accounts.map((a) => (a.id === id ? { ...a, name, type, balance } : a)),
+        accounts: state.accounts.map((a) =>
+          a.id === id ? { ...a, name, type, balance, currency: currency ?? 'PHP' } : a
+        ),
         ledger: logEntry(state.ledger, {
           domain: 'Account',
           type: 'Balance updated',

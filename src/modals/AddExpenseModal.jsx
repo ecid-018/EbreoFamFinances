@@ -1,17 +1,19 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext.jsx';
 import { toISODateString } from '../utils/date.js';
+import { getSpendableAccounts } from '../utils/accounts.js';
 import { BottomSheet } from './BottomSheet.jsx';
 
 export function AddExpenseModal({ mode = 'add', transaction }) {
   const { state, dispatch, closeModal } = useApp();
   const isEdit = mode === 'edit';
+  const spendableAccounts = getSpendableAccounts(state.accounts);
   const [date, setDate] = useState(isEdit ? transaction.date : toISODateString());
   const [amount, setAmount] = useState(isEdit ? String(transaction.amount) : '');
   const [note, setNote] = useState(isEdit ? transaction.note : '');
   const [categoryId, setCategoryId] = useState(isEdit ? transaction.categoryId ?? '' : '');
   const [accountId, setAccountId] = useState(
-    isEdit ? transaction.accountId ?? '' : state.accounts[0]?.id ?? ''
+    isEdit ? transaction.accountId ?? '' : spendableAccounts[0]?.id ?? ''
   );
   const [fundGoalId, setFundGoalId] = useState('');
   const [error, setError] = useState('');
@@ -28,7 +30,7 @@ export function AddExpenseModal({ mode = 'add', transaction }) {
       setError('Enter an amount greater than ₱0.');
       return;
     }
-    if (state.accounts.length > 0 && !accountId) {
+    if (spendableAccounts.length > 0 && !accountId) {
       setError('Choose which account or cash this was paid from.');
       return;
     }
@@ -99,13 +101,13 @@ export function AddExpenseModal({ mode = 'add', transaction }) {
         </label>
         <label className="form__field">
           <span className="form__label">Paid From</span>
-          {state.accounts.length > 0 ? (
+          {spendableAccounts.length > 0 ? (
             <select
               className="form__input"
               value={accountId}
               onChange={(e) => setAccountId(e.target.value)}
             >
-              {state.accounts.map((account) => (
+              {spendableAccounts.map((account) => (
                 <option key={account.id} value={account.id}>
                   {account.name}
                 </option>

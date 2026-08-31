@@ -1,16 +1,18 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext.jsx';
 import { toISODateString, getMonthKey, parseMonthKey } from '../utils/date.js';
+import { getSpendableAccounts } from '../utils/accounts.js';
 import { BudgetMonthStepper } from '../components/shared/BudgetMonthStepper.jsx';
 import { BottomSheet } from './BottomSheet.jsx';
 
 export function IncomeFormModal({ mode = 'add', entry }) {
   const { state, dispatch, closeModal } = useApp();
   const isEdit = mode === 'edit';
+  const spendableAccounts = getSpendableAccounts(state.accounts);
   const [date, setDate] = useState(isEdit ? entry.date : toISODateString());
   const [source, setSource] = useState(isEdit ? entry.source : '');
   const [amount, setAmount] = useState(isEdit ? String(entry.amount) : '');
-  const [accountId, setAccountId] = useState(isEdit ? entry.accountId ?? '' : state.accounts[0]?.id ?? '');
+  const [accountId, setAccountId] = useState(isEdit ? entry.accountId ?? '' : spendableAccounts[0]?.id ?? '');
   const [budgetMonth, setBudgetMonth] = useState(
     isEdit ? parseMonthKey(entry.budgetMonthKey) : state.month
   );
@@ -27,7 +29,7 @@ export function IncomeFormModal({ mode = 'add', entry }) {
       setError('Enter an amount greater than ₱0.');
       return;
     }
-    if (state.accounts.length > 0 && !accountId) {
+    if (spendableAccounts.length > 0 && !accountId) {
       setError('Choose which account this was deposited into.');
       return;
     }
@@ -88,9 +90,9 @@ export function IncomeFormModal({ mode = 'add', entry }) {
         </label>
         <label className="form__field">
           <span className="form__label">Deposit Into</span>
-          {state.accounts.length > 0 ? (
+          {spendableAccounts.length > 0 ? (
             <select className="form__input" value={accountId} onChange={(e) => setAccountId(e.target.value)}>
-              {state.accounts.map((account) => (
+              {spendableAccounts.map((account) => (
                 <option key={account.id} value={account.id}>
                   {account.name}
                 </option>

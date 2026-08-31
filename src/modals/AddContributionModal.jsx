@@ -1,15 +1,17 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext.jsx';
 import { toISODateString, getMonthKey } from '../utils/date.js';
+import { getSpendableAccounts } from '../utils/accounts.js';
 import { SegmentedControl } from '../components/shared/SegmentedControl.jsx';
 import { BudgetMonthStepper } from '../components/shared/BudgetMonthStepper.jsx';
 import { BottomSheet } from './BottomSheet.jsx';
 
 export function AddContributionModal({ goalId, goalName }) {
   const { state, dispatch, closeModal } = useApp();
+  const spendableAccounts = getSpendableAccounts(state.accounts);
   const [fundingSource, setFundingSource] = useState('account');
   const [amount, setAmount] = useState('');
-  const [accountId, setAccountId] = useState(state.accounts[0]?.id ?? '');
+  const [accountId, setAccountId] = useState(spendableAccounts[0]?.id ?? '');
   const [incomeSource, setIncomeSource] = useState('');
   const [budgetMonth, setBudgetMonth] = useState(state.month);
   const [error, setError] = useState('');
@@ -29,7 +31,7 @@ export function AddContributionModal({ goalId, goalName }) {
         setError('Enter where this income came from.');
         return;
       }
-      if (state.accounts.length > 0 && !accountId) {
+      if (spendableAccounts.length > 0 && !accountId) {
         setError('Choose which account this was deposited into.');
         return;
       }
@@ -45,7 +47,7 @@ export function AddContributionModal({ goalId, goalName }) {
       });
       dispatch({ type: 'goal/contribute', payload: { id: goalId, amount: amountValue, via: 'income' } });
     } else {
-      if (state.accounts.length > 0 && !accountId) {
+      if (spendableAccounts.length > 0 && !accountId) {
         setError('Choose which account this is coming from.');
         return;
       }
@@ -102,9 +104,9 @@ export function AddContributionModal({ goalId, goalName }) {
         )}
         <label className="form__field">
           <span className="form__label">{isFromIncome ? 'Deposit Into' : 'Account'}</span>
-          {state.accounts.length > 0 ? (
+          {spendableAccounts.length > 0 ? (
             <select className="form__input" value={accountId} onChange={(e) => setAccountId(e.target.value)}>
-              {state.accounts.map((account) => (
+              {spendableAccounts.map((account) => (
                 <option key={account.id} value={account.id}>
                   {account.name}
                 </option>

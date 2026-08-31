@@ -8,6 +8,7 @@ export function AccountFormModal({ mode = 'add', account }) {
   const isEdit = mode === 'edit';
   const [name, setName] = useState(isEdit ? account.name : '');
   const [type, setType] = useState(isEdit ? account.type : 'bank');
+  const [currency, setCurrency] = useState(isEdit ? account.currency ?? 'PHP' : 'PHP');
   const [balance, setBalance] = useState(isEdit ? String(account.balance) : '');
   const [error, setError] = useState('');
 
@@ -25,10 +26,10 @@ export function AccountFormModal({ mode = 'add', account }) {
     if (isEdit) {
       dispatch({
         type: 'account/update',
-        payload: { id: account.id, name: name.trim(), type, balance: balanceValue },
+        payload: { id: account.id, name: name.trim(), type, balance: balanceValue, currency },
       });
     } else {
-      dispatch({ type: 'account/add', payload: { name: name.trim(), type, balance: balanceValue } });
+      dispatch({ type: 'account/add', payload: { name: name.trim(), type, balance: balanceValue, currency } });
     }
     closeModal();
   }
@@ -59,8 +60,19 @@ export function AccountFormModal({ mode = 'add', account }) {
             ]}
           />
         </div>
+        <div className="form__field">
+          <span className="form__label">Currency</span>
+          <SegmentedControl
+            value={currency}
+            onChange={setCurrency}
+            options={[
+              { value: 'PHP', label: 'PHP (₱)' },
+              { value: 'USD', label: 'USD ($)' },
+            ]}
+          />
+        </div>
         <label className="form__field">
-          <span className="form__label">Balance (₱)</span>
+          <span className="form__label">Balance ({currency === 'USD' ? '$' : '₱'})</span>
           <input
             type="number"
             inputMode="decimal"

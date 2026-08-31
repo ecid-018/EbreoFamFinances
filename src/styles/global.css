@@ -345,6 +345,12 @@ svg {
   color: var(--color-destructive);
 }
 
+.stats__caption {
+  font-size: var(--caption-size);
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
 /* ---------- Rows ---------- */
 
 .ios-row-wrap {

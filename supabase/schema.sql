@@ -34,6 +34,7 @@ create table accounts (
   name text not null,
   type text not null check (type in ('bank','ewallet','cash')),
   balance numeric(12,2) not null default 0,
+  currency text not null default 'PHP' check (currency in ('PHP','USD')),
   owner_id uuid not null references auth.users(id),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useApp } from '../../context/AppContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { formatPHP } from '../../utils/currency.js';
+import { formatByCurrency } from '../../utils/currency.js';
 import { SwipeToDeleteRow } from '../shared/SwipeToDeleteRow.jsx';
 import { ConfirmDialog } from '../shared/ConfirmDialog.jsx';
 import { BankIcon, WalletIcon, CashIcon, ChevronRightIcon } from '../shared/Icon.jsx';
@@ -27,9 +27,10 @@ export function AccountRow({ account }) {
           <TypeIcon size={13} />
           {TYPE_LABELS[account.type] ?? 'Account'}
         </span>
+        {account.currency === 'USD' && <span className="tag">USD</span>}
         <span className="tag">Owned by {ownerLabel}</span>
       </div>
-      <span className="list-row__value">{formatPHP(account.balance)}</span>
+      <span className="list-row__value">{formatByCurrency(account.balance, account.currency)}</span>
       {isOwner && <ChevronRightIcon size={16} className="list-row__chevron" />}
     </div>
   );

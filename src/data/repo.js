@@ -13,7 +13,14 @@ function mapEnvelope(row) {
   return { id: row.id, name: row.name, monthlyBudget: Number(row.monthly_budget), group: row.group_name };
 }
 function mapAccount(row) {
-  return { id: row.id, name: row.name, type: row.type, balance: Number(row.balance), ownerId: row.owner_id };
+  return {
+    id: row.id,
+    name: row.name,
+    type: row.type,
+    balance: Number(row.balance),
+    currency: row.currency ?? 'PHP',
+    ownerId: row.owner_id,
+  };
 }
 function mapTransaction(row) {
   return {
@@ -150,7 +157,14 @@ export const repo = {
   async addAccount(payload, userId) {
     await supabase
       .from('accounts')
-      .insert({ id: payload.id, name: payload.name, type: payload.type, balance: payload.balance, owner_id: userId })
+      .insert({
+        id: payload.id,
+        name: payload.name,
+        type: payload.type,
+        balance: payload.balance,
+        currency: payload.currency ?? 'PHP',
+        owner_id: userId,
+      })
       .then(unwrap);
     await insertLedgerEntry({ date: null, domain: 'Account', type: 'Account added', name: payload.name, amount: payload.balance, userId });
   },
@@ -158,7 +172,13 @@ export const repo = {
   async updateAccount(payload, userId) {
     await supabase
       .from('accounts')
-      .update({ name: payload.name, type: payload.type, balance: payload.balance, updated_at: new Date().toISOString() })
+      .update({
+        name: payload.name,
+        type: payload.type,
+        balance: payload.balance,
+        currency: payload.currency ?? 'PHP',
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', payload.id)
       .then(unwrap);
     await insertLedgerEntry({ date: null, domain: 'Account', type: 'Balance updated', name: payload.name, amount: payload.balance, userId });
