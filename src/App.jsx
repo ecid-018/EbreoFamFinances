@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { AppProvider, useApp } from './context/AppContext.jsx';
 import { loadTheme } from './data/storage.js';
 import { applyTheme } from './utils/theme.js';
+import { ProfilePicker } from './components/auth/ProfilePicker.jsx';
 import { LockScreen } from './components/auth/LockScreen.jsx';
 import { NavBar } from './components/layout/NavBar.jsx';
 import { BottomTabBar } from './components/layout/BottomTabBar.jsx';
@@ -35,14 +36,25 @@ function AppShell() {
 }
 
 function App() {
+  const [selectedProfile, setSelectedProfile] = useState(null);
   const [unlocked, setUnlocked] = useState(false);
 
   useEffect(() => {
     applyTheme(loadTheme());
   }, []);
 
+  if (!selectedProfile) {
+    return <ProfilePicker onSelect={setSelectedProfile} />;
+  }
+
   if (!unlocked) {
-    return <LockScreen onUnlock={() => setUnlocked(true)} />;
+    return (
+      <LockScreen
+        profile={selectedProfile}
+        onBack={() => setSelectedProfile(null)}
+        onUnlock={() => setUnlocked(true)}
+      />
+    );
   }
 
   return (
