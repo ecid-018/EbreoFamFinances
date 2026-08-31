@@ -339,8 +339,8 @@ export function appReducer(state, action) {
     }
 
     case 'account/add': {
-      const { id, name, type, balance } = action.payload;
-      const account = { id, name, type, balance };
+      const { id, name, type, balance, ownerId } = action.payload;
+      const account = { id, name, type, balance, ownerId };
       return {
         ...state,
         accounts: [...state.accounts, account],

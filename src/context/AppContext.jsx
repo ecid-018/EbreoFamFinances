@@ -95,6 +95,9 @@ export function AppProvider({ children }) {
       if (ACTIONS_NEEDING_ID.has(action.type) && !action.payload?.id) {
         finalAction = { ...action, payload: { ...action.payload, id: generateId() } };
       }
+      if (finalAction.type === 'account/add') {
+        finalAction = { ...finalAction, payload: { ...finalAction.payload, ownerId: userId } };
+      }
 
       dispatch(finalAction);
 
