@@ -1,29 +1,56 @@
+import { useState } from 'react';
 import { useApp } from '../../context/AppContext.jsx';
 import { formatPHP } from '../../utils/currency.js';
+import { getMonthKeyFromDateStr, getMonthName, parseMonthKey } from '../../utils/date.js';
 import { SwipeToDeleteRow } from '../shared/SwipeToDeleteRow.jsx';
+import { ConfirmDialog } from '../shared/ConfirmDialog.jsx';
 import { ChevronRightIcon } from '../shared/Icon.jsx';
 
 export function IncomeRow({ entry }) {
-  const { dispatch, openModal } = useApp();
+  const { state, dispatch, openModal } = useApp();
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const date = new Date(`${entry.date}T00:00:00`).toLocaleDateString('en-PH', {
     month: 'short',
     day: 'numeric',
   });
+  const account = state.accounts.find((a) => a.id === entry.accountId);
+  const receivedMonthKey = getMonthKeyFromDateStr(entry.date);
+  const countsElsewhere = entry.budgetMonthKey !== receivedMonthKey;
+
+  const metaParts = [date];
+  if (account) metaParts.push(account.name);
+  if (countsElsewhere) {
+    const { year, monthIndex } = parseMonthKey(entry.budgetMonthKey);
+    metaParts.push(`counted toward ${getMonthName(year, monthIndex)}`);
+  }
 
   return (
-    <SwipeToDeleteRow
-      className="ios-row-wrap"
-      onDelete={() => dispatch({ type: 'income/remove', payload: { id: entry.id } })}
-      onTap={() => openModal('incomeForm', { mode: 'edit', entry })}
-    >
-      <div className="list-row">
-        <div className="list-row__main">
-          <span className="list-row__title">{entry.source}</span>
-          <span className="list-row__meta">{date}</span>
+    <>
+      <SwipeToDeleteRow
+        className="ios-row-wrap"
+        onDelete={() => setConfirmOpen(true)}
+        onTap={() => openModal('incomeForm', { mode: 'edit', entry })}
+      >
+        <div className="list-row">
+          <div className="list-row__main">
+            <span className="list-row__title">{entry.source}</span>
+            <span className="list-row__meta">{metaParts.join(' · ')}</span>
+          </div>
+          <span className="list-row__value">{formatPHP(entry.amount)}</span>
+          <ChevronRightIcon size={16} className="list-row__chevron" />
         </div>
-        <span className="list-row__value">{formatPHP(entry.amount)}</span>
-        <ChevronRightIcon size={16} className="list-row__chevron" />
-      </div>
-    </SwipeToDeleteRow>
+      </SwipeToDeleteRow>
+      {confirmOpen && (
+        <ConfirmDialog
+          title={`Delete "${entry.source}"?`}
+          message={account ? `${formatPHP(entry.amount)} will be reversed from ${account.name}.` : undefined}
+          onCancel={() => setConfirmOpen(false)}
+          onConfirm={() => {
+            setConfirmOpen(false);
+            dispatch({ type: 'income/remove', payload: { id: entry.id } });
+          }}
+        />
+      )}
+    </>
   );
 }

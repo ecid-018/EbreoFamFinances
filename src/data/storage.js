@@ -1,5 +1,7 @@
 const STORAGE_KEY = 'ebreo-family-finances:v2';
 const THEME_KEY = 'ebreo-family-finances:theme';
+const PIN_KEY = 'ebreo-family-finances:pin';
+export const DEFAULT_PIN = '123456';
 
 export function loadTheme() {
   try {
@@ -15,6 +17,31 @@ export function saveTheme(theme) {
     localStorage.setItem(THEME_KEY, theme);
   } catch {
     // localStorage unavailable — theme choice just won't persist across reloads
+  }
+}
+
+export function loadPin() {
+  try {
+    const value = localStorage.getItem(PIN_KEY);
+    return value && /^\d{6}$/.test(value) ? value : DEFAULT_PIN;
+  } catch {
+    return DEFAULT_PIN;
+  }
+}
+
+export function savePin(pin) {
+  try {
+    localStorage.setItem(PIN_KEY, pin);
+  } catch {
+    // localStorage unavailable — PIN change just won't persist across reloads
+  }
+}
+
+export function resetPin() {
+  try {
+    localStorage.removeItem(PIN_KEY);
+  } catch {
+    // localStorage unavailable — nothing to reset
   }
 }
 

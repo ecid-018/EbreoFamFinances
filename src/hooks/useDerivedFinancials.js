@@ -13,7 +13,7 @@ export function useDerivedFinancials() {
 
   return useMemo(() => {
     const monthTransactions = filterByMonth(transactions, month.year, month.monthIndex);
-    const monthIncomeEntries = filterByMonth(income, month.year, month.monthIndex);
+    const monthIncomeEntries = filterByMonth(income, month.year, month.monthIndex, 'budgetMonthKey');
 
     const totalIncome = sumBy(monthIncomeEntries, 'amount');
     const totalSpent = sumBy(monthTransactions, 'amount');

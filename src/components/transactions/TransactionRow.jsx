@@ -5,21 +5,29 @@ import { SwipeToDeleteRow } from '../shared/SwipeToDeleteRow.jsx';
 import { ConfirmDialog } from '../shared/ConfirmDialog.jsx';
 import { ChevronRightIcon } from '../shared/Icon.jsx';
 
-export function NeedsCategoryRow({ transaction }) {
-  const { dispatch, openModal } = useApp();
+export function TransactionRow({ transaction }) {
+  const { state, dispatch, openModal } = useApp();
   const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const envelope = state.envelopes.find((env) => env.id === transaction.categoryId);
+  const account = state.accounts.find((a) => a.id === transaction.accountId);
+  const date = new Date(`${transaction.date}T00:00:00`).toLocaleDateString('en-PH', {
+    month: 'short',
+    day: 'numeric',
+  });
+  const metaParts = [date, envelope?.name, account?.name].filter(Boolean);
 
   return (
     <>
       <SwipeToDeleteRow
         className="ios-row-wrap"
         onDelete={() => setConfirmOpen(true)}
-        onTap={() => openModal('categoryPicker', { transactionId: transaction.id })}
+        onTap={() => openModal('addExpense', { mode: 'edit', transaction })}
       >
         <div className="list-row">
-          <span className="status-dot" />
           <div className="list-row__main">
-            <span className="list-row__title">{transaction.note || 'Untitled transaction'}</span>
+            <span className="list-row__title">{transaction.note || 'Expense'}</span>
+            <span className="list-row__meta">{metaParts.join(' · ')}</span>
           </div>
           <span className="list-row__value">{formatPHP(transaction.amount)}</span>
           <ChevronRightIcon size={16} className="list-row__chevron" />
@@ -27,8 +35,8 @@ export function NeedsCategoryRow({ transaction }) {
       </SwipeToDeleteRow>
       {confirmOpen && (
         <ConfirmDialog
-          title="Delete this transaction?"
-          message={transaction.note || 'This transaction'}
+          title="Delete this expense?"
+          message={account ? `${formatPHP(transaction.amount)} will be refunded to ${account.name}.` : undefined}
           onCancel={() => setConfirmOpen(false)}
           onConfirm={() => {
             setConfirmOpen(false);

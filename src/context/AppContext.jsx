@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useReducer, useState, us
 import { appReducer, initState } from './appReducer.js';
 import { persistData, loadTheme, saveTheme } from '../data/storage.js';
 import { applyTheme, updateThemeColorMeta } from '../utils/theme.js';
+import { toISODateString } from '../utils/date.js';
 
 const AppContext = createContext(null);
 
@@ -10,6 +11,8 @@ export function AppProvider({ children }) {
   const [modal, setModal] = useState({ activeModal: null, modalProps: null });
   const [activeTab, setActiveTabState] = useState('home');
   const [theme, setThemeState] = useState(loadTheme);
+  const [viewMode, setViewMode] = useState('month');
+  const [viewDay, setViewDay] = useState(() => toISODateString());
 
   useEffect(() => {
     persistData(state);
@@ -44,8 +47,22 @@ export function AppProvider({ children }) {
   }, []);
 
   const value = useMemo(
-    () => ({ state, dispatch, modal, openModal, closeModal, activeTab, setActiveTab, theme, setTheme }),
-    [state, modal, openModal, closeModal, activeTab, setActiveTab, theme, setTheme]
+    () => ({
+      state,
+      dispatch,
+      modal,
+      openModal,
+      closeModal,
+      activeTab,
+      setActiveTab,
+      theme,
+      setTheme,
+      viewMode,
+      setViewMode,
+      viewDay,
+      setViewDay,
+    }),
+    [state, modal, openModal, closeModal, activeTab, setActiveTab, theme, setTheme, viewMode, viewDay]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

@@ -125,3 +125,48 @@ export function ChevronDownIcon(props) {
     </Svg>
   );
 }
+
+export function IncomeIcon(props) {
+  return (
+    <Svg {...props}>
+      <path d="M12 19V5" />
+      <path d="M6 11l6-6 6 6" />
+    </Svg>
+  );
+}
+
+export function ExpenseIcon(props) {
+  return (
+    <Svg {...props}>
+      <path d="M12 5v14" />
+      <path d="M6 13l6 6 6-6" />
+    </Svg>
+  );
+}
+
+export function SettingsIcon(props) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 3.5v2.2M12 18.3v2.2M20.5 12h-2.2M5.7 12H3.5M17.7 6.3l-1.5 1.5M7.8 16.2l-1.5 1.5M17.7 17.7l-1.5-1.5M7.8 7.8 6.3 6.3" />
+    </Svg>
+  );
+}
+
+export function LockIcon(props) {
+  return (
+    <Svg {...props}>
+      <rect x="5" y="10.5" width="14" height="9.5" rx="1.5" />
+      <path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" />
+    </Svg>
+  );
+}
+
+export function BackspaceIcon(props) {
+  return (
+    <Svg {...props}>
+      <path d="M9 6h10a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9l-6-6z" />
+      <path d="M13 10l5 4M18 10l-5 4" />
+    </Svg>
+  );
+}

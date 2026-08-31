@@ -89,19 +89,19 @@ svg {
 }
 
 .navbar__bar {
-  position: relative;
   height: var(--navbar-bar-height);
   max-width: var(--max-content-width);
   margin: 0 auto;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0 4px;
+  gap: 2px;
+  padding: 0 2px;
 }
 
 .navbar__icon-btn {
   width: 40px;
   height: 40px;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -114,15 +114,46 @@ svg {
   opacity: 0.5;
 }
 
+.navbar__nav-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 40px;
+  padding: 0 4px;
+  background: none;
+  border: none;
+  color: var(--color-accent);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.navbar__nav-btn svg {
+  flex-shrink: 0;
+}
+
+.navbar__nav-btn:active {
+  opacity: 0.5;
+}
+
+.navbar__bar-trailing {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
 .navbar__small-title {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
+  flex: 1;
+  min-width: 0;
+  text-align: center;
   font-size: var(--title-size);
   font-weight: 600;
   opacity: 0;
   transition: opacity 0.18s ease;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .navbar--collapsed .navbar__small-title {
@@ -707,6 +738,67 @@ svg {
   justify-content: center;
   margin-top: -22px;
   box-shadow: 0 3px 10px rgba(226, 71, 43, 0.4);
+  transition: transform 0.2s ease;
+}
+
+.tabbar__add-circle--open {
+  transform: rotate(45deg);
+}
+
+.tabbar__add-wrap {
+  position: relative;
+  flex: 1;
+  display: flex;
+}
+
+.tabbar__add-wrap .tabbar__item--add {
+  flex: 1;
+}
+
+.tabbar__scrim {
+  position: fixed;
+  inset: 0;
+  background: var(--color-overlay);
+  z-index: 29;
+}
+
+.tabbar__bubbles {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 31;
+  align-items: stretch;
+}
+
+.tabbar__bubble {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+  padding: 10px 18px 10px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--color-card);
+  color: var(--color-text);
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+}
+
+.tabbar__bubble-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .tabbar__item--add:active .tabbar__add-circle {
@@ -1000,6 +1092,234 @@ svg {
   height: 4px;
   border-radius: var(--radius-pill);
   background: var(--color-fill-track);
+}
+
+/* ---------- Confirm dialog ---------- */
+
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--color-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 24px;
+}
+
+.confirm-card {
+  width: 100%;
+  max-width: 270px;
+  background: var(--color-card);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+
+.confirm-body {
+  padding: 20px 16px;
+  text-align: center;
+}
+
+.confirm-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.confirm-message {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+}
+
+.confirm-actions {
+  display: flex;
+  border-top: 1px solid var(--color-separator);
+}
+
+.confirm-btn {
+  flex: 1;
+  padding: 12px;
+  background: none;
+  border: none;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+.confirm-btn + .confirm-btn {
+  border-left: 1px solid var(--color-separator);
+}
+
+.confirm-btn--destructive {
+  color: var(--color-destructive);
+  font-weight: 700;
+}
+
+/* ---------- PIN pad / lock screen ---------- */
+
+.lock-screen {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--color-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  padding-top: calc(24px + var(--safe-top));
+  padding-bottom: calc(24px + var(--safe-bottom));
+}
+
+.lock-screen__content {
+  width: 100%;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.lock-screen__icon {
+  color: var(--color-accent);
+  margin-bottom: 8px;
+}
+
+.lock-screen__title {
+  font-size: 20px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.lock-screen__subtitle {
+  font-size: var(--footnote-size);
+  color: var(--color-text-secondary);
+  margin-bottom: 12px;
+}
+
+.lock-screen__error {
+  color: var(--color-destructive);
+  font-size: var(--footnote-size);
+  font-weight: 600;
+  min-height: 18px;
+}
+
+.lock-screen__hint {
+  color: var(--color-text-secondary);
+  font-size: var(--footnote-size);
+}
+
+.lock-screen__forgot {
+  margin-top: 20px;
+  background: none;
+  border: none;
+  color: var(--color-accent);
+  font-size: var(--footnote-size);
+  font-weight: 600;
+}
+
+.pin-dots {
+  display: flex;
+  gap: 16px;
+  margin: 12px 0;
+}
+
+.pin-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-text-secondary);
+  background: transparent;
+}
+
+.pin-dot--filled {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.pin-dots--shake {
+  animation: pin-shake 0.4s ease;
+}
+
+@keyframes pin-shake {
+  10%, 90% { transform: translateX(-2px); }
+  20%, 80% { transform: translateX(4px); }
+  30%, 50%, 70% { transform: translateX(-8px); }
+  40%, 60% { transform: translateX(8px); }
+}
+
+.pin-pad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  margin-top: 20px;
+}
+
+.pin-pad__key {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: var(--color-card);
+  border: none;
+  font-size: 24px;
+  font-weight: 500;
+  color: var(--color-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pin-pad__key:active {
+  background: var(--color-fill-track);
+}
+
+.pin-pad__key--blank {
+  background: none;
+}
+
+.pin-change__subtitle {
+  font-size: var(--footnote-size);
+  color: var(--color-text-secondary);
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.pin-change__error {
+  text-align: center;
+}
+
+.pin-change {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: 12px;
+}
+
+/* ---------- Budget month stepper ---------- */
+
+.month-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border: 1px solid var(--color-separator);
+  border-radius: var(--radius-control);
+  background: var(--color-card);
+}
+
+.month-stepper__btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--color-accent);
+}
+
+.month-stepper__label {
+  font-size: 14px;
+  font-weight: 600;
 }
 
 @media (min-width: 480px) {

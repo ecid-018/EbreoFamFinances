@@ -3,18 +3,23 @@ import { useApp } from '../context/AppContext.jsx';
 import { toISODateString } from '../utils/date.js';
 import { BottomSheet } from './BottomSheet.jsx';
 
-export function AddExpenseModal() {
+export function AddExpenseModal({ mode = 'add', transaction }) {
   const { state, dispatch, closeModal } = useApp();
-  const [date, setDate] = useState(toISODateString());
-  const [amount, setAmount] = useState('');
-  const [note, setNote] = useState('');
-  const [categoryId, setCategoryId] = useState('');
-  const [accountId, setAccountId] = useState(state.accounts[0]?.id ?? '');
+  const isEdit = mode === 'edit';
+  const [date, setDate] = useState(isEdit ? transaction.date : toISODateString());
+  const [amount, setAmount] = useState(isEdit ? String(transaction.amount) : '');
+  const [note, setNote] = useState(isEdit ? transaction.note : '');
+  const [categoryId, setCategoryId] = useState(isEdit ? transaction.categoryId ?? '' : '');
+  const [accountId, setAccountId] = useState(
+    isEdit ? transaction.accountId ?? '' : state.accounts[0]?.id ?? ''
+  );
   const [fundGoalId, setFundGoalId] = useState('');
   const [error, setError] = useState('');
 
   const selectedEnvelope = state.envelopes.find((env) => env.id === categoryId);
-  const isSavingsEnvelope = selectedEnvelope?.group === 'Savings';
+  // Never re-show the Fund Goal control on edit — the original transaction (if any) already
+  // funded a goal when it was first created; re-showing it here would double-count.
+  const isSavingsEnvelope = !isEdit && selectedEnvelope?.group === 'Savings';
 
   function handleSubmit(e) {
     e.preventDefault();
@@ -32,26 +37,31 @@ export function AddExpenseModal() {
       return;
     }
 
-    dispatch({
-      type: 'transaction/add',
-      payload: {
-        date,
-        amount: amountValue,
-        note: note.trim(),
-        categoryId: categoryId || null,
-        accountId: accountId || null,
-      },
-    });
+    const payload = {
+      date,
+      amount: amountValue,
+      note: note.trim(),
+      categoryId: categoryId || null,
+      accountId: accountId || null,
+    };
 
-    if (isSavingsEnvelope && fundGoalId) {
-      dispatch({ type: 'goal/contributeViaSavings', payload: { id: fundGoalId, amount: amountValue } });
+    if (isEdit) {
+      dispatch({ type: 'transaction/update', payload: { id: transaction.id, ...payload } });
+    } else {
+      dispatch({ type: 'transaction/add', payload });
+      if (isSavingsEnvelope && fundGoalId) {
+        dispatch({
+          type: 'goal/contribute',
+          payload: { id: fundGoalId, amount: amountValue, via: 'savingsEnvelope' },
+        });
+      }
     }
 
     closeModal();
   }
 
   return (
-    <BottomSheet title="Add Expense" onClose={closeModal}>
+    <BottomSheet title={isEdit ? 'Edit Expense' : 'Add Expense'} onClose={closeModal}>
       <form className="form" onSubmit={handleSubmit}>
         <label className="form__field">
           <span className="form__label">Date</span>
@@ -102,7 +112,7 @@ export function AddExpenseModal() {
               ))}
             </select>
           ) : (
-            <p className="form__label">No accounts yet — add one in More first.</p>
+            <p className="form__label">No accounts yet — add one in Accounts first.</p>
           )}
         </label>
         <label className="form__field">
@@ -142,7 +152,7 @@ export function AddExpenseModal() {
         )}
         {error && <p className="form__error">{error}</p>}
         <button type="submit" className="btn-block">
-          Add Expense
+          {isEdit ? 'Save Changes' : 'Add Expense'}
         </button>
       </form>
     </BottomSheet>

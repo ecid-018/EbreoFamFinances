@@ -1,7 +1,7 @@
 import { seedData } from '../data/seedData.js';
 import { loadPersistedData } from '../data/storage.js';
 import { generateId } from '../utils/id.js';
-import { addMonths, getCurrentMonth, toISODateString } from '../utils/date.js';
+import { addMonths, getCurrentMonth, toISODateString, getMonthKeyFromDateStr } from '../utils/date.js';
 
 export function initState() {
   const persisted = loadPersistedData();
@@ -9,7 +9,15 @@ export function initState() {
   return {
     envelopes: domain.envelopes ?? [],
     transactions: domain.transactions ?? [],
-    income: domain.income ?? [],
+    // Backfill for income recorded before accountId/budgetMonthKey existed — without this,
+    // existing users' persisted income would be missing budgetMonthKey and crash any code
+    // that filters on it. Defaulting to the entry's own received month preserves exactly
+    // today's behavior for anything recorded before this feature shipped.
+    income: (domain.income ?? []).map((entry) => ({
+      ...entry,
+      accountId: entry.accountId ?? null,
+      budgetMonthKey: entry.budgetMonthKey ?? getMonthKeyFromDateStr(entry.date),
+    })),
     accounts: domain.accounts ?? [],
     goals: domain.goals ?? [],
     ledger: domain.ledger ?? [],
@@ -28,6 +36,17 @@ function logEntry(ledger, { domain, type, name, amount, date }) {
   };
   return [...ledger, entry];
 }
+
+function adjustAccountBalance(accounts, accountId, delta) {
+  return accounts.map((a) => (a.id === accountId ? { ...a, balance: a.balance + delta } : a));
+}
+
+const GOAL_CONTRIBUTE_LABELS = {
+  manual: 'Funded',
+  account: 'Funded from account',
+  savingsEnvelope: 'Funded via Savings envelope',
+  income: 'Funded via new income',
+};
 
 export function appReducer(state, action) {
   switch (action.type) {
@@ -118,9 +137,55 @@ export function appReducer(state, action) {
       return {
         ...state,
         transactions: [...state.transactions, transaction],
-        accounts: account
-          ? state.accounts.map((a) => (a.id === accountId ? { ...a, balance: a.balance - amount } : a))
-          : state.accounts,
+        accounts: account ? adjustAccountBalance(state.accounts, accountId, -amount) : state.accounts,
+        ledger,
+      };
+    }
+
+    case 'transaction/update': {
+      const { id, date, amount, note, categoryId = null, accountId = null } = action.payload;
+      const existing = state.transactions.find((t) => t.id === id);
+      if (!existing) return state;
+
+      const oldAccount = existing.accountId ? state.accounts.find((a) => a.id === existing.accountId) : null;
+      const newAccount = accountId ? state.accounts.find((a) => a.id === accountId) : null;
+
+      let accounts = state.accounts;
+      let ledger = logEntry(state.ledger, {
+        domain: 'Expense',
+        type: 'Expense updated',
+        name: note || 'Expense',
+        amount,
+        date,
+      });
+
+      if (oldAccount) {
+        accounts = adjustAccountBalance(accounts, oldAccount.id, existing.amount);
+        ledger = logEntry(ledger, {
+          domain: 'Account',
+          type: 'Refunded (expense updated)',
+          name: oldAccount.name,
+          amount: existing.amount,
+          date,
+        });
+      }
+      if (newAccount) {
+        accounts = adjustAccountBalance(accounts, newAccount.id, -amount);
+        ledger = logEntry(ledger, {
+          domain: 'Account',
+          type: 'Deducted for expense update',
+          name: newAccount.name,
+          amount,
+          date,
+        });
+      }
+
+      return {
+        ...state,
+        transactions: state.transactions.map((t) =>
+          t.id === id ? { ...t, date, amount, note, categoryId, accountId } : t
+        ),
+        accounts,
         ledger,
       };
     }
@@ -153,9 +218,7 @@ export function appReducer(state, action) {
         ...state,
         transactions: state.transactions.filter((t) => t.id !== id),
         accounts: account
-          ? state.accounts.map((a) =>
-              a.id === existing.accountId ? { ...a, balance: a.balance + existing.amount } : a
-            )
+          ? adjustAccountBalance(state.accounts, existing.accountId, existing.amount)
           : state.accounts,
         ledger,
       };
@@ -184,51 +247,114 @@ export function appReducer(state, action) {
     }
 
     case 'income/add': {
-      const { date, source, amount } = action.payload;
-      const entry = { id: generateId('inc'), date, source, amount };
+      const { date, source, amount, accountId = null, budgetMonthKey } = action.payload;
+      const entry = { id: generateId('inc'), date, source, amount, accountId, budgetMonthKey };
+      const account = accountId ? state.accounts.find((a) => a.id === accountId) : null;
+
+      let ledger = logEntry(state.ledger, {
+        domain: 'Income',
+        type: 'Income received',
+        name: source,
+        amount,
+        date,
+      });
+      if (account) {
+        ledger = logEntry(ledger, {
+          domain: 'Account',
+          type: 'Credited from income',
+          name: account.name,
+          amount,
+          date,
+        });
+      }
+
       return {
         ...state,
         income: [...state.income, entry],
-        ledger: logEntry(state.ledger, {
-          domain: 'Income',
-          type: 'Income received',
-          name: source,
-          amount,
-          date,
-        }),
+        accounts: account ? adjustAccountBalance(state.accounts, accountId, amount) : state.accounts,
+        ledger,
       };
     }
 
     case 'income/update': {
-      const { id, date, source, amount } = action.payload;
-      return {
-        ...state,
-        income: state.income.map((i) => (i.id === id ? { ...i, date, source, amount } : i)),
-        ledger: logEntry(state.ledger, {
-          domain: 'Income',
-          type: 'Income updated',
-          name: source,
+      const { id, date, source, amount, accountId = null, budgetMonthKey } = action.payload;
+      const existing = state.income.find((i) => i.id === id);
+      if (!existing) return state;
+
+      const oldAccount = existing.accountId ? state.accounts.find((a) => a.id === existing.accountId) : null;
+      const newAccount = accountId ? state.accounts.find((a) => a.id === accountId) : null;
+
+      let accounts = state.accounts;
+      let ledger = logEntry(state.ledger, {
+        domain: 'Income',
+        type: 'Income updated',
+        name: source,
+        amount,
+        date,
+      });
+
+      if (oldAccount) {
+        accounts = adjustAccountBalance(accounts, oldAccount.id, -existing.amount);
+        ledger = logEntry(ledger, {
+          domain: 'Account',
+          type: 'Reversed (income updated)',
+          name: oldAccount.name,
+          amount: existing.amount,
+          date,
+        });
+      }
+      if (newAccount) {
+        accounts = adjustAccountBalance(accounts, newAccount.id, amount);
+        ledger = logEntry(ledger, {
+          domain: 'Account',
+          type: 'Credited from income',
+          name: newAccount.name,
           amount,
           date,
-        }),
+        });
+      }
+
+      return {
+        ...state,
+        income: state.income.map((i) =>
+          i.id === id ? { ...i, date, source, amount, accountId, budgetMonthKey } : i
+        ),
+        accounts,
+        ledger,
       };
     }
 
     case 'income/remove': {
       const { id } = action.payload;
       const existing = state.income.find((i) => i.id === id);
+      if (!existing) return state;
+
+      const account = existing.accountId ? state.accounts.find((a) => a.id === existing.accountId) : null;
+
+      let ledger = logEntry(state.ledger, {
+        domain: 'Income',
+        type: 'Income removed',
+        name: existing.source,
+        amount: existing.amount,
+        date: existing.date,
+      });
+      if (account) {
+        ledger = logEntry(ledger, {
+          domain: 'Account',
+          type: 'Reversed (income removed)',
+          name: account.name,
+          amount: existing.amount,
+          date: existing.date,
+        });
+      }
+
       return {
         ...state,
         income: state.income.filter((i) => i.id !== id),
-        ledger: existing
-          ? logEntry(state.ledger, {
-              domain: 'Income',
-              type: 'Income removed',
-              name: existing.source,
-              amount: existing.amount,
-              date: existing.date,
-            })
-          : state.ledger,
+        accounts: account
+          ? adjustAccountBalance(state.accounts, existing.accountId, -existing.amount)
+          : state.accounts,
+        ledger,
       };
     }
 
@@ -270,6 +396,7 @@ export function appReducer(state, action) {
         transactions: state.transactions.map((t) =>
           t.accountId === id ? { ...t, accountId: null } : t
         ),
+        income: state.income.map((i) => (i.accountId === id ? { ...i, accountId: null } : i)),
         ledger: existing
           ? logEntry(state.ledger, {
               domain: 'Account',
@@ -314,35 +441,32 @@ export function appReducer(state, action) {
     }
 
     case 'goal/contribute': {
-      const { id, amount } = action.payload;
+      const { id, amount, accountId = null, via = 'manual' } = action.payload;
       const existing = state.goals.find((g) => g.id === id);
-      return {
-        ...state,
-        goals: state.goals.map((g) =>
-          g.id === id ? { ...g, saved: g.saved + amount } : g
-        ),
-        ledger: existing
-          ? logEntry(state.ledger, { domain: 'Goal', type: 'Funded', name: existing.name, amount })
-          : state.ledger,
-      };
-    }
+      if (!existing) return state;
 
-    case 'goal/contributeViaSavings': {
-      const { id, amount } = action.payload;
-      const existing = state.goals.find((g) => g.id === id);
+      const account = via === 'account' && accountId ? state.accounts.find((a) => a.id === accountId) : null;
+
+      let ledger = logEntry(state.ledger, {
+        domain: 'Goal',
+        type: GOAL_CONTRIBUTE_LABELS[via] ?? 'Funded',
+        name: existing.name,
+        amount,
+      });
+      if (account) {
+        ledger = logEntry(ledger, {
+          domain: 'Account',
+          type: 'Deducted for goal contribution',
+          name: account.name,
+          amount,
+        });
+      }
+
       return {
         ...state,
-        goals: state.goals.map((g) =>
-          g.id === id ? { ...g, saved: g.saved + amount } : g
-        ),
-        ledger: existing
-          ? logEntry(state.ledger, {
-              domain: 'Goal',
-              type: 'Funded via Savings envelope',
-              name: existing.name,
-              amount,
-            })
-          : state.ledger,
+        goals: state.goals.map((g) => (g.id === id ? { ...g, saved: g.saved + amount } : g)),
+        accounts: account ? adjustAccountBalance(state.accounts, accountId, -amount) : state.accounts,
+        ledger,
       };
     }
 

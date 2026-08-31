@@ -1,7 +1,9 @@
+import { useApp } from '../../context/AppContext.jsx';
 import { useDerivedFinancials } from '../../hooks/useDerivedFinancials.js';
+import { useDayFinancials } from '../../hooks/useDayFinancials.js';
 import { formatPHP } from '../../utils/currency.js';
 
-function buildSummary({ safeToSpend, daysLeft, isPastMonth, tightestEnvelope }) {
+function buildMonthSummary({ safeToSpend, daysLeft, isPastMonth, tightestEnvelope }) {
   if (isPastMonth) {
     return 'This month is closed — no more days left to track.';
   }
@@ -20,15 +22,32 @@ function buildSummary({ safeToSpend, daysLeft, isPastMonth, tightestEnvelope }) 
   return `${paceSentence} ${calloutSentence}`;
 }
 
+function buildDaySummary({ dayTransactions, dayIncomeEntries, dayNet }) {
+  const count = dayTransactions.length;
+  if (count === 0 && dayIncomeEntries.length === 0) {
+    return 'Nothing logged for this day yet.';
+  }
+  const expensePart = count > 0 ? `${count} expense${count === 1 ? '' : 's'} logged` : 'No expenses logged';
+  const netPart = dayNet >= 0 ? `net ${formatPHP(dayNet)} for the day.` : `net -${formatPHP(Math.abs(dayNet))} for the day.`;
+  return `${expensePart} — ${netPart}`;
+}
+
 export function SafeToSpend() {
-  const financials = useDerivedFinancials();
+  const { viewMode } = useApp();
+  const monthFinancials = useDerivedFinancials();
+  const dayFinancials = useDayFinancials();
+  const isDayMode = viewMode === 'day';
 
   return (
     <div className="ios-group">
       <div className="ios-card ios-card--padded">
-        <div className="hero__eyebrow">Safe to spend</div>
-        <div className="hero__amount">{formatPHP(financials.safeToSpend)}</div>
-        <p className="hero__summary">{buildSummary(financials)}</p>
+        <div className="hero__eyebrow">{isDayMode ? 'Spent' : 'Safe to spend'}</div>
+        <div className="hero__amount">
+          {formatPHP(isDayMode ? dayFinancials.daySpent : monthFinancials.safeToSpend)}
+        </div>
+        <p className="hero__summary">
+          {isDayMode ? buildDaySummary(dayFinancials) : buildMonthSummary(monthFinancials)}
+        </p>
       </div>
     </div>
   );

@@ -1,14 +1,19 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext.jsx';
-import { toISODateString } from '../utils/date.js';
+import { toISODateString, getMonthKey, parseMonthKey } from '../utils/date.js';
+import { BudgetMonthStepper } from '../components/shared/BudgetMonthStepper.jsx';
 import { BottomSheet } from './BottomSheet.jsx';
 
 export function IncomeFormModal({ mode = 'add', entry }) {
-  const { dispatch, closeModal } = useApp();
+  const { state, dispatch, closeModal } = useApp();
   const isEdit = mode === 'edit';
   const [date, setDate] = useState(isEdit ? entry.date : toISODateString());
   const [source, setSource] = useState(isEdit ? entry.source : '');
   const [amount, setAmount] = useState(isEdit ? String(entry.amount) : '');
+  const [accountId, setAccountId] = useState(isEdit ? entry.accountId ?? '' : state.accounts[0]?.id ?? '');
+  const [budgetMonth, setBudgetMonth] = useState(
+    isEdit ? parseMonthKey(entry.budgetMonthKey) : state.month
+  );
   const [error, setError] = useState('');
 
   function handleSubmit(e) {
@@ -22,13 +27,23 @@ export function IncomeFormModal({ mode = 'add', entry }) {
       setError('Enter an amount greater than ₱0.');
       return;
     }
+    if (state.accounts.length > 0 && !accountId) {
+      setError('Choose which account this was deposited into.');
+      return;
+    }
+
+    const payload = {
+      date,
+      source: source.trim(),
+      amount: amountValue,
+      accountId: accountId || null,
+      budgetMonthKey: getMonthKey(budgetMonth.year, budgetMonth.monthIndex),
+    };
+
     if (isEdit) {
-      dispatch({
-        type: 'income/update',
-        payload: { id: entry.id, date, source: source.trim(), amount: amountValue },
-      });
+      dispatch({ type: 'income/update', payload: { id: entry.id, ...payload } });
     } else {
-      dispatch({ type: 'income/add', payload: { date, source: source.trim(), amount: amountValue } });
+      dispatch({ type: 'income/add', payload });
     }
     closeModal();
   }
@@ -37,7 +52,7 @@ export function IncomeFormModal({ mode = 'add', entry }) {
     <BottomSheet title={isEdit ? 'Edit Income' : 'Add Income'} onClose={closeModal}>
       <form className="form" onSubmit={handleSubmit}>
         <label className="form__field">
-          <span className="form__label">Date</span>
+          <span className="form__label">Date Received</span>
           <input
             type="date"
             className="form__input"
@@ -71,6 +86,24 @@ export function IncomeFormModal({ mode = 'add', entry }) {
             required
           />
         </label>
+        <label className="form__field">
+          <span className="form__label">Deposit Into</span>
+          {state.accounts.length > 0 ? (
+            <select className="form__input" value={accountId} onChange={(e) => setAccountId(e.target.value)}>
+              {state.accounts.map((account) => (
+                <option key={account.id} value={account.id}>
+                  {account.name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <p className="form__label">No accounts yet — add one in Accounts first.</p>
+          )}
+        </label>
+        <div className="form__field">
+          <span className="form__label">Counts Toward Budget Month</span>
+          <BudgetMonthStepper value={budgetMonth} onChange={setBudgetMonth} />
+        </div>
         {error && <p className="form__error">{error}</p>}
         <button type="submit" className="btn-block">
           {isEdit ? 'Save Changes' : 'Add Income'}

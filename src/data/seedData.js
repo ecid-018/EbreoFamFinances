@@ -25,8 +25,9 @@ export const seedData = {
   ],
 
   income: [
-    { id: 'inc-001', date: '2026-08-01', source: 'Allotment - OFW remittance', amount: 45000 },
-    { id: 'inc-002', date: '2026-08-15', source: 'Freelance design gig', amount: 8000 },
+    { id: 'inc-001', date: '2026-08-01', source: 'Allotment - OFW remittance', amount: 45000, accountId: 'acct-bpi', budgetMonthKey: '2026-08' },
+    { id: 'inc-002', date: '2026-08-15', source: 'Freelance design gig', amount: 8000, accountId: 'acct-gcash', budgetMonthKey: '2026-08' },
+    { id: 'inc-003', date: '2026-08-29', source: 'Allotment - OFW remittance', amount: 45000, accountId: 'acct-bpi', budgetMonthKey: '2026-09' },
   ],
 
   accounts: [

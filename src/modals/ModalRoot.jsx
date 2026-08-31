@@ -7,6 +7,8 @@ import { GoalFormModal } from './GoalFormModal.jsx';
 import { AddContributionModal } from './AddContributionModal.jsx';
 import { CategoryPickerModal } from './CategoryPickerModal.jsx';
 import { AllocateBudgetSheet } from './AllocateBudgetSheet.jsx';
+import { ChangePinModal } from './ChangePinModal.jsx';
+import { SettingsSheet } from './SettingsSheet.jsx';
 
 export function ModalRoot() {
   const { modal } = useApp();
@@ -14,7 +16,7 @@ export function ModalRoot() {
 
   switch (activeModal) {
     case 'addExpense':
-      return <AddExpenseModal />;
+      return <AddExpenseModal {...modalProps} />;
     case 'envelopeForm':
       return <EnvelopeFormModal {...modalProps} />;
     case 'incomeForm':
@@ -29,6 +31,10 @@ export function ModalRoot() {
       return <CategoryPickerModal {...modalProps} />;
     case 'allocateBudget':
       return <AllocateBudgetSheet />;
+    case 'changePin':
+      return <ChangePinModal />;
+    case 'settings':
+      return <SettingsSheet />;
     default:
       return null;
   }

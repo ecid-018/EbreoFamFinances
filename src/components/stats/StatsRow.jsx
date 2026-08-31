@@ -1,24 +1,32 @@
+import { useApp } from '../../context/AppContext.jsx';
 import { useDerivedFinancials } from '../../hooks/useDerivedFinancials.js';
+import { useDayFinancials } from '../../hooks/useDayFinancials.js';
 import { formatPHP } from '../../utils/currency.js';
 
 export function StatsRow() {
+  const { viewMode } = useApp();
   const { totalIncome, totalSpent, unassigned } = useDerivedFinancials();
+  const { dayIncome, daySpent, dayNet } = useDayFinancials();
+  const isDayMode = viewMode === 'day';
+
+  const thirdLabel = isDayMode ? 'Net' : 'Unassigned';
+  const thirdValue = isDayMode ? dayNet : unassigned;
 
   return (
     <div className="ios-group">
       <div className="ios-card stats-card">
         <div className="stats__col">
           <div className="stats__label">In</div>
-          <div className="stats__value">{formatPHP(totalIncome)}</div>
+          <div className="stats__value">{formatPHP(isDayMode ? dayIncome : totalIncome)}</div>
         </div>
         <div className="stats__col">
           <div className="stats__label">Out</div>
-          <div className="stats__value">{formatPHP(totalSpent)}</div>
+          <div className="stats__value">{formatPHP(isDayMode ? daySpent : totalSpent)}</div>
         </div>
         <div className="stats__col">
-          <div className="stats__label">Unassigned</div>
-          <div className={`stats__value ${unassigned < 0 ? 'stats__value--accent' : ''}`.trim()}>
-            {formatPHP(unassigned)}
+          <div className="stats__label">{thirdLabel}</div>
+          <div className={`stats__value ${thirdValue < 0 ? 'stats__value--accent' : ''}`.trim()}>
+            {formatPHP(thirdValue)}
           </div>
         </div>
       </div>
