@@ -1,11 +1,11 @@
 import { AUTH_PROFILES } from '../../data/authProfiles.js';
-import { LockIcon } from '../shared/Icon.jsx';
+import { AppLogo } from '../shared/AppLogo.jsx';
 
 export function ProfilePicker({ onSelect }) {
   return (
     <div className="lock-screen">
       <div className="lock-screen__content">
-        <LockIcon size={32} className="lock-screen__icon" />
+        <AppLogo size={56} className="lock-screen__icon" />
         <h1 className="lock-screen__title">Ebreo Family Finances</h1>
         <p className="lock-screen__subtitle">Who's using the app?</p>
         <div className="profile-picker">

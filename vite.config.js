@@ -1,10 +1,20 @@
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
+import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 // Vercel sets process.env.VERCEL during its builds; GitHub Pages' project-page
 // subpath needs the base prefix, Vercel serves from the domain root.
 export default defineConfig({
   base: process.env.VERCEL ? '/' : '/EbreoFamFinances/',
-  plugins: [react()],
+  plugins: [
+    react(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      manifest: false, // public/manifest.json is already complete — don't let the plugin regenerate it
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,json}'],
+      },
+    }),
+  ],
 })
