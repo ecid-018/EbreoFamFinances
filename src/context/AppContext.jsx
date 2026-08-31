@@ -40,7 +40,17 @@ export function AppProvider({ children }) {
   const refetchAll = useCallback(async () => {
     if (!userId) return;
     try {
-      const data = await fetchAll();
+      let data;
+      try {
+        data = await fetchAll();
+      } catch (err) {
+        // A fresh sign-in's token can very briefly race Supabase's own
+        // Auth/PostgREST clock sync (PGRST303 "JWT issued at future") —
+        // one short retry clears it without surfacing a scary error.
+        if (err?.code !== 'PGRST303') throw err;
+        await new Promise((resolve) => setTimeout(resolve, 800));
+        data = await fetchAll();
+      }
       dispatch({ type: 'bootstrap/loaded', payload: data });
       setSyncError('');
     } catch (err) {
