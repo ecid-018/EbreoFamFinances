@@ -172,19 +172,17 @@ create policy "accounts_delete" on accounts for delete to authenticated using (o
 -- standard practice for SECURITY DEFINER functions.
 
 create or replace function add_transaction(
-  p_date date, p_amount numeric, p_note text, p_category_id uuid, p_account_id uuid
-) returns uuid
+  p_id uuid, p_date date, p_amount numeric, p_note text, p_category_id uuid, p_account_id uuid
+) returns void
 language plpgsql security definer set search_path = public as $$
 declare
-  v_transaction_id uuid;
   v_envelope_name text;
   v_account_name text;
   v_label_parts text[];
   v_expense_name text;
 begin
-  insert into transactions (date, amount, note, category_id, account_id, created_by)
-  values (p_date, p_amount, p_note, p_category_id, p_account_id, auth.uid())
-  returning id into v_transaction_id;
+  insert into transactions (id, date, amount, note, category_id, account_id, created_by)
+  values (p_id, p_date, p_amount, p_note, p_category_id, p_account_id, auth.uid());
 
   if p_category_id is not null then
     select name into v_envelope_name from envelopes where id = p_category_id;
@@ -209,8 +207,6 @@ begin
     insert into ledger (date, domain, type, name, amount, created_by)
     values (p_date, 'Account', 'Deducted for expense', v_account_name, p_amount, auth.uid());
   end if;
-
-  return v_transaction_id;
 end;
 $$;
 
@@ -275,16 +271,14 @@ end;
 $$;
 
 create or replace function add_income(
-  p_date date, p_source text, p_amount numeric, p_account_id uuid, p_budget_month_key text
-) returns uuid
+  p_id uuid, p_date date, p_source text, p_amount numeric, p_account_id uuid, p_budget_month_key text
+) returns void
 language plpgsql security definer set search_path = public as $$
 declare
-  v_income_id uuid;
   v_account_name text;
 begin
-  insert into income (date, source, amount, account_id, budget_month_key, created_by)
-  values (p_date, p_source, p_amount, p_account_id, p_budget_month_key, auth.uid())
-  returning id into v_income_id;
+  insert into income (id, date, source, amount, account_id, budget_month_key, created_by)
+  values (p_id, p_date, p_source, p_amount, p_account_id, p_budget_month_key, auth.uid());
 
   insert into ledger (date, domain, type, name, amount, created_by)
   values (p_date, 'Income', 'Income received', p_source, p_amount, auth.uid());
@@ -295,8 +289,6 @@ begin
     insert into ledger (date, domain, type, name, amount, created_by)
     values (p_date, 'Account', 'Credited from income', v_account_name, p_amount, auth.uid());
   end if;
-
-  return v_income_id;
 end;
 $$;
 
@@ -392,18 +384,18 @@ $$;
 
 -- Lock down + explicitly grant execute only to signed-in users (Postgres
 -- makes new functions PUBLIC-executable by default — tighten that here).
-revoke all on function add_transaction(date, numeric, text, uuid, uuid) from public;
+revoke all on function add_transaction(uuid, date, numeric, text, uuid, uuid) from public;
 revoke all on function update_transaction(uuid, date, numeric, text, uuid, uuid) from public;
 revoke all on function remove_transaction(uuid) from public;
-revoke all on function add_income(date, text, numeric, uuid, text) from public;
+revoke all on function add_income(uuid, date, text, numeric, uuid, text) from public;
 revoke all on function update_income(uuid, date, text, numeric, uuid, text) from public;
 revoke all on function remove_income(uuid) from public;
 revoke all on function contribute_to_goal(uuid, numeric, uuid, text) from public;
 
-grant execute on function add_transaction(date, numeric, text, uuid, uuid) to authenticated;
+grant execute on function add_transaction(uuid, date, numeric, text, uuid, uuid) to authenticated;
 grant execute on function update_transaction(uuid, date, numeric, text, uuid, uuid) to authenticated;
 grant execute on function remove_transaction(uuid) to authenticated;
-grant execute on function add_income(date, text, numeric, uuid, text) to authenticated;
+grant execute on function add_income(uuid, date, text, numeric, uuid, text) to authenticated;
 grant execute on function update_income(uuid, date, text, numeric, uuid, text) to authenticated;
 grant execute on function remove_income(uuid) to authenticated;
 grant execute on function contribute_to_goal(uuid, numeric, uuid, text) to authenticated;

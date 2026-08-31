@@ -1,33 +1,9 @@
-import { seedData } from '../data/seedData.js';
-import { loadPersistedData } from '../data/storage.js';
 import { generateId } from '../utils/id.js';
-import { addMonths, getCurrentMonth, toISODateString, getMonthKeyFromDateStr } from '../utils/date.js';
-
-export function initState() {
-  const persisted = loadPersistedData();
-  const domain = persisted ?? seedData;
-  return {
-    envelopes: domain.envelopes ?? [],
-    transactions: domain.transactions ?? [],
-    // Backfill for income recorded before accountId/budgetMonthKey existed — without this,
-    // existing users' persisted income would be missing budgetMonthKey and crash any code
-    // that filters on it. Defaulting to the entry's own received month preserves exactly
-    // today's behavior for anything recorded before this feature shipped.
-    income: (domain.income ?? []).map((entry) => ({
-      ...entry,
-      accountId: entry.accountId ?? null,
-      budgetMonthKey: entry.budgetMonthKey ?? getMonthKeyFromDateStr(entry.date),
-    })),
-    accounts: domain.accounts ?? [],
-    goals: domain.goals ?? [],
-    ledger: domain.ledger ?? [],
-    month: getCurrentMonth(),
-  };
-}
+import { addMonths, toISODateString } from '../utils/date.js';
 
 function logEntry(ledger, { domain, type, name, amount, date }) {
   const entry = {
-    id: generateId('ledger'),
+    id: generateId(),
     date: date ?? toISODateString(),
     domain,
     type,
@@ -50,9 +26,13 @@ const GOAL_CONTRIBUTE_LABELS = {
 
 export function appReducer(state, action) {
   switch (action.type) {
+    case 'bootstrap/loaded': {
+      return { ...state, ...action.payload };
+    }
+
     case 'envelope/add': {
-      const { name, monthlyBudget, group } = action.payload;
-      const envelope = { id: generateId('env'), name, monthlyBudget, group: group || name };
+      const { id, name, monthlyBudget, group } = action.payload;
+      const envelope = { id, name, monthlyBudget, group: group || name };
       return {
         ...state,
         envelopes: [...state.envelopes, envelope],
@@ -108,8 +88,8 @@ export function appReducer(state, action) {
     }
 
     case 'transaction/add': {
-      const { date, amount, note, categoryId = null, accountId = null } = action.payload;
-      const transaction = { id: generateId('txn'), date, amount, note, categoryId, accountId };
+      const { id, date, amount, note, categoryId = null, accountId = null } = action.payload;
+      const transaction = { id, date, amount, note, categoryId, accountId };
       const envelope = categoryId ? state.envelopes.find((env) => env.id === categoryId) : null;
       const account = accountId ? state.accounts.find((a) => a.id === accountId) : null;
 
@@ -247,8 +227,8 @@ export function appReducer(state, action) {
     }
 
     case 'income/add': {
-      const { date, source, amount, accountId = null, budgetMonthKey } = action.payload;
-      const entry = { id: generateId('inc'), date, source, amount, accountId, budgetMonthKey };
+      const { id, date, source, amount, accountId = null, budgetMonthKey } = action.payload;
+      const entry = { id, date, source, amount, accountId, budgetMonthKey };
       const account = accountId ? state.accounts.find((a) => a.id === accountId) : null;
 
       let ledger = logEntry(state.ledger, {
@@ -359,8 +339,8 @@ export function appReducer(state, action) {
     }
 
     case 'account/add': {
-      const { name, type, balance } = action.payload;
-      const account = { id: generateId('acct'), name, type, balance };
+      const { id, name, type, balance } = action.payload;
+      const account = { id, name, type, balance };
       return {
         ...state,
         accounts: [...state.accounts, account],
@@ -409,8 +389,8 @@ export function appReducer(state, action) {
     }
 
     case 'goal/add': {
-      const { name, target, saved = 0 } = action.payload;
-      const goal = { id: generateId('goal'), name, target, saved };
+      const { id, name, target, saved = 0 } = action.payload;
+      const goal = { id, name, target, saved };
       return {
         ...state,
         goals: [...state.goals, goal],

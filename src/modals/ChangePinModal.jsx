@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext.jsx';
-import { loadPin, savePin } from '../data/storage.js';
+import { useAuth } from '../context/AuthContext.jsx';
 import { PinDots } from '../components/auth/PinDots.jsx';
 import { PinPad } from '../components/auth/PinPad.jsx';
 import { BottomSheet } from './BottomSheet.jsx';
@@ -13,12 +13,14 @@ const STEP_COPY = {
 
 export function ChangePinModal() {
   const { closeModal } = useApp();
+  const { currentProfile, signIn, changePassword } = useAuth();
   const [step, setStep] = useState('current');
   const [draftPin, setDraftPin] = useState('');
   const [filled, setFilled] = useState(0);
   const [shake, setShake] = useState(false);
   const [error, setError] = useState('');
   const [attemptKey, setAttemptKey] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
 
   function fail(message) {
     setError(message);
@@ -28,10 +30,13 @@ export function ChangePinModal() {
     setTimeout(() => setShake(false), 400);
   }
 
-  function handleComplete(pin) {
+  async function handleComplete(pin) {
     setError('');
     if (step === 'current') {
-      if (pin !== loadPin()) {
+      setSubmitting(true);
+      const ok = await signIn(currentProfile.email, pin);
+      setSubmitting(false);
+      if (!ok) {
         fail('Incorrect PIN');
         return;
       }
@@ -52,7 +57,13 @@ export function ChangePinModal() {
         setStep('new');
         return;
       }
-      savePin(pin);
+      setSubmitting(true);
+      const ok = await changePassword(pin);
+      setSubmitting(false);
+      if (!ok) {
+        fail("Couldn't save your new PIN — try again");
+        return;
+      }
       closeModal();
     }
   }
@@ -65,7 +76,13 @@ export function ChangePinModal() {
         <p className="pin-change__subtitle">{copy.subtitle}</p>
         <PinDots length={6} filled={filled} shake={shake} />
         {error && <p className="form__error pin-change__error">{error}</p>}
-        <PinPad key={`${step}-${attemptKey}`} length={6} onChange={setFilled} onComplete={handleComplete} />
+        <PinPad
+          key={`${step}-${attemptKey}`}
+          length={6}
+          onChange={setFilled}
+          onComplete={handleComplete}
+          disabled={submitting}
+        />
       </div>
     </BottomSheet>
   );

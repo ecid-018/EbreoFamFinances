@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../../context/AppContext.jsx';
+import { useAuth } from '../../context/AuthContext.jsx';
 import { formatPHP } from '../../utils/currency.js';
 import { SwipeToDeleteRow } from '../shared/SwipeToDeleteRow.jsx';
 import { ConfirmDialog } from '../shared/ConfirmDialog.jsx';
@@ -9,9 +10,33 @@ const TYPE_LABELS = { bank: 'Bank', ewallet: 'E-Wallet', cash: 'Cash' };
 const TYPE_ICONS = { bank: BankIcon, ewallet: WalletIcon, cash: CashIcon };
 
 export function AccountRow({ account }) {
-  const { dispatch, openModal } = useApp();
+  const { state, dispatch, openModal } = useApp();
+  const { session } = useAuth();
   const TypeIcon = TYPE_ICONS[account.type] ?? BankIcon;
   const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const isOwner = account.ownerId === session?.user?.id;
+  const ownerProfile = state.profiles.find((p) => p.id === account.ownerId);
+  const ownerLabel = isOwner ? 'You' : ownerProfile?.displayName ?? 'Shared';
+
+  const rowContent = (
+    <div className="list-row">
+      <div className="list-row__main">
+        <span className="list-row__title">{account.name}</span>
+        <span className="tag">
+          <TypeIcon size={13} />
+          {TYPE_LABELS[account.type] ?? 'Account'}
+        </span>
+        <span className="tag">Owned by {ownerLabel}</span>
+      </div>
+      <span className="list-row__value">{formatPHP(account.balance)}</span>
+      {isOwner && <ChevronRightIcon size={16} className="list-row__chevron" />}
+    </div>
+  );
+
+  if (!isOwner) {
+    return <div className="ios-row-wrap">{rowContent}</div>;
+  }
 
   return (
     <>
@@ -20,17 +45,7 @@ export function AccountRow({ account }) {
         onDelete={() => setConfirmOpen(true)}
         onTap={() => openModal('accountForm', { mode: 'edit', account })}
       >
-        <div className="list-row">
-          <div className="list-row__main">
-            <span className="list-row__title">{account.name}</span>
-            <span className="tag">
-              <TypeIcon size={13} />
-              {TYPE_LABELS[account.type] ?? 'Account'}
-            </span>
-          </div>
-          <span className="list-row__value">{formatPHP(account.balance)}</span>
-          <ChevronRightIcon size={16} className="list-row__chevron" />
-        </div>
+        {rowContent}
       </SwipeToDeleteRow>
       {confirmOpen && (
         <ConfirmDialog
