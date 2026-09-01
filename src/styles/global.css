@@ -1442,7 +1442,7 @@ svg {
 .account-card__top {
   position: relative;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 10px;
 }
@@ -1515,10 +1515,11 @@ svg {
 }
 
 .account-card__logo {
-  height: 20px;
+  height: 24px;
   width: auto;
-  max-width: 72px;
+  max-width: 100px;
   object-fit: contain;
+  object-position: left center;
 }
 
 .account-card--add {

@@ -62,6 +62,7 @@ export function AccountCard({ account, index }) {
 
       <div className="account-card__top">
         <div className="account-card__name-col">
+          {style.logo && <img src={style.logo} alt="" className="account-card__logo" />}
           <span className="account-card__name">{account.name}</span>
           {isUsd && <span className="account-card__tag">USD</span>}
         </div>
@@ -74,13 +75,9 @@ export function AccountCard({ account, index }) {
       <div className="account-card__bottom">
         <ChipIcon size={26} />
         <ContactlessIcon size={18} />
-        {style.logo ? (
-          <img src={style.logo} alt="" className="account-card__logo" />
-        ) : (
-          <span className="account-card__type" style={style.tagColor ? { color: style.tagColor } : undefined}>
-            {TYPE_LABELS[account.type] ?? 'Account'}
-          </span>
-        )}
+        <span className="account-card__type" style={style.tagColor ? { color: style.tagColor } : undefined}>
+          {TYPE_LABELS[account.type] ?? 'Account'}
+        </span>
         <Avatar profile={ownerProfile} size={24} className="account-card__avatar" />
       </div>
     </div>

@@ -1,12 +1,19 @@
 // Card art for the Accounts tab's wallet-style view. Gradients are inspired
 // by each brand's real color palette (from photos the household provided
 // for BPI, Metrobank, Wise, Maya, BDO, and Maribank). `logo` is an actual
-// brand logo file (transparent PNG, background knocked out from a real
-// export) shown in the card's bottom zone in place of the plain type label
-// when one is available — a deliberate, later change from the original
-// "never actual logos" stance, made with the household's explicit sign-off
-// since this repo and the deployed app are both public. Brands without a
-// `logo` fall back to the plain type-label text.
+// brand logo file (transparent PNG), shown top-left like a real card's
+// issuer mark — a deliberate, later change from the original "never actual
+// logos" stance, made with the household's explicit sign-off since this
+// repo and the deployed app are both public. Brands without a `logo` fall
+// back to the plain type-label text in the bottom zone.
+//
+// Two different logo sources are in play, which is why the gradients don't
+// all follow one rule: BDO and Maya use full-color marks (exported against
+// white), so they need a light/neutral card — a saturated same-hue
+// background makes half a multi-color mark disappear. BPI instead uses
+// Brandfetch's single-tone "dark theme" symbol (solid gold), made
+// specifically to sit on a dark background, so it goes back on BPI's own
+// dark red gradient rather than a light one.
 import bdoLogo from '../assets/logos/bdo.png';
 import bpiLogo from '../assets/logos/bpi.png';
 import mayaLogo from '../assets/logos/maya.png';
@@ -41,7 +48,7 @@ const BRAND_STYLES = [
   },
   {
     match: 'bdo',
-    gradient: ['#f2b705', '#e8940c'],
+    gradient: ['#fff6e0', '#ffe8ad'],
     textColor: '#1a2b4d',
     accent: 'stripe',
     logo: bdoLogo,
