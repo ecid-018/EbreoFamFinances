@@ -61,15 +61,19 @@ const BRAND_STYLES = [
     logo: bdoLogo,
   },
   {
-    // This asset's "G" and "GCash" wordmark are white — made to sit on
-    // GCash's own brand blue (confirmed by compositing it: unreadable on
-    // light/white, crisp on this exact blue), so this stays on the
-    // original saturated gradient rather than moving to a light neutral.
+    // This asset's "G" mark is white — made to sit on GCash's own brand
+    // blue (confirmed by compositing it: unreadable on light/white, crisp
+    // on this exact blue), so this stays on the original saturated
+    // gradient rather than moving to a light neutral. Cropped to just the
+    // circular "G" icon (wordmark removed) and sized larger via
+    // `logoIcon` — a compact symbol needs more height to read as
+    // deliberate, not a wide wordmark shrunk down.
     match: 'gcash',
     gradient: ['#0072ce', '#00a8ff'],
     textColor: '#ffffff',
     accent: 'none',
     logo: gcashLogo,
+    logoIcon: true,
   },
   {
     match: 'maribank',

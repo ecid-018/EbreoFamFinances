@@ -1542,6 +1542,11 @@ svg {
   object-position: left center;
 }
 
+.account-card__logo--icon {
+  height: 38px;
+  max-width: 48px;
+}
+
 .account-card__logo--badge {
   height: 26px;
   width: 26px;

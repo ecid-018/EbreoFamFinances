@@ -66,7 +66,11 @@ export function AccountCard({ account, index }) {
       <div className="account-card__top">
         <div className="account-card__name-col">
           {style.logo ? (
-            <img src={style.logo} alt="" className="account-card__logo" />
+            <img
+              src={style.logo}
+              alt=""
+              className={`account-card__logo ${style.logoIcon ? 'account-card__logo--icon' : ''}`.trim()}
+            />
           ) : brandfetchUrl && !brandfetchFailed ? (
             <img
               src={brandfetchUrl}
