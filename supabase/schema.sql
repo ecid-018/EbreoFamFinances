@@ -421,6 +421,12 @@ create policy "avatar_insert_own" on storage.objects for insert to authenticated
 create policy "avatar_update_own" on storage.objects for update to authenticated
   using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
 
+-- Needed because the app removes-then-uploads on re-upload (see repo.js)
+-- rather than relying on storage's upsert, which evaluates the INSERT
+-- policy even when a row already exists and would otherwise be updated.
+create policy "avatar_delete_own" on storage.objects for delete to authenticated
+  using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+
 -- =========================================================================
 -- 5. NEXT STEPS (do these in the dashboard, not SQL)
 -- =========================================================================

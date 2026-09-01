@@ -301,13 +301,22 @@ export const repo = {
   },
 
   // ---- Profile avatar ----
-  // Fixed per-user path + upsert means re-uploading replaces the old file in
-  // place (no orphaned files); the cache-busting ?v= query param is what
-  // makes a re-upload actually show up instead of serving a stale cached image.
+  // Fixed per-user path means re-uploading replaces the old file (no orphaned
+  // files); the cache-busting ?v= query param is what makes a re-upload
+  // actually show up instead of serving a stale cached image.
+  //
+  // Explicitly remove-then-upload rather than upload(..., {upsert: true}):
+  // Supabase's upsert does an INSERT ... ON CONFLICT DO UPDATE under the
+  // hood, which Postgres evaluates against the INSERT policy's WITH CHECK
+  // even when the row already exists and the update path is the one that'll
+  // actually run — so a same-path re-upload was failing RLS entirely.
+  // Deleting first keeps every step a plain, independently-correct insert.
   async uploadAvatar(userId, file) {
     const ext = file.name.includes('.') ? file.name.split('.').pop() : 'jpg';
     const path = `${userId}/photo.${ext}`;
-    await supabase.storage.from('avatars').upload(path, file, { upsert: true }).then(unwrap);
+    await supabase.storage.from('avatars').remove([path]);
+    const { error: uploadError } = await supabase.storage.from('avatars').upload(path, file);
+    if (uploadError) throw uploadError;
     const { data } = supabase.storage.from('avatars').getPublicUrl(path);
     const avatarUrl = `${data.publicUrl}?v=${Date.now()}`;
     await supabase.from('profiles').update({ avatar_url: avatarUrl }).eq('id', userId).then(unwrap);
