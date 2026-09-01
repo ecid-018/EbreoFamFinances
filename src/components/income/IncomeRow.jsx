@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../../context/AppContext.jsx';
-import { formatPHP } from '../../utils/currency.js';
+import { formatByCurrency } from '../../utils/currency.js';
 import { getMonthKeyFromDateStr, getMonthName, parseMonthKey } from '../../utils/date.js';
 import { SwipeToDeleteRow } from '../shared/SwipeToDeleteRow.jsx';
 import { ConfirmDialog } from '../shared/ConfirmDialog.jsx';
@@ -36,14 +36,16 @@ export function IncomeRow({ entry }) {
             <span className="list-row__title">{entry.source}</span>
             <span className="list-row__meta">{metaParts.join(' · ')}</span>
           </div>
-          <span className="list-row__value">{formatPHP(entry.amount)}</span>
+          <span className="list-row__value">{formatByCurrency(entry.amount, account?.currency)}</span>
           <ChevronRightIcon size={16} className="list-row__chevron" />
         </div>
       </SwipeToDeleteRow>
       {confirmOpen && (
         <ConfirmDialog
           title={`Delete "${entry.source}"?`}
-          message={account ? `${formatPHP(entry.amount)} will be reversed from ${account.name}.` : undefined}
+          message={
+            account ? `${formatByCurrency(entry.amount, account.currency)} will be reversed from ${account.name}.` : undefined
+          }
           onCancel={() => setConfirmOpen(false)}
           onConfirm={() => {
             setConfirmOpen(false);

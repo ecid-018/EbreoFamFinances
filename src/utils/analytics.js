@@ -1,4 +1,5 @@
 import { isDateInRange } from './date.js';
+import { splitIncomeByCurrency } from './accounts.js';
 
 function sumBy(items, field) {
   return items.reduce((total, item) => total + item[field], 0);
@@ -8,7 +9,7 @@ export function computePeriodSummary({ envelopes, transactions, income, accounts
   const periodTransactions = transactions.filter((t) => isDateInRange(t.date, range));
   const periodIncome = income.filter((i) => isDateInRange(i.date, range));
 
-  const totalIncome = sumBy(periodIncome, 'amount');
+  const { phpTotal: totalIncome } = splitIncomeByCurrency(periodIncome, accounts);
   const totalExpenses = sumBy(periodTransactions, 'amount');
   const net = totalIncome - totalExpenses;
 

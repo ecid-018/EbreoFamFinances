@@ -1,5 +1,5 @@
 import { useDayFinancials } from '../../hooks/useDayFinancials.js';
-import { formatPHP } from '../../utils/currency.js';
+import { formatByCurrency } from '../../utils/currency.js';
 
 export function DayActivityList() {
   const { activity } = useDayFinancials();
@@ -29,7 +29,7 @@ export function DayActivityList() {
                   className={`list-row__value ${entry.kind === 'income' ? 'list-row__value--accent' : ''}`.trim()}
                 >
                   {entry.kind === 'income' ? '+' : '−'}
-                  {formatPHP(entry.amount)}
+                  {formatByCurrency(entry.amount, entry.account?.currency)}
                 </span>
               </div>
             );

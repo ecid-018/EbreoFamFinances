@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useApp } from '../context/AppContext.jsx';
+import { splitIncomeByCurrency } from '../utils/accounts.js';
 
 function sumBy(items, field) {
   return items.reduce((total, item) => total + item[field], 0);
@@ -13,7 +14,7 @@ export function useDayFinancials() {
     const dayTransactions = transactions.filter((t) => t.date === viewDay);
     const dayIncomeEntries = income.filter((i) => i.date === viewDay);
 
-    const dayIncome = sumBy(dayIncomeEntries, 'amount');
+    const { phpTotal: dayIncome, usdTotal: dayUsdIncome } = splitIncomeByCurrency(dayIncomeEntries, accounts);
     const daySpent = sumBy(dayTransactions, 'amount');
     const dayNet = dayIncome - daySpent;
 
@@ -48,6 +49,7 @@ export function useDayFinancials() {
 
     return {
       dayIncome,
+      dayUsdIncome,
       daySpent,
       dayNet,
       dayTransactions,

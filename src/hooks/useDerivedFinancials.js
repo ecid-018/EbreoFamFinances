@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useApp } from '../context/AppContext.jsx';
 import { filterByMonth, getDaysLeftInMonth, isSameMonth, getCurrentMonth } from '../utils/date.js';
 import { groupByOrder } from '../utils/group.js';
+import { splitIncomeByCurrency } from '../utils/accounts.js';
 
 function sumBy(items, field) {
   return items.reduce((total, item) => total + item[field], 0);
@@ -15,7 +16,7 @@ export function useDerivedFinancials() {
     const monthTransactions = filterByMonth(transactions, month.year, month.monthIndex);
     const monthIncomeEntries = filterByMonth(income, month.year, month.monthIndex, 'budgetMonthKey');
 
-    const totalIncome = sumBy(monthIncomeEntries, 'amount');
+    const { phpTotal: totalIncome, usdTotal: monthUsdIncome } = splitIncomeByCurrency(monthIncomeEntries, accounts);
     const totalSpent = sumBy(monthTransactions, 'amount');
     const totalBudget = sumBy(envelopes, 'monthlyBudget');
     const unassigned = totalIncome - totalBudget;
@@ -82,6 +83,7 @@ export function useDerivedFinancials() {
       tightestEnvelope,
       overBudgetEnvelopes,
       monthIncomeEntries,
+      monthUsdIncome,
       totalPhpAccountBalance,
       totalUsdAccountBalance,
       goalsProgressPct,
