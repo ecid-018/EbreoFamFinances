@@ -23,6 +23,20 @@ export function formatByCurrency(amount, currency) {
   return currency === 'USD' ? formatUSD(amount) : formatPHP(amount);
 }
 
+const phpPreciseFormatter = new Intl.NumberFormat('en-PH', {
+  style: 'currency',
+  currency: 'PHP',
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+// Fixed 2 decimal places, used only where amounts need to line up visually
+// (the account cards) — every other PHP display keeps formatPHP's 0-decimal
+// convention for this app.
+export function formatPHPPrecise(amount) {
+  return phpPreciseFormatter.format(amount || 0).replace('PHP', '₱');
+}
+
 // jsPDF's built-in fonts (Helvetica/Times/Courier) don't include the ₱ glyph —
 // they render whatever character happens to occupy that byte position instead,
 // which is why PDF exports showed garbled symbols. This ASCII-only formatter is

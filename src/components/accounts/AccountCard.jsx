@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useApp } from '../../context/AppContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { formatByCurrency } from '../../utils/currency.js';
+import { useUsdToPhpRate } from '../../hooks/useUsdToPhpRate.js';
+import { formatPHPPrecise, formatUSD } from '../../utils/currency.js';
 import { getCardStyle } from '../../utils/cardStyle.js';
 import { SwipeToDeleteRow } from '../shared/SwipeToDeleteRow.jsx';
 import { ConfirmDialog } from '../shared/ConfirmDialog.jsx';
@@ -9,8 +10,14 @@ import { Avatar } from '../shared/Avatar.jsx';
 import { ChipIcon, ContactlessIcon } from '../shared/Icon.jsx';
 
 const TYPE_LABELS = { bank: 'Bank', ewallet: 'E-Wallet', cash: 'Cash' };
+const PEEK_HEIGHT = 64;
 
-export function AccountCard({ account }) {
+// Cards stack via position: sticky (not a static negative-margin overlap) so
+// the deck is actually scrollable — scrolling brings each card to the front
+// in turn, and whichever one is on top is the one swipe-to-delete/tap-to-edit
+// act on. The name+balance render in the always-visible peek zone so every
+// account's balance is readable without scrolling to bring it to the front.
+export function AccountCard({ account, index }) {
   const { state, dispatch, openModal } = useApp();
   const { session } = useAuth();
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -18,6 +25,28 @@ export function AccountCard({ account }) {
   const isOwner = account.ownerId === session?.user?.id;
   const ownerProfile = state.profiles.find((p) => p.id === account.ownerId);
   const style = getCardStyle(account);
+  const isUsd = account.currency === 'USD';
+  const { rate } = useUsdToPhpRate(isUsd);
+
+  const wrapStyle = {
+    top: `calc(var(--navbar-bar-height) + var(--safe-top) + 12px + ${index * PEEK_HEIGHT}px)`,
+    zIndex: index + 1,
+  };
+
+  // For USD accounts, the card leads with the live PHP-converted value (so
+  // every card's headline number is comparable at a glance) and shows the
+  // real USD balance as a smaller secondary line. If the rate isn't
+  // available, fall back to the raw USD amount rather than guessing a value.
+  let primaryValue;
+  let secondaryValue = null;
+  if (isUsd && rate) {
+    primaryValue = formatPHPPrecise(account.balance * rate);
+    secondaryValue = formatUSD(account.balance);
+  } else if (isUsd) {
+    primaryValue = formatUSD(account.balance);
+  } else {
+    primaryValue = formatPHPPrecise(account.balance);
+  }
 
   const cardBody = (
     <div
@@ -32,30 +61,37 @@ export function AccountCard({ account }) {
       {style.accent === 'stripe' && <div className="account-card__accent account-card__accent--stripe" />}
 
       <div className="account-card__top">
-        <ChipIcon size={26} />
-        <ContactlessIcon size={18} />
-        <Avatar profile={ownerProfile} size={24} className="account-card__avatar" />
+        <div className="account-card__name-col">
+          <span className="account-card__name">{account.name}</span>
+          {isUsd && <span className="account-card__tag">USD</span>}
+        </div>
+        <div className="account-card__balance-col">
+          <span className="account-card__balance">{primaryValue}</span>
+          {secondaryValue && <span className="account-card__balance-secondary">{secondaryValue}</span>}
+        </div>
       </div>
 
       <div className="account-card__bottom">
-        <div className="account-card__name-row">
-          <span className="account-card__name">{account.name}</span>
-          {account.currency === 'USD' && <span className="account-card__tag">USD</span>}
-        </div>
-        <span className="account-card__balance">{formatByCurrency(account.balance, account.currency)}</span>
+        <ChipIcon size={26} />
+        <ContactlessIcon size={18} />
         <span className="account-card__type" style={style.tagColor ? { color: style.tagColor } : undefined}>
           {TYPE_LABELS[account.type] ?? 'Account'}
         </span>
+        <Avatar profile={ownerProfile} size={24} className="account-card__avatar" />
       </div>
     </div>
   );
 
   if (!isOwner) {
-    return <div className="account-card-wrap">{cardBody}</div>;
+    return (
+      <div className="account-card-wrap" style={wrapStyle}>
+        {cardBody}
+      </div>
+    );
   }
 
   return (
-    <div className="account-card-wrap">
+    <div className="account-card-wrap" style={wrapStyle}>
       <SwipeToDeleteRow
         className="account-card-swipe"
         onDelete={() => setConfirmOpen(true)}

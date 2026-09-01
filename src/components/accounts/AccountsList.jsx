@@ -19,10 +19,10 @@ export function AccountsList() {
           <span className="ios-group__title">Your Accounts</span>
         </div>
         <div className="account-deck">
-          {mine.map((account) => (
-            <AccountCard key={account.id} account={account} />
+          {mine.map((account, index) => (
+            <AccountCard key={account.id} account={account} index={index} />
           ))}
-          <div className="account-card-wrap">
+          <div className="account-card-add-wrap">
             <button
               type="button"
               className="account-card account-card--add"
@@ -40,8 +40,8 @@ export function AccountsList() {
             <span className="ios-group__title">{otherOwnerName}&rsquo;s Accounts</span>
           </div>
           <div className="account-deck">
-            {theirs.map((account) => (
-              <AccountCard key={account.id} account={account} />
+            {theirs.map((account, index) => (
+              <AccountCard key={account.id} account={account} index={index} />
             ))}
           </div>
         </div>
