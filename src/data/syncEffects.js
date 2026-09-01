@@ -43,10 +43,19 @@ export const syncEffects = {
   'income/update': (payload) => repo.updateIncome(payload),
   'income/remove': (payload) => repo.removeIncome(payload.id),
 
-  'transfer/create': (payload) => repo.transferFunds(payload),
+  'transfer/add': (payload) => repo.addTransfer(payload),
+  'transfer/update': (payload) => repo.updateTransfer(payload),
+  'transfer/remove': (payload) => repo.removeTransfer(payload.id),
 };
 
 // Action types that create a new row and need a client-generated UUID
 // injected before both the reducer and the sync effect see the action, so
 // the optimistic local row and the database row share the same id.
-export const ACTIONS_NEEDING_ID = new Set(['envelope/add', 'transaction/add', 'income/add', 'account/add', 'goal/add']);
+export const ACTIONS_NEEDING_ID = new Set([
+  'envelope/add',
+  'transaction/add',
+  'income/add',
+  'account/add',
+  'goal/add',
+  'transfer/add',
+]);

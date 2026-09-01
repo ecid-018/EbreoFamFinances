@@ -86,6 +86,19 @@ create table ledger (
   created_at timestamptz not null default now()
 );
 
+create table transfers (
+  id uuid primary key default gen_random_uuid(),
+  date date not null default current_date,
+  from_account_id uuid not null references accounts(id),
+  to_account_id uuid not null references accounts(id),
+  from_amount numeric(12,2) not null,
+  to_amount numeric(12,2) not null,
+  note text,
+  created_by uuid references auth.users(id),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create index on transactions (category_id);
 create index on transactions (account_id);
 create index on transactions (date);
@@ -93,6 +106,8 @@ create index on income (account_id);
 create index on income (budget_month_key);
 create index on accounts (owner_id);
 create index on ledger (date);
+create index on transfers (from_account_id);
+create index on transfers (to_account_id);
 
 -- =========================================================================
 -- 2. ROW LEVEL SECURITY
@@ -107,6 +122,7 @@ alter table income enable row level security;
 alter table accounts enable row level security;
 alter table goals enable row level security;
 alter table ledger enable row level security;
+alter table transfers enable row level security;
 
 create policy "profiles_select" on profiles for select to authenticated using (true);
 create policy "profiles_update_own" on profiles for update to authenticated
@@ -142,6 +158,11 @@ create policy "goals_delete" on goals for delete to authenticated using (true);
 -- the database level (a property the old localStorage array never had).
 create policy "ledger_select" on ledger for select to authenticated using (true);
 create policy "ledger_insert" on ledger for insert to authenticated with check (created_by = auth.uid());
+
+create policy "transfers_select" on transfers for select to authenticated using (true);
+create policy "transfers_insert" on transfers for insert to authenticated with check (created_by = auth.uid());
+create policy "transfers_update" on transfers for update to authenticated using (true) with check (true);
+create policy "transfers_delete" on transfers for delete to authenticated using (true);
 
 -- Accounts: visible to both users, but only the owner can create/edit/delete
 -- their own. (The atomic functions below intentionally bypass this via
@@ -406,37 +427,109 @@ grant execute on function contribute_to_goal(uuid, numeric, uuid, text) to authe
 -- one deliberate SECURITY DEFINER bypass that lets a transfer touch an
 -- account you don't own (transferring TO the other person's account is the
 -- whole point). Amounts are pre-converted client-side using whatever real
--- exchange rate the household actually got, so this function stays
--- currency-agnostic and just moves numbers. No overdraft check, matching
+-- exchange rate the household actually got, so these functions stay
+-- currency-agnostic and just move numbers. No overdraft check, matching
 -- every other compound action in this file (expenses can already exceed a
--- balance today).
-create or replace function transfer_funds(
-  p_from_account_id uuid, p_to_account_id uuid,
+-- balance today). A transfer is a first-class row (unlike the old
+-- transfer_funds, which only wrote ledger lines) so it can be edited and
+-- removed the same way transactions/income can.
+create or replace function add_transfer(
+  p_id uuid, p_date date, p_from_account_id uuid, p_to_account_id uuid,
   p_from_amount numeric, p_to_amount numeric, p_note text
 ) returns void
 language plpgsql security definer set search_path = public as $$
-declare
-  v_from_name text;
-  v_to_name text;
+declare v_from_name text; v_to_name text;
 begin
   select name into v_from_name from accounts where id = p_from_account_id;
   select name into v_to_name from accounts where id = p_to_account_id;
-  if v_from_name is null or v_to_name is null then
-    raise exception 'Invalid account';
-  end if;
+  if v_from_name is null or v_to_name is null then raise exception 'Invalid account'; end if;
+
+  insert into transfers (id, date, from_account_id, to_account_id, from_amount, to_amount, note, created_by)
+  values (p_id, p_date, p_from_account_id, p_to_account_id, p_from_amount, p_to_amount, p_note, auth.uid());
 
   update accounts set balance = balance - p_from_amount, updated_at = now() where id = p_from_account_id;
   update accounts set balance = balance + p_to_amount, updated_at = now() where id = p_to_account_id;
 
   insert into ledger (date, domain, type, name, amount, created_by)
-  values (current_date, 'Transfer', 'Transferred out', coalesce(nullif(p_note, ''), v_to_name), p_from_amount, auth.uid());
+  values (p_date, 'Transfer', 'Transferred out', coalesce(nullif(p_note, ''), v_to_name), p_from_amount, auth.uid());
   insert into ledger (date, domain, type, name, amount, created_by)
-  values (current_date, 'Transfer', 'Transferred in', coalesce(nullif(p_note, ''), v_from_name), p_to_amount, auth.uid());
+  values (p_date, 'Transfer', 'Transferred in', coalesce(nullif(p_note, ''), v_from_name), p_to_amount, auth.uid());
 end;
 $$;
 
-revoke all on function transfer_funds(uuid, uuid, numeric, numeric, text) from public;
-grant execute on function transfer_funds(uuid, uuid, numeric, numeric, text) to authenticated;
+create or replace function update_transfer(
+  p_id uuid, p_date date, p_from_account_id uuid, p_to_account_id uuid,
+  p_from_amount numeric, p_to_amount numeric, p_note text
+) returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  v_old_from_id uuid; v_old_to_id uuid; v_old_from_amt numeric; v_old_to_amt numeric;
+  v_old_from_name text; v_old_to_name text; v_new_from_name text; v_new_to_name text;
+begin
+  select from_account_id, to_account_id, from_amount, to_amount
+    into v_old_from_id, v_old_to_id, v_old_from_amt, v_old_to_amt
+  from transfers where id = p_id;
+  if not found then return; end if;
+
+  -- Fully reverse the old movement, then fully apply the new one — simplest
+  -- to prove correct, avoids delta-math edge cases when accounts change.
+  select name into v_old_from_name from accounts where id = v_old_from_id;
+  select name into v_old_to_name from accounts where id = v_old_to_id;
+  update accounts set balance = balance + v_old_from_amt, updated_at = now() where id = v_old_from_id;
+  update accounts set balance = balance - v_old_to_amt, updated_at = now() where id = v_old_to_id;
+  insert into ledger (date, domain, type, name, amount, created_by)
+  values (p_date, 'Transfer', 'Reversed (transfer updated)', v_old_to_name, v_old_from_amt, auth.uid());
+  insert into ledger (date, domain, type, name, amount, created_by)
+  values (p_date, 'Transfer', 'Reversed (transfer updated)', v_old_from_name, v_old_to_amt, auth.uid());
+
+  select name into v_new_from_name from accounts where id = p_from_account_id;
+  select name into v_new_to_name from accounts where id = p_to_account_id;
+  update accounts set balance = balance - p_from_amount, updated_at = now() where id = p_from_account_id;
+  update accounts set balance = balance + p_to_amount, updated_at = now() where id = p_to_account_id;
+  insert into ledger (date, domain, type, name, amount, created_by)
+  values (p_date, 'Transfer', 'Transferred out', coalesce(nullif(p_note, ''), v_new_to_name), p_from_amount, auth.uid());
+  insert into ledger (date, domain, type, name, amount, created_by)
+  values (p_date, 'Transfer', 'Transferred in', coalesce(nullif(p_note, ''), v_new_from_name), p_to_amount, auth.uid());
+
+  update transfers
+  set date = p_date, from_account_id = p_from_account_id, to_account_id = p_to_account_id,
+      from_amount = p_from_amount, to_amount = p_to_amount, note = p_note, updated_at = now()
+  where id = p_id;
+end;
+$$;
+
+create or replace function remove_transfer(p_id uuid) returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  v_date date; v_from_id uuid; v_to_id uuid; v_from_amt numeric; v_to_amt numeric;
+  v_from_name text; v_to_name text;
+begin
+  select date, from_account_id, to_account_id, from_amount, to_amount
+    into v_date, v_from_id, v_to_id, v_from_amt, v_to_amt
+  from transfers where id = p_id;
+  if not found then return; end if;
+
+  select name into v_from_name from accounts where id = v_from_id;
+  select name into v_to_name from accounts where id = v_to_id;
+
+  delete from transfers where id = p_id;
+
+  update accounts set balance = balance + v_from_amt, updated_at = now() where id = v_from_id;
+  update accounts set balance = balance - v_to_amt, updated_at = now() where id = v_to_id;
+
+  insert into ledger (date, domain, type, name, amount, created_by)
+  values (v_date, 'Transfer', 'Transfer removed', v_to_name, v_from_amt, auth.uid());
+  insert into ledger (date, domain, type, name, amount, created_by)
+  values (v_date, 'Transfer', 'Transfer removed', v_from_name, v_to_amt, auth.uid());
+end;
+$$;
+
+revoke all on function add_transfer(uuid, date, uuid, uuid, numeric, numeric, text) from public;
+revoke all on function update_transfer(uuid, date, uuid, uuid, numeric, numeric, text) from public;
+revoke all on function remove_transfer(uuid) from public;
+grant execute on function add_transfer(uuid, date, uuid, uuid, numeric, numeric, text) to authenticated;
+grant execute on function update_transfer(uuid, date, uuid, uuid, numeric, numeric, text) to authenticated;
+grant execute on function remove_transfer(uuid) to authenticated;
 
 -- =========================================================================
 -- 4. STORAGE: profile picture avatars

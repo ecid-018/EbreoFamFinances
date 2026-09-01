@@ -3,6 +3,7 @@ import { SegmentedControl } from '../shared/SegmentedControl.jsx';
 import { NeedsCategoryList } from '../uncategorized/NeedsCategoryList.jsx';
 import { TransactionList } from '../transactions/TransactionList.jsx';
 import { IncomeList } from '../income/IncomeList.jsx';
+import { TransferList } from '../transfers/TransferList.jsx';
 import { LedgerSection } from '../activity/LedgerSection.jsx';
 
 export function TransactionsTab() {
@@ -17,6 +18,7 @@ export function TransactionsTab() {
           options={[
             { value: 'expenses', label: 'Expenses' },
             { value: 'income', label: 'Income' },
+            { value: 'transfers', label: 'Transfers' },
             { value: 'ledger', label: 'Ledger' },
           ]}
         />
@@ -28,6 +30,7 @@ export function TransactionsTab() {
         </>
       )}
       {view === 'income' && <IncomeList />}
+      {view === 'transfers' && <TransferList />}
       {view === 'ledger' && <LedgerSection />}
     </>
   );

@@ -29,7 +29,7 @@ export function ModalRoot() {
     case 'addContribution':
       return <AddContributionModal {...modalProps} />;
     case 'transferMoney':
-      return <TransferMoneyModal />;
+      return <TransferMoneyModal {...modalProps} />;
     case 'categoryPicker':
       return <CategoryPickerModal {...modalProps} />;
     case 'allocateBudget':

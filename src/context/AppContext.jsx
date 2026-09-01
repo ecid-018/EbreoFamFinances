@@ -18,6 +18,7 @@ const EMPTY_DOMAIN_STATE = {
   goals: [],
   ledger: [],
   profiles: [],
+  transfers: [],
   month: getCurrentMonth(),
 };
 

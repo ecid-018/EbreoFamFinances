@@ -468,10 +468,11 @@ export function appReducer(state, action) {
       };
     }
 
-    case 'transfer/create': {
-      const { fromAccountId, toAccountId, fromAmount, toAmount, note } = action.payload;
+    case 'transfer/add': {
+      const { id, date, fromAccountId, toAccountId, fromAmount, toAmount, note } = action.payload;
       const fromAccount = state.accounts.find((a) => a.id === fromAccountId);
       const toAccount = state.accounts.find((a) => a.id === toAccountId);
+      const transfer = { id, date, fromAccountId, toAccountId, fromAmount, toAmount, note };
 
       let accounts = adjustAccountBalance(state.accounts, fromAccountId, -fromAmount);
       accounts = adjustAccountBalance(accounts, toAccountId, toAmount);
@@ -481,15 +482,107 @@ export function appReducer(state, action) {
         type: 'Transferred out',
         name: note || toAccount?.name || 'Transfer',
         amount: fromAmount,
+        date,
       });
       ledger = logEntry(ledger, {
         domain: 'Transfer',
         type: 'Transferred in',
         name: note || fromAccount?.name || 'Transfer',
         amount: toAmount,
+        date,
       });
 
-      return { ...state, accounts, ledger };
+      return { ...state, accounts, ledger, transfers: [...state.transfers, transfer] };
+    }
+
+    case 'transfer/update': {
+      const { id, date, fromAccountId, toAccountId, fromAmount, toAmount, note } = action.payload;
+      const existing = state.transfers.find((t) => t.id === id);
+      if (!existing) return state;
+
+      const oldFromAccount = state.accounts.find((a) => a.id === existing.fromAccountId);
+      const oldToAccount = state.accounts.find((a) => a.id === existing.toAccountId);
+      const newFromAccount = state.accounts.find((a) => a.id === fromAccountId);
+      const newToAccount = state.accounts.find((a) => a.id === toAccountId);
+
+      // Fully reverse the old movement, then fully apply the new one —
+      // mirrors update_transfer's RPC logic exactly.
+      let accounts = adjustAccountBalance(state.accounts, existing.fromAccountId, existing.fromAmount);
+      accounts = adjustAccountBalance(accounts, existing.toAccountId, -existing.toAmount);
+      accounts = adjustAccountBalance(accounts, fromAccountId, -fromAmount);
+      accounts = adjustAccountBalance(accounts, toAccountId, toAmount);
+
+      let ledger = logEntry(state.ledger, {
+        domain: 'Transfer',
+        type: 'Reversed (transfer updated)',
+        name: oldToAccount?.name || 'Transfer',
+        amount: existing.fromAmount,
+        date,
+      });
+      ledger = logEntry(ledger, {
+        domain: 'Transfer',
+        type: 'Reversed (transfer updated)',
+        name: oldFromAccount?.name || 'Transfer',
+        amount: existing.toAmount,
+        date,
+      });
+      ledger = logEntry(ledger, {
+        domain: 'Transfer',
+        type: 'Transferred out',
+        name: note || newToAccount?.name || 'Transfer',
+        amount: fromAmount,
+        date,
+      });
+      ledger = logEntry(ledger, {
+        domain: 'Transfer',
+        type: 'Transferred in',
+        name: note || newFromAccount?.name || 'Transfer',
+        amount: toAmount,
+        date,
+      });
+
+      return {
+        ...state,
+        accounts,
+        ledger,
+        transfers: state.transfers.map((t) =>
+          t.id === id ? { id, date, fromAccountId, toAccountId, fromAmount, toAmount, note } : t
+        ),
+      };
+    }
+
+    case 'transfer/remove': {
+      const { id } = action.payload;
+      const existing = state.transfers.find((t) => t.id === id);
+      if (!existing) return state;
+
+      const fromAccount = state.accounts.find((a) => a.id === existing.fromAccountId);
+      const toAccount = state.accounts.find((a) => a.id === existing.toAccountId);
+
+      let accounts = adjustAccountBalance(state.accounts, existing.fromAccountId, existing.fromAmount);
+      accounts = adjustAccountBalance(accounts, existing.toAccountId, -existing.toAmount);
+
+      let ledger = logEntry(state.ledger, {
+        domain: 'Transfer',
+        type: 'Transfer removed',
+        name: toAccount?.name || 'Transfer',
+        amount: existing.fromAmount,
+        date: existing.date,
+      });
+      ledger = logEntry(ledger, {
+        domain: 'Transfer',
+        type: 'Transfer removed',
+        name: fromAccount?.name || 'Transfer',
+        amount: existing.toAmount,
+        date: existing.date,
+      });
+
+      return {
+        ...state,
+        accounts,
+        ledger,
+        transfers: state.transfers.filter((t) => t.id !== id),
+      };
     }
 
     case 'month/next':

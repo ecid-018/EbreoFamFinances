@@ -50,12 +50,24 @@ function mapGoal(row) {
 function mapLedgerEntry(row) {
   return { id: row.id, date: row.date, domain: row.domain, type: row.type, name: row.name, amount: Number(row.amount) };
 }
+function mapTransfer(row) {
+  return {
+    id: row.id,
+    date: row.date,
+    fromAccountId: row.from_account_id,
+    toAccountId: row.to_account_id,
+    fromAmount: Number(row.from_amount),
+    toAmount: Number(row.to_amount),
+    note: row.note ?? '',
+    createdBy: row.created_by,
+  };
+}
 function mapProfile(row) {
   return { id: row.id, displayName: row.display_name, avatarUrl: row.avatar_url ?? null };
 }
 
 export async function fetchAll() {
-  const [envelopes, accounts, transactions, income, goals, ledger, profiles] = await Promise.all([
+  const [envelopes, accounts, transactions, income, goals, ledger, profiles, transfers] = await Promise.all([
     supabase.from('envelopes').select('*').then(unwrap),
     supabase.from('accounts').select('*').then(unwrap),
     supabase.from('transactions').select('*').then(unwrap),
@@ -63,6 +75,7 @@ export async function fetchAll() {
     supabase.from('goals').select('*').then(unwrap),
     supabase.from('ledger').select('*').order('created_at', { ascending: true }).then(unwrap),
     supabase.from('profiles').select('*').then(unwrap),
+    supabase.from('transfers').select('*').then(unwrap),
   ]);
 
   return {
@@ -73,6 +86,7 @@ export async function fetchAll() {
     goals: goals.map(mapGoal),
     ledger: ledger.map(mapLedgerEntry),
     profiles: profiles.map(mapProfile),
+    transfers: transfers.map(mapTransfer),
   };
 }
 
@@ -333,9 +347,11 @@ export const repo = {
   },
 
   // ---- Transfers (compound: two account balances + two ledger rows, atomic via RPC) ----
-  transferFunds(payload) {
+  addTransfer(payload) {
     return supabase
-      .rpc('transfer_funds', {
+      .rpc('add_transfer', {
+        p_id: payload.id,
+        p_date: payload.date,
         p_from_account_id: payload.fromAccountId,
         p_to_account_id: payload.toAccountId,
         p_from_amount: payload.fromAmount,
@@ -343,5 +359,23 @@ export const repo = {
         p_note: payload.note || null,
       })
       .then(unwrap);
+  },
+
+  updateTransfer(payload) {
+    return supabase
+      .rpc('update_transfer', {
+        p_id: payload.id,
+        p_date: payload.date,
+        p_from_account_id: payload.fromAccountId,
+        p_to_account_id: payload.toAccountId,
+        p_from_amount: payload.fromAmount,
+        p_to_amount: payload.toAmount,
+        p_note: payload.note || null,
+      })
+      .then(unwrap);
+  },
+
+  removeTransfer(id) {
+    return supabase.rpc('remove_transfer', { p_id: id }).then(unwrap);
   },
 };
