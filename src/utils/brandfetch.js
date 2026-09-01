@@ -10,12 +10,11 @@
 // to the plain type-label (see AccountCard.jsx) instead of risking the
 // wrong institution's logo.
 //
-// bpi/bdo/maya are also deliberately absent — they use hand-picked local
-// assets and never call Brandfetch.
+// bpi/bdo/maya/metrobank/gcash/pafc are also deliberately absent — they use
+// hand-picked local assets (see cardStyle.js) and never call Brandfetch.
 const CLIENT_ID = import.meta.env.VITE_BRANDFETCH_CLIENT_ID;
 
 export const BRANDFETCH_DOMAINS = {
-  gcash: 'gcash.com',
   wise: 'wise.com',
   // Real institution is SeaBank Philippines; Brandfetch has no verified
   // SeaBank-specific entry. This domain resolves to sister Sea Limited

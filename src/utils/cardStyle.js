@@ -7,16 +7,22 @@
 // repo and the deployed app are both public. Brands without a `logo` fall
 // back to the plain type-label text in the bottom zone.
 //
-// Two different logo sources are in play, which is why the gradients don't
-// all follow one rule: BDO and Maya use full-color marks (exported against
-// white), so they need a light/neutral card — a saturated same-hue
-// background makes half a multi-color mark disappear. BPI instead uses
-// Brandfetch's single-tone "dark theme" symbol (solid gold), made
-// specifically to sit on a dark background, so it goes back on BPI's own
-// dark red gradient rather than a light one.
+// A few different logo sources are in play, which is why the gradients
+// don't all follow one rule. BDO keeps its real saturated gold/yellow —
+// matching the actual debit card's own color, by household preference —
+// even though the logo's own gold "O" outline has less contrast against it
+// than the blue "BD" does. Maya's mint mark reads fine on its dark card as
+// exported. BPI uses Brandfetch's single-tone "dark theme" symbol (solid
+// gold), made specifically to sit on a dark background, hence BPI's own
+// dark red gradient rather than a light one. Metrobank's mark is a single
+// solid blue, so its card moved to a light neutral — its original navy
+// gradient was too close to the mark's own blue to read at all.
 import bdoLogo from '../assets/logos/bdo.png';
 import bpiLogo from '../assets/logos/bpi.png';
 import mayaLogo from '../assets/logos/maya.png';
+import metrobankLogo from '../assets/logos/metrobank.png';
+import pafcpicLogo from '../assets/logos/pafcpic.png';
+import gcashLogo from '../assets/logos/gcash.png';
 
 const BRAND_STYLES = [
   {
@@ -28,9 +34,10 @@ const BRAND_STYLES = [
   },
   {
     match: 'metrobank',
-    gradient: ['#1b3a6b', '#3d6fa5'],
-    textColor: '#ffffff',
-    accent: 'dots',
+    gradient: ['#eef4fb', '#d7e6f7'],
+    textColor: '#122447',
+    accent: 'none',
+    logo: metrobankLogo,
   },
   {
     match: 'wise',
@@ -48,22 +55,37 @@ const BRAND_STYLES = [
   },
   {
     match: 'bdo',
-    gradient: ['#fff6e0', '#ffe8ad'],
+    gradient: ['#f2b705', '#e8940c'],
     textColor: '#1a2b4d',
     accent: 'stripe',
     logo: bdoLogo,
   },
   {
+    // This asset's "G" and "GCash" wordmark are white — made to sit on
+    // GCash's own brand blue (confirmed by compositing it: unreadable on
+    // light/white, crisp on this exact blue), so this stays on the
+    // original saturated gradient rather than moving to a light neutral.
     match: 'gcash',
     gradient: ['#0072ce', '#00a8ff'],
     textColor: '#ffffff',
     accent: 'none',
+    logo: gcashLogo,
   },
   {
     match: 'maribank',
     gradient: ['#f2701e', '#ff8c3d'],
     textColor: '#ffffff',
     accent: 'diagonal',
+  },
+  {
+    // PAFCPIC's mark uses white as an active design color (seal background,
+    // letter fills), not just a removed backdrop — needs a dark card so
+    // those white parts (plus its yellow accents) actually show up.
+    match: 'pafc',
+    gradient: ['#0a0a0a', '#1c1c1c'],
+    textColor: '#ffffff',
+    accent: 'none',
+    logo: pafcpicLogo,
   },
 ];
 
