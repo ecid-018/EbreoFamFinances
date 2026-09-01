@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
 import { formatByCurrency } from '../utils/currency.js';
 import { BottomSheet } from './BottomSheet.jsx';
 
@@ -7,10 +8,32 @@ import { BottomSheet } from './BottomSheet.jsx';
 // elsewhere (AddExpenseModal, IncomeFormModal, AddContributionModal) —
 // transfers exist specifically to cross both the ownership and currency
 // boundary, so both pickers list every account, either owner, either
-// currency.
+// currency. Grouped by owner (optgroup) since both of you having a "Maya"
+// or "BPI Savings" makes a flat list ambiguous.
 export function TransferMoneyModal() {
   const { state, dispatch, closeModal } = useApp();
+  const { session } = useAuth();
   const accounts = state.accounts;
+  const myId = session?.user?.id;
+
+  function ownerGroupLabel(account) {
+    if (account.ownerId === myId) return 'Your Accounts';
+    return `${state.profiles.find((p) => p.id === account.ownerId)?.displayName ?? 'Shared'}'s Accounts`;
+  }
+
+  function groupByOwner(list) {
+    const groups = [];
+    for (const account of list) {
+      const label = ownerGroupLabel(account);
+      let group = groups.find((g) => g.label === label);
+      if (!group) {
+        group = { label, accounts: [] };
+        groups.push(group);
+      }
+      group.accounts.push(account);
+    }
+    return groups;
+  }
 
   const [fromAccountId, setFromAccountId] = useState(accounts[0]?.id ?? '');
   const [toAccountId, setToAccountId] = useState(accounts.find((a) => a.id !== accounts[0]?.id)?.id ?? '');
@@ -23,6 +46,8 @@ export function TransferMoneyModal() {
   const toAccount = accounts.find((a) => a.id === toAccountId);
   const toOptions = accounts.filter((a) => a.id !== fromAccountId);
   const needsRate = fromAccount && toAccount && fromAccount.currency !== toAccount.currency;
+  const fromGroups = groupByOwner(accounts);
+  const toGroups = groupByOwner(toOptions);
 
   const amountValue = Number(amount);
   const rateValue = Number(rate);
@@ -76,10 +101,14 @@ export function TransferMoneyModal() {
         <label className="form__field">
           <span className="form__label">From</span>
           <select className="form__input" value={fromAccountId} onChange={(e) => handleFromChange(e.target.value)}>
-            {accounts.map((account) => (
-              <option key={account.id} value={account.id}>
-                {account.name} ({account.currency ?? 'PHP'})
-              </option>
+            {fromGroups.map((group) => (
+              <optgroup key={group.label} label={group.label}>
+                {group.accounts.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.name} ({account.currency ?? 'PHP'})
+                  </option>
+                ))}
+              </optgroup>
             ))}
           </select>
         </label>
@@ -87,10 +116,14 @@ export function TransferMoneyModal() {
         <label className="form__field">
           <span className="form__label">To</span>
           <select className="form__input" value={toAccountId} onChange={(e) => setToAccountId(e.target.value)}>
-            {toOptions.map((account) => (
-              <option key={account.id} value={account.id}>
-                {account.name} ({account.currency ?? 'PHP'})
-              </option>
+            {toGroups.map((group) => (
+              <optgroup key={group.label} label={group.label}>
+                {group.accounts.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.name} ({account.currency ?? 'PHP'})
+                  </option>
+                ))}
+              </optgroup>
             ))}
           </select>
         </label>
@@ -129,7 +162,8 @@ export function TransferMoneyModal() {
 
         {needsRate && amountValue > 0 && rateValue > 0 && (
           <p className="form__label">
-            {toAccount.name} receives: {formatByCurrency(toAmount, toAccount.currency)}
+            {toAccount.name} ({ownerGroupLabel(toAccount).replace(/ Accounts$/, '')}) receives:{' '}
+            {formatByCurrency(toAmount, toAccount.currency)}
           </p>
         )}
 
