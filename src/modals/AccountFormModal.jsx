@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext.jsx';
 import { SegmentedControl } from '../components/shared/SegmentedControl.jsx';
+import { getCardStyle } from '../utils/cardStyle.js';
+import { getBrandfetchUrlForAccountName } from '../utils/brandfetch.js';
 import { BottomSheet } from './BottomSheet.jsx';
 
 export function AccountFormModal({ mode = 'add', account }) {
@@ -11,6 +13,14 @@ export function AccountFormModal({ mode = 'add', account }) {
   const [currency, setCurrency] = useState(isEdit ? account.currency ?? 'PHP' : 'PHP');
   const [balance, setBalance] = useState(isEdit ? String(account.balance) : '');
   const [error, setError] = useState('');
+  const [previewFailed, setPreviewFailed] = useState(false);
+
+  // Live preview of which logo (if any) this account name will resolve to —
+  // same lookup chain AccountCard.jsx uses: hand-picked local asset first,
+  // then Brandfetch, then nothing.
+  const trimmedName = name.trim();
+  const previewStyle = trimmedName ? getCardStyle({ name: trimmedName, type }) : null;
+  const previewLogo = previewStyle?.logo ?? (trimmedName ? getBrandfetchUrlForAccountName(trimmedName) : null);
 
   function handleSubmit(e) {
     e.preventDefault();
@@ -43,10 +53,24 @@ export function AccountFormModal({ mode = 'add', account }) {
             type="text"
             className="form__input"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => {
+              setName(e.target.value);
+              setPreviewFailed(false);
+            }}
             placeholder="e.g. BPI Savings"
             required
           />
+          {previewLogo && !previewFailed && (
+            <div className="form__logo-preview">
+              <img
+                key={previewLogo}
+                src={previewLogo}
+                alt=""
+                onError={() => setPreviewFailed(true)}
+              />
+              <span className="form__label">Logo found for this name</span>
+            </div>
+          )}
         </label>
         <div className="form__field">
           <span className="form__label">Type</span>

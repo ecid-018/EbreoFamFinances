@@ -966,6 +966,26 @@ svg {
   margin-bottom: 6px;
 }
 
+.form__logo-preview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.form__logo-preview img {
+  height: 28px;
+  width: 28px;
+  border-radius: 6px;
+  object-fit: contain;
+  background: rgba(0, 0, 0, 0.04);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.form__logo-preview .form__label {
+  margin-bottom: 0;
+}
+
 .form__input {
   display: block;
   width: 100%;
@@ -1520,6 +1540,16 @@ svg {
   max-width: 100px;
   object-fit: contain;
   object-position: left center;
+}
+
+.account-card__logo--badge {
+  height: 26px;
+  width: 26px;
+  max-width: 26px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
 }
 
 .account-card--add {

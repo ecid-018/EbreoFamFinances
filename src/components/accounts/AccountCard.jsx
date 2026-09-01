@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { useUsdToPhpRate } from '../../hooks/useUsdToPhpRate.js';
 import { formatPHPPrecise, formatUSD } from '../../utils/currency.js';
 import { getCardStyle } from '../../utils/cardStyle.js';
+import { getBrandfetchUrlForAccountName } from '../../utils/brandfetch.js';
 import { SwipeToDeleteRow } from '../shared/SwipeToDeleteRow.jsx';
 import { ConfirmDialog } from '../shared/ConfirmDialog.jsx';
 import { Avatar } from '../shared/Avatar.jsx';
@@ -21,10 +22,12 @@ export function AccountCard({ account, index }) {
   const { state, dispatch, openModal } = useApp();
   const { session } = useAuth();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [brandfetchFailed, setBrandfetchFailed] = useState(false);
 
   const isOwner = account.ownerId === session?.user?.id;
   const ownerProfile = state.profiles.find((p) => p.id === account.ownerId);
   const style = getCardStyle(account);
+  const brandfetchUrl = style.logo ? null : getBrandfetchUrlForAccountName(account.name);
   const isUsd = account.currency === 'USD';
   const { rate } = useUsdToPhpRate(isUsd);
 
@@ -62,7 +65,17 @@ export function AccountCard({ account, index }) {
 
       <div className="account-card__top">
         <div className="account-card__name-col">
-          {style.logo && <img src={style.logo} alt="" className="account-card__logo" />}
+          {style.logo ? (
+            <img src={style.logo} alt="" className="account-card__logo" />
+          ) : brandfetchUrl && !brandfetchFailed ? (
+            <img
+              src={brandfetchUrl}
+              alt=""
+              loading="lazy"
+              className="account-card__logo account-card__logo--badge"
+              onError={() => setBrandfetchFailed(true)}
+            />
+          ) : null}
           <span className="account-card__name">{account.name}</span>
           {isUsd && <span className="account-card__tag">USD</span>}
         </div>
