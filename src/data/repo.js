@@ -30,6 +30,7 @@ function mapTransaction(row) {
     note: row.note ?? '',
     categoryId: row.category_id,
     accountId: row.account_id,
+    createdBy: row.created_by,
   };
 }
 function mapIncome(row) {
@@ -40,6 +41,7 @@ function mapIncome(row) {
     amount: Number(row.amount),
     accountId: row.account_id,
     budgetMonthKey: row.budget_month_key,
+    createdBy: row.created_by,
   };
 }
 function mapGoal(row) {
@@ -49,7 +51,7 @@ function mapLedgerEntry(row) {
   return { id: row.id, date: row.date, domain: row.domain, type: row.type, name: row.name, amount: Number(row.amount) };
 }
 function mapProfile(row) {
-  return { id: row.id, displayName: row.display_name };
+  return { id: row.id, displayName: row.display_name, avatarUrl: row.avatar_url ?? null };
 }
 
 export async function fetchAll() {
@@ -296,5 +298,19 @@ export const repo = {
 
   removeIncome(id) {
     return supabase.rpc('remove_income', { p_id: id }).then(unwrap);
+  },
+
+  // ---- Profile avatar ----
+  // Fixed per-user path + upsert means re-uploading replaces the old file in
+  // place (no orphaned files); the cache-busting ?v= query param is what
+  // makes a re-upload actually show up instead of serving a stale cached image.
+  async uploadAvatar(userId, file) {
+    const ext = file.name.includes('.') ? file.name.split('.').pop() : 'jpg';
+    const path = `${userId}/photo.${ext}`;
+    await supabase.storage.from('avatars').upload(path, file, { upsert: true }).then(unwrap);
+    const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+    const avatarUrl = `${data.publicUrl}?v=${Date.now()}`;
+    await supabase.from('profiles').update({ avatar_url: avatarUrl }).eq('id', userId).then(unwrap);
+    return avatarUrl;
   },
 };

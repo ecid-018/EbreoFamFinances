@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext.jsx';
 import { formatPHP } from '../../utils/currency.js';
 import { SwipeToDeleteRow } from '../shared/SwipeToDeleteRow.jsx';
 import { ConfirmDialog } from '../shared/ConfirmDialog.jsx';
+import { Avatar } from '../shared/Avatar.jsx';
 import { ChevronRightIcon } from '../shared/Icon.jsx';
 
 export function TransactionRow({ transaction }) {
@@ -11,6 +12,7 @@ export function TransactionRow({ transaction }) {
 
   const envelope = state.envelopes.find((env) => env.id === transaction.categoryId);
   const account = state.accounts.find((a) => a.id === transaction.accountId);
+  const loggedBy = state.profiles.find((p) => p.id === transaction.createdBy);
   const date = new Date(`${transaction.date}T00:00:00`).toLocaleDateString('en-PH', {
     month: 'short',
     day: 'numeric',
@@ -25,6 +27,7 @@ export function TransactionRow({ transaction }) {
         onTap={() => openModal('addExpense', { mode: 'edit', transaction })}
       >
         <div className="list-row">
+          <Avatar profile={loggedBy} size={28} />
           <div className="list-row__main">
             <span className="list-row__title">{transaction.note || 'Expense'}</span>
             <span className="list-row__meta">{metaParts.join(' · ')}</span>

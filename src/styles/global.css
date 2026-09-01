@@ -145,17 +145,12 @@ svg {
 
 .navbar__avatar-btn {
   flex-shrink: 0;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-accent);
-  color: #fff;
+  background: none;
   border: none;
-  font-size: 12px;
-  font-weight: 700;
+  padding: 0;
   margin-left: 2px;
 }
 
@@ -1294,6 +1289,37 @@ svg {
 .profile-picker__name {
   font-size: 17px;
   font-weight: 600;
+}
+
+.avatar {
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar--photo {
+  object-fit: cover;
+}
+
+.avatar--initial {
+  background: var(--color-accent);
+  color: #fff;
+  font-weight: 700;
+}
+
+.settings-photo-btn {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--color-accent);
+  font-size: var(--footnote-size);
+  font-weight: 600;
+}
+
+.settings-photo-btn:disabled {
+  opacity: 0.5;
 }
 
 .pin-dots {

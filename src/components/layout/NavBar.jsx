@@ -4,12 +4,18 @@ import { useDerivedFinancials } from '../../hooks/useDerivedFinancials.js';
 import { useScrollCollapse } from '../../hooks/useScrollCollapse.js';
 import { getMonthName, addDays, getWeekdayName, getDayLabel, isToday } from '../../utils/date.js';
 import { SegmentedControl } from '../shared/SegmentedControl.jsx';
+import { Avatar } from '../shared/Avatar.jsx';
 import { ChevronLeftIcon, ChevronRightIcon, SettingsIcon } from '../shared/Icon.jsx';
 
 export function NavBar() {
   const { state, dispatch, openModal, viewMode, setViewMode, viewDay, setViewDay } = useApp();
-  const { currentProfile } = useAuth();
+  const { session, currentProfile } = useAuth();
   const { daysLeft, isPastMonth } = useDerivedFinancials();
+  const liveProfile = state.profiles.find((p) => p.id === session?.user?.id);
+  const displayProfile = currentProfile && {
+    displayName: currentProfile.displayName,
+    avatarUrl: liveProfile?.avatarUrl,
+  };
   const collapsed = useScrollCollapse();
   const isDayMode = viewMode === 'day';
 
@@ -50,15 +56,15 @@ export function NavBar() {
             {nextLabel}
             <ChevronRightIcon size={13} />
           </button>
-          {currentProfile && (
+          {displayProfile && (
             <button
               type="button"
               className="navbar__avatar-btn"
-              aria-label={`Signed in as ${currentProfile.displayName}`}
-              title={`Signed in as ${currentProfile.displayName}`}
+              aria-label={`Signed in as ${displayProfile.displayName}`}
+              title={`Signed in as ${displayProfile.displayName}`}
               onClick={() => openModal('settings')}
             >
-              {currentProfile.displayName.charAt(0)}
+              <Avatar profile={displayProfile} size={26} />
             </button>
           )}
           <button

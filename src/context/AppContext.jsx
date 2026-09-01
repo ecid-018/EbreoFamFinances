@@ -135,6 +135,7 @@ export function AppProvider({ children }) {
       dispatch: dispatchWithSync,
       loading,
       syncError,
+      refetchAll,
       modal,
       openModal,
       closeModal,
@@ -147,7 +148,7 @@ export function AppProvider({ children }) {
       viewDay,
       setViewDay,
     }),
-    [state, dispatchWithSync, loading, syncError, modal, openModal, closeModal, activeTab, setActiveTab, theme, setTheme, viewMode, viewDay]
+    [state, dispatchWithSync, loading, syncError, refetchAll, modal, openModal, closeModal, activeTab, setActiveTab, theme, setTheme, viewMode, viewDay]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

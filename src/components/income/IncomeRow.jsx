@@ -4,6 +4,7 @@ import { formatByCurrency } from '../../utils/currency.js';
 import { getMonthKeyFromDateStr, getMonthName, parseMonthKey } from '../../utils/date.js';
 import { SwipeToDeleteRow } from '../shared/SwipeToDeleteRow.jsx';
 import { ConfirmDialog } from '../shared/ConfirmDialog.jsx';
+import { Avatar } from '../shared/Avatar.jsx';
 import { ChevronRightIcon } from '../shared/Icon.jsx';
 
 export function IncomeRow({ entry }) {
@@ -14,6 +15,7 @@ export function IncomeRow({ entry }) {
     day: 'numeric',
   });
   const account = state.accounts.find((a) => a.id === entry.accountId);
+  const loggedBy = state.profiles.find((p) => p.id === entry.createdBy);
   const receivedMonthKey = getMonthKeyFromDateStr(entry.date);
   const countsElsewhere = entry.budgetMonthKey !== receivedMonthKey;
 
@@ -32,6 +34,7 @@ export function IncomeRow({ entry }) {
         onTap={() => openModal('incomeForm', { mode: 'edit', entry })}
       >
         <div className="list-row">
+          <Avatar profile={loggedBy} size={28} />
           <div className="list-row__main">
             <span className="list-row__title">{entry.source}</span>
             <span className="list-row__meta">{metaParts.join(' · ')}</span>

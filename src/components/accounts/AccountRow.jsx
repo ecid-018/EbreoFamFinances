@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { formatByCurrency } from '../../utils/currency.js';
 import { SwipeToDeleteRow } from '../shared/SwipeToDeleteRow.jsx';
 import { ConfirmDialog } from '../shared/ConfirmDialog.jsx';
+import { Avatar } from '../shared/Avatar.jsx';
 import { BankIcon, WalletIcon, CashIcon, ChevronRightIcon } from '../shared/Icon.jsx';
 
 const TYPE_LABELS = { bank: 'Bank', ewallet: 'E-Wallet', cash: 'Cash' };
@@ -21,6 +22,7 @@ export function AccountRow({ account }) {
 
   const rowContent = (
     <div className="list-row">
+      <Avatar profile={ownerProfile ?? { displayName: ownerLabel }} size={28} />
       <div className="list-row__main">
         <span className="list-row__title">{account.name}</span>
         <span className="tag">

@@ -16,6 +16,7 @@
 create table profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   display_name text not null,
+  avatar_url text,
   created_at timestamptz not null default now()
 );
 
@@ -402,7 +403,26 @@ grant execute on function remove_income(uuid) to authenticated;
 grant execute on function contribute_to_goal(uuid, numeric, uuid, text) to authenticated;
 
 -- =========================================================================
--- 4. NEXT STEPS (do these in the dashboard, not SQL)
+-- 4. STORAGE: profile picture avatars
+-- =========================================================================
+-- Public bucket (a deliberate, narrow exception to "nothing for anon" —
+-- avatar photos are low-sensitivity compared to the rest of this app's data,
+-- and a stable public URL is what lets profiles.avatar_url be cached as-is).
+-- Anyone with the exact file URL can view a photo without signing in, but
+-- the URL isn't discoverable or listed anywhere. Writes stay locked down:
+-- each user may only upload/update the file under their own {uid}/ folder.
+
+insert into storage.buckets (id, name, public) values ('avatars', 'avatars', true)
+  on conflict (id) do nothing;
+
+create policy "avatar_insert_own" on storage.objects for insert to authenticated
+  with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+
+create policy "avatar_update_own" on storage.objects for update to authenticated
+  using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- =========================================================================
+-- 5. NEXT STEPS (do these in the dashboard, not SQL)
 -- =========================================================================
 -- 1. Authentication → Providers → Email → set "Minimum password length" to 6.
 -- 2. Authentication → Users → Add user → create Daddy Cid and Mommy Chelle
