@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext.jsx';
 import { formatPHP } from '../../utils/currency.js';
 import { SwipeToDeleteRow } from '../shared/SwipeToDeleteRow.jsx';
 import { ConfirmDialog } from '../shared/ConfirmDialog.jsx';
+import { PencilIcon } from '../shared/Icon.jsx';
 import { ProgressBar } from './ProgressBar.jsx';
 
 export function GoalRow({ goal }) {
@@ -18,7 +19,20 @@ export function GoalRow({ goal }) {
       >
         <div className="stack-row">
           <div className="stack-row__top">
-            <span className="stack-row__name">{goal.name}</span>
+            <div className="stack-row__name-group">
+              <span className="stack-row__name">{goal.name}</span>
+              <button
+                type="button"
+                className="stack-row__edit"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openModal('goalForm', { mode: 'edit', goal });
+                }}
+                aria-label={`Edit ${goal.name}`}
+              >
+                <PencilIcon size={15} />
+              </button>
+            </div>
             <span className="stack-row__action">+ Contribute</span>
           </div>
           <span className="stack-row__amount">

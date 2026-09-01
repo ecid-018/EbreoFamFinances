@@ -254,6 +254,46 @@ svg {
   font-weight: 600;
 }
 
+.ios-group__sort-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  color: var(--color-accent);
+  font-size: var(--caption-size);
+  font-weight: 600;
+}
+
+.sort-sheet {
+  display: flex;
+  flex-direction: column;
+}
+
+.sort-sheet__option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 14px 4px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--color-separator);
+  font-size: 16px;
+  font-weight: 500;
+  text-align: left;
+}
+
+.sort-sheet__option:last-child {
+  border-bottom: none;
+}
+
+.sort-sheet__direction {
+  font-size: var(--footnote-size);
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
 .ios-group__action {
   font-size: var(--footnote-size);
   font-weight: 600;
@@ -549,6 +589,21 @@ svg {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.stack-row__name-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.stack-row__edit {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  padding: 2px;
 }
 
 .stack-row__amount {

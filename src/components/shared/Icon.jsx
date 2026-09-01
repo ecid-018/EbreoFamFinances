@@ -192,3 +192,30 @@ export function ContactlessIcon(props) {
     </Svg>
   );
 }
+
+export function TransferIcon(props) {
+  return (
+    <Svg {...props}>
+      <path d="M4 8h13M13 4l4 4-4 4" />
+      <path d="M20 16H7M11 12l-4 4 4 4" />
+    </Svg>
+  );
+}
+
+export function PencilIcon(props) {
+  return (
+    <Svg {...props}>
+      <path d="M4 20l1-4.5L15.5 5 19 8.5 8.5 19 4 20z" />
+      <path d="M13.5 6.5 17.5 10.5" />
+    </Svg>
+  );
+}
+
+export function SortIcon(props) {
+  return (
+    <Svg {...props}>
+      <path d="M7 4v16M7 20l-3-3M7 20l3-3" />
+      <path d="M17 20V4M17 4l-3 3M17 4l3 3" />
+    </Svg>
+  );
+}

@@ -1,13 +1,19 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
 import { toISODateString } from '../utils/date.js';
-import { getSpendableAccounts } from '../utils/accounts.js';
+import { getSpendableAccounts, withCurrentAccount } from '../utils/accounts.js';
 import { BottomSheet } from './BottomSheet.jsx';
 
 export function AddExpenseModal({ mode = 'add', transaction }) {
   const { state, dispatch, closeModal } = useApp();
+  const { session } = useAuth();
   const isEdit = mode === 'edit';
-  const spendableAccounts = getSpendableAccounts(state.accounts);
+  const spendableAccounts = withCurrentAccount(
+    getSpendableAccounts(state.accounts, session?.user?.id),
+    state.accounts,
+    isEdit ? transaction.accountId : null
+  );
   const [date, setDate] = useState(isEdit ? transaction.date : toISODateString());
   const [amount, setAmount] = useState(isEdit ? String(transaction.amount) : '');
   const [note, setNote] = useState(isEdit ? transaction.note : '');

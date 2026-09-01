@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../../context/AppContext.jsx';
-import { HomeIcon, BudgetIcon, PlusIcon, IncomeIcon, ExpenseIcon, ActivityIcon, MoreIcon } from '../shared/Icon.jsx';
+import { HomeIcon, BudgetIcon, PlusIcon, IncomeIcon, ExpenseIcon, TransferIcon, ActivityIcon, MoreIcon } from '../shared/Icon.jsx';
 
 export function BottomTabBar() {
   const { activeTab, setActiveTab, openModal } = useApp();
@@ -19,6 +19,11 @@ export function BottomTabBar() {
   function openAddIncome() {
     setChooserOpen(false);
     openModal('incomeForm', { mode: 'add' });
+  }
+
+  function openTransferMoney() {
+    setChooserOpen(false);
+    openModal('transferMoney');
   }
 
   return (
@@ -55,6 +60,12 @@ export function BottomTabBar() {
                   <ExpenseIcon size={18} />
                 </span>
                 Add Expense
+              </button>
+              <button type="button" className="tabbar__bubble" onClick={openTransferMoney}>
+                <span className="tabbar__bubble-icon">
+                  <TransferIcon size={18} />
+                </span>
+                Transfer Money
               </button>
             </div>
           )}

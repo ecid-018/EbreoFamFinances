@@ -405,6 +405,22 @@ export function appReducer(state, action) {
       };
     }
 
+    case 'goal/update': {
+      const { id, name, target } = action.payload;
+      const existing = state.goals.find((g) => g.id === id);
+      if (!existing) return state;
+      return {
+        ...state,
+        goals: state.goals.map((g) => (g.id === id ? { ...g, name, target } : g)),
+        ledger: logEntry(state.ledger, {
+          domain: 'Goal',
+          type: 'Target updated',
+          name,
+          amount: target,
+        }),
+      };
+    }
+
     case 'goal/remove': {
       const { id } = action.payload;
       const existing = state.goals.find((g) => g.id === id);
@@ -450,6 +466,30 @@ export function appReducer(state, action) {
         accounts: account ? adjustAccountBalance(state.accounts, accountId, -amount) : state.accounts,
         ledger,
       };
+    }
+
+    case 'transfer/create': {
+      const { fromAccountId, toAccountId, fromAmount, toAmount, note } = action.payload;
+      const fromAccount = state.accounts.find((a) => a.id === fromAccountId);
+      const toAccount = state.accounts.find((a) => a.id === toAccountId);
+
+      let accounts = adjustAccountBalance(state.accounts, fromAccountId, -fromAmount);
+      accounts = adjustAccountBalance(accounts, toAccountId, toAmount);
+
+      let ledger = logEntry(state.ledger, {
+        domain: 'Transfer',
+        type: 'Transferred out',
+        name: note || toAccount?.name || 'Transfer',
+        amount: fromAmount,
+      });
+      ledger = logEntry(ledger, {
+        domain: 'Transfer',
+        type: 'Transferred in',
+        name: note || fromAccount?.name || 'Transfer',
+        amount: toAmount,
+      });
+
+      return { ...state, accounts, ledger };
     }
 
     case 'month/next':

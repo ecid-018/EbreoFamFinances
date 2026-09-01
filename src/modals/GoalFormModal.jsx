@@ -2,17 +2,17 @@ import { useState } from 'react';
 import { useApp } from '../context/AppContext.jsx';
 import { BottomSheet } from './BottomSheet.jsx';
 
-export function GoalFormModal() {
+export function GoalFormModal({ mode = 'add', goal }) {
   const { dispatch, closeModal } = useApp();
-  const [name, setName] = useState('');
-  const [target, setTarget] = useState('');
+  const isEdit = mode === 'edit';
+  const [name, setName] = useState(isEdit ? goal.name : '');
+  const [target, setTarget] = useState(isEdit ? String(goal.target) : '');
   const [saved, setSaved] = useState('');
   const [error, setError] = useState('');
 
   function handleSubmit(e) {
     e.preventDefault();
     const targetValue = Number(target);
-    const savedValue = saved === '' ? 0 : Number(saved);
     if (!name.trim()) {
       setError('Give this goal a name.');
       return;
@@ -21,15 +21,18 @@ export function GoalFormModal() {
       setError('Enter a target amount greater than ₱0.');
       return;
     }
-    dispatch({
-      type: 'goal/add',
-      payload: { name: name.trim(), target: targetValue, saved: savedValue },
-    });
+
+    if (isEdit) {
+      dispatch({ type: 'goal/update', payload: { id: goal.id, name: name.trim(), target: targetValue } });
+    } else {
+      const savedValue = saved === '' ? 0 : Number(saved);
+      dispatch({ type: 'goal/add', payload: { name: name.trim(), target: targetValue, saved: savedValue } });
+    }
     closeModal();
   }
 
   return (
-    <BottomSheet title="Add Savings Goal" onClose={closeModal}>
+    <BottomSheet title={isEdit ? 'Edit Savings Goal' : 'Add Savings Goal'} onClose={closeModal}>
       <form className="form" onSubmit={handleSubmit}>
         <label className="form__field">
           <span className="form__label">Name</span>
@@ -56,22 +59,24 @@ export function GoalFormModal() {
             required
           />
         </label>
-        <label className="form__field">
-          <span className="form__label">Already saved (₱)</span>
-          <input
-            type="number"
-            inputMode="decimal"
-            min="0"
-            step="1"
-            className="form__input"
-            value={saved}
-            onChange={(e) => setSaved(e.target.value)}
-            placeholder="0"
-          />
-        </label>
+        {!isEdit && (
+          <label className="form__field">
+            <span className="form__label">Already saved (₱)</span>
+            <input
+              type="number"
+              inputMode="decimal"
+              min="0"
+              step="1"
+              className="form__input"
+              value={saved}
+              onChange={(e) => setSaved(e.target.value)}
+              placeholder="0"
+            />
+          </label>
+        )}
         {error && <p className="form__error">{error}</p>}
         <button type="submit" className="btn-block">
-          Add Goal
+          {isEdit ? 'Save Changes' : 'Add Goal'}
         </button>
       </form>
     </BottomSheet>

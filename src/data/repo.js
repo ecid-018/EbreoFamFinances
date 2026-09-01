@@ -202,6 +202,15 @@ export const repo = {
     await insertLedgerEntry({ date: null, domain: 'Goal', type: 'Created', name: payload.name, amount: payload.target, userId });
   },
 
+  async updateGoal(payload, userId) {
+    await supabase
+      .from('goals')
+      .update({ name: payload.name, target: payload.target })
+      .eq('id', payload.id)
+      .then(unwrap);
+    await insertLedgerEntry({ date: null, domain: 'Goal', type: 'Target updated', name: payload.name, amount: payload.target, userId });
+  },
+
   async removeGoal(id, existing, userId) {
     await supabase.from('goals').delete().eq('id', id).then(unwrap);
     if (existing) {
@@ -321,5 +330,18 @@ export const repo = {
     const avatarUrl = `${data.publicUrl}?v=${Date.now()}`;
     await supabase.from('profiles').update({ avatar_url: avatarUrl }).eq('id', userId).then(unwrap);
     return avatarUrl;
+  },
+
+  // ---- Transfers (compound: two account balances + two ledger rows, atomic via RPC) ----
+  transferFunds(payload) {
+    return supabase
+      .rpc('transfer_funds', {
+        p_from_account_id: payload.fromAccountId,
+        p_to_account_id: payload.toAccountId,
+        p_from_amount: payload.fromAmount,
+        p_to_amount: payload.toAmount,
+        p_note: payload.note || null,
+      })
+      .then(unwrap);
   },
 };

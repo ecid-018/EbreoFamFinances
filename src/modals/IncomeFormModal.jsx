@@ -1,15 +1,24 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
 import { toISODateString, getMonthKey, parseMonthKey } from '../utils/date.js';
+import { getOwnAccounts, withCurrentAccount } from '../utils/accounts.js';
 import { BudgetMonthStepper } from '../components/shared/BudgetMonthStepper.jsx';
 import { BottomSheet } from './BottomSheet.jsx';
 
 export function IncomeFormModal({ mode = 'add', entry }) {
   const { state, dispatch, closeModal } = useApp();
+  const { session } = useAuth();
   const isEdit = mode === 'edit';
   // Income is the one flow that can target a USD account directly — everywhere
-  // else (expenses, goal funding) stays PHP-only via getSpendableAccounts.
-  const accounts = state.accounts;
+  // else (expenses, goal funding) stays PHP-only via getSpendableAccounts. Also
+  // scoped to the logged-in user's own accounts (see getOwnAccounts) to avoid
+  // confusion between the two of you both having e.g. a "Maya" account.
+  const accounts = withCurrentAccount(
+    getOwnAccounts(state.accounts, session?.user?.id),
+    state.accounts,
+    isEdit ? entry.accountId : null
+  );
   const [date, setDate] = useState(isEdit ? entry.date : toISODateString());
   const [source, setSource] = useState(isEdit ? entry.source : '');
   const [amount, setAmount] = useState(isEdit ? String(entry.amount) : '');

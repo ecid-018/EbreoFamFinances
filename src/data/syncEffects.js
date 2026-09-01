@@ -23,6 +23,7 @@ export const syncEffects = {
   },
 
   'goal/add': (payload, ctx) => repo.addGoal(payload, ctx.userId),
+  'goal/update': (payload, ctx) => repo.updateGoal(payload, ctx.userId),
   'goal/remove': (payload, ctx) => {
     const existing = ctx.prevState.goals.find((g) => g.id === payload.id);
     return repo.removeGoal(payload.id, existing, ctx.userId);
@@ -41,6 +42,8 @@ export const syncEffects = {
   'income/add': (payload) => repo.addIncome(payload),
   'income/update': (payload) => repo.updateIncome(payload),
   'income/remove': (payload) => repo.removeIncome(payload.id),
+
+  'transfer/create': (payload) => repo.transferFunds(payload),
 };
 
 // Action types that create a new row and need a client-generated UUID

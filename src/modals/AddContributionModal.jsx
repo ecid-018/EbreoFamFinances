@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
 import { toISODateString, getMonthKey } from '../utils/date.js';
 import { getSpendableAccounts } from '../utils/accounts.js';
 import { SegmentedControl } from '../components/shared/SegmentedControl.jsx';
@@ -8,7 +9,8 @@ import { BottomSheet } from './BottomSheet.jsx';
 
 export function AddContributionModal({ goalId, goalName }) {
   const { state, dispatch, closeModal } = useApp();
-  const spendableAccounts = getSpendableAccounts(state.accounts);
+  const { session } = useAuth();
+  const spendableAccounts = getSpendableAccounts(state.accounts, session?.user?.id);
   const [fundingSource, setFundingSource] = useState('account');
   const [amount, setAmount] = useState('');
   const [accountId, setAccountId] = useState(spendableAccounts[0]?.id ?? '');

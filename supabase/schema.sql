@@ -402,6 +402,42 @@ grant execute on function update_income(uuid, date, text, numeric, uuid, text) t
 grant execute on function remove_income(uuid) to authenticated;
 grant execute on function contribute_to_goal(uuid, numeric, uuid, text) to authenticated;
 
+-- Moves money between any two accounts, either owner, either currency — the
+-- one deliberate SECURITY DEFINER bypass that lets a transfer touch an
+-- account you don't own (transferring TO the other person's account is the
+-- whole point). Amounts are pre-converted client-side using whatever real
+-- exchange rate the household actually got, so this function stays
+-- currency-agnostic and just moves numbers. No overdraft check, matching
+-- every other compound action in this file (expenses can already exceed a
+-- balance today).
+create or replace function transfer_funds(
+  p_from_account_id uuid, p_to_account_id uuid,
+  p_from_amount numeric, p_to_amount numeric, p_note text
+) returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  v_from_name text;
+  v_to_name text;
+begin
+  select name into v_from_name from accounts where id = p_from_account_id;
+  select name into v_to_name from accounts where id = p_to_account_id;
+  if v_from_name is null or v_to_name is null then
+    raise exception 'Invalid account';
+  end if;
+
+  update accounts set balance = balance - p_from_amount, updated_at = now() where id = p_from_account_id;
+  update accounts set balance = balance + p_to_amount, updated_at = now() where id = p_to_account_id;
+
+  insert into ledger (date, domain, type, name, amount, created_by)
+  values (current_date, 'Transfer', 'Transferred out', coalesce(nullif(p_note, ''), v_to_name), p_from_amount, auth.uid());
+  insert into ledger (date, domain, type, name, amount, created_by)
+  values (current_date, 'Transfer', 'Transferred in', coalesce(nullif(p_note, ''), v_from_name), p_to_amount, auth.uid());
+end;
+$$;
+
+revoke all on function transfer_funds(uuid, uuid, numeric, numeric, text) from public;
+grant execute on function transfer_funds(uuid, uuid, numeric, numeric, text) to authenticated;
+
 -- =========================================================================
 -- 4. STORAGE: profile picture avatars
 -- =========================================================================
