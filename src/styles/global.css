@@ -1514,6 +1514,13 @@ svg {
   letter-spacing: 0.04em;
 }
 
+.account-card__logo {
+  height: 20px;
+  width: auto;
+  max-width: 72px;
+  object-fit: contain;
+}
+
 .account-card--add {
   align-items: center;
   justify-content: center;

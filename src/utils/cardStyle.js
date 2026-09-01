@@ -1,14 +1,23 @@
-// Card art for the Accounts tab's wallet-style view. Inspired by each
-// brand's real color palette (from photos the household provided for BPI,
-// Metrobank, Wise, Maya, BDO, and Maribank) — never their actual logos,
-// wordmarks, or card-network marks (Mastercard/Visa), which are trademarked
-// and aren't needed anyway since the account name already renders as text.
+// Card art for the Accounts tab's wallet-style view. Gradients are inspired
+// by each brand's real color palette (from photos the household provided
+// for BPI, Metrobank, Wise, Maya, BDO, and Maribank). `logo` is an actual
+// brand logo file (transparent PNG, background knocked out from a real
+// export) shown in the card's bottom zone in place of the plain type label
+// when one is available — a deliberate, later change from the original
+// "never actual logos" stance, made with the household's explicit sign-off
+// since this repo and the deployed app are both public. Brands without a
+// `logo` fall back to the plain type-label text.
+import bdoLogo from '../assets/logos/bdo.png';
+import bpiLogo from '../assets/logos/bpi.png';
+import mayaLogo from '../assets/logos/maya.png';
+
 const BRAND_STYLES = [
   {
     match: 'bpi',
     gradient: ['#2a0a0a', '#8b1a1a'],
     textColor: '#ffffff',
     accent: 'diagonal',
+    logo: bpiLogo,
   },
   {
     match: 'metrobank',
@@ -28,12 +37,14 @@ const BRAND_STYLES = [
     textColor: '#ffffff',
     accent: 'none',
     tagColor: '#00d9a3',
+    logo: mayaLogo,
   },
   {
     match: 'bdo',
     gradient: ['#f2b705', '#e8940c'],
     textColor: '#1a2b4d',
     accent: 'stripe',
+    logo: bdoLogo,
   },
   {
     match: 'gcash',
