@@ -1322,6 +1322,125 @@ svg {
   opacity: 0.5;
 }
 
+/* ---------- Wallet-style account cards ---------- */
+
+.account-deck {
+  display: flex;
+  flex-direction: column;
+}
+
+.account-card-wrap {
+  position: relative;
+}
+
+.account-card-wrap + .account-card-wrap {
+  margin-top: -86px;
+}
+
+.account-card-swipe {
+  border-radius: 18px;
+}
+
+.account-card {
+  position: relative;
+  height: 150px;
+  border-radius: 18px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  box-shadow: 0 -8px 16px -8px rgba(0, 0, 0, 0.25);
+}
+
+.account-card__accent {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.account-card__accent--diagonal {
+  background: linear-gradient(115deg, transparent 40%, rgba(255, 255, 255, 0.12) 50%, transparent 60%);
+}
+
+.account-card__accent--dots {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.35) 1.5px, transparent 1.5px);
+  background-size: 10px 10px;
+  mask-image: radial-gradient(circle at 100% 0%, black, transparent 65%);
+}
+
+.account-card__accent--stripe {
+  right: 0;
+  top: 14px;
+  bottom: 14px;
+  left: auto;
+  width: 6px;
+  background: #1a2b6b;
+  border-radius: 3px 0 0 3px;
+}
+
+.account-card__top {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.account-card__avatar {
+  margin-left: auto;
+  border: 2px solid rgba(255, 255, 255, 0.6);
+}
+
+.account-card__bottom {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.account-card__name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.account-card__name {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.account-card__tag {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.account-card__balance {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.account-card__type {
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.75;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.account-card--add {
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 2px dashed var(--color-separator-strong);
+  color: var(--color-accent);
+  font-size: 15px;
+  font-weight: 600;
+}
+
 .pin-dots {
   display: flex;
   gap: 16px;

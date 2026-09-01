@@ -170,3 +170,25 @@ export function BackspaceIcon(props) {
     </Svg>
   );
 }
+
+// Generic card-chip glyph — universal card iconography, not tied to any
+// specific bank or network.
+export function ChipIcon(props) {
+  return (
+    <Svg {...props}>
+      <rect x="3" y="5" width="10" height="8" rx="1.8" />
+      <path d="M3 9h10M7 5v8M6 7h1.6M6 11h1.6" />
+    </Svg>
+  );
+}
+
+// Generic contactless-payment wave glyph.
+export function ContactlessIcon(props) {
+  return (
+    <Svg {...props}>
+      <path d="M6 5.5C9 8 9 16 6 18.5" />
+      <path d="M9.5 3.5C13.5 7 13.5 17 9.5 20.5" />
+      <path d="M13 2C18 6.5 18 17.5 13 22" />
+    </Svg>
+  );
+}
