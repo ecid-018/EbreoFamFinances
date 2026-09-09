@@ -62,7 +62,7 @@ export function EnvelopeFormModal({ mode, envelope }) {
             type="number"
             inputMode="decimal"
             min="0"
-            step="1"
+            step="0.01"
             className="form__input"
             value={monthlyBudget}
             onChange={(e) => setMonthlyBudget(e.target.value)}

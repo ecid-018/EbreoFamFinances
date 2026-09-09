@@ -82,7 +82,7 @@ export function AddContributionModal({ goalId, goalName }) {
             type="number"
             inputMode="decimal"
             min="0"
-            step="1"
+            step="0.01"
             className="form__input"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}

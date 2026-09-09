@@ -56,17 +56,6 @@ export function NavBar() {
             {nextLabel}
             <ChevronRightIcon size={13} />
           </button>
-          {displayProfile && (
-            <button
-              type="button"
-              className="navbar__avatar-btn"
-              aria-label={`Signed in as ${displayProfile.displayName}`}
-              title={`Signed in as ${displayProfile.displayName}`}
-              onClick={() => openModal('settings')}
-            >
-              <Avatar profile={displayProfile} size={26} />
-            </button>
-          )}
           <button
             type="button"
             className="navbar__icon-btn"
@@ -79,14 +68,28 @@ export function NavBar() {
       </div>
       <div className="navbar__large-wrap">
         <h1 className="navbar__large-title">{largeTitle}</h1>
-        <SegmentedControl
-          value={viewMode}
-          onChange={setViewMode}
-          options={[
-            { value: 'month', label: 'Month' },
-            { value: 'day', label: 'Day' },
-          ]}
-        />
+        <div className="navbar__banner-row">
+          <SegmentedControl
+            value={viewMode}
+            onChange={setViewMode}
+            options={[
+              { value: 'month', label: 'Month' },
+              { value: 'day', label: 'Day' },
+            ]}
+          />
+          {displayProfile && (
+            <button
+              type="button"
+              className="navbar__profile-btn"
+              aria-label={`Signed in as ${displayProfile.displayName}`}
+              title={`Signed in as ${displayProfile.displayName}`}
+              onClick={() => openModal('settings')}
+            >
+              <Avatar profile={displayProfile} size={44} />
+              <span className="navbar__profile-name">{displayProfile.displayName}</span>
+            </button>
+          )}
+        </div>
         <p className="navbar__subtitle">{subtitle}</p>
       </div>
     </header>

@@ -51,7 +51,7 @@ export function GoalFormModal({ mode = 'add', goal }) {
             type="number"
             inputMode="decimal"
             min="0"
-            step="1"
+            step="0.01"
             className="form__input"
             value={target}
             onChange={(e) => setTarget(e.target.value)}
@@ -66,7 +66,7 @@ export function GoalFormModal({ mode = 'add', goal }) {
               type="number"
               inputMode="decimal"
               min="0"
-              step="1"
+              step="0.01"
               className="form__input"
               value={saved}
               onChange={(e) => setSaved(e.target.value)}

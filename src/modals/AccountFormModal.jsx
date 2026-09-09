@@ -100,7 +100,7 @@ export function AccountFormModal({ mode = 'add', account }) {
           <input
             type="number"
             inputMode="decimal"
-            step="1"
+            step="0.01"
             className="form__input"
             value={balance}
             onChange={(e) => setBalance(e.target.value)}
