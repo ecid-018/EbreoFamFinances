@@ -17,4 +17,10 @@ export default defineConfig({
       },
     }),
   ],
+  // Unit tests cover the pure functions in src/utils only (budget math,
+  // account filtering) — no DOM environment is needed for those.
+  test: {
+    environment: 'node',
+    include: ['src/**/*.test.js'],
+  },
 })

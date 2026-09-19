@@ -6,7 +6,7 @@ import { LockIcon, ChevronLeftIcon } from '../shared/Icon.jsx';
 import { ConfirmDialog } from '../shared/ConfirmDialog.jsx';
 
 export function LockScreen({ profile, onBack, onUnlock }) {
-  const { signIn, sendPasswordReset } = useAuth();
+  const { signIn, sendPasswordReset, MIN_PIN_LENGTH } = useAuth();
   const [filled, setFilled] = useState(0);
   const [shake, setShake] = useState(false);
   const [error, setError] = useState('');
@@ -17,11 +17,13 @@ export function LockScreen({ profile, onBack, onUnlock }) {
 
   async function handleComplete(pin) {
     setSubmitting(true);
-    const ok = await signIn(profile.email, pin);
+    const { ok, pinLength } = await signIn(profile.email, pin);
     setSubmitting(false);
 
     if (ok) {
-      onUnlock();
+      // The nudge to lengthen a short PIN is raised by the app shell, not
+      // here — this screen unmounts the instant it unlocks.
+      onUnlock({ shortPin: pinLength < MIN_PIN_LENGTH });
       return;
     }
     setShake(true);
@@ -48,10 +50,17 @@ export function LockScreen({ profile, onBack, onUnlock }) {
         <LockIcon size={32} className="lock-screen__icon" />
         <h1 className="lock-screen__title">{profile.displayName}</h1>
         <p className="lock-screen__subtitle">Enter your PIN to continue</p>
-        <PinDots length={6} filled={filled} shake={shake} />
+        <PinDots length={profile.pinLength ?? 6} filled={filled} shake={shake} />
         {error && <p className="lock-screen__error">{error}</p>}
         {resetSent && <p className="lock-screen__hint">Check {profile.email} for a reset link.</p>}
-        <PinPad key={attemptKey} length={6} onChange={setFilled} onComplete={handleComplete} disabled={submitting} />
+        <PinPad
+          key={attemptKey}
+          minLength={6}
+          expectedLength={profile.pinLength}
+          onChange={setFilled}
+          onComplete={handleComplete}
+          disabled={submitting}
+        />
         <button type="button" className="lock-screen__forgot" onClick={() => setConfirmingReset(true)}>
           Forgot PIN?
         </button>

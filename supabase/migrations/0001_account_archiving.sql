@@ -1,0 +1,12 @@
+-- 0001_account_archiving.sql
+-- Phase 0 — "Archive instead of delete" for accounts.
+--
+-- Deleting an account that any transfer references fails on the foreign key:
+-- transfers.from_account_id / to_account_id have no ON DELETE action, and that
+-- is deliberate (a transfer with a missing side would be meaningless). Rather
+-- than weaken the FK, an account with history is *archived*: hidden from the
+-- account decks and every picker, kept for history, and its balance still
+-- counts in household totals until the household zeroes it out.
+--
+-- Additive: nullable column, no default needed (NULL = active).
+alter table accounts add column archived_at timestamptz;

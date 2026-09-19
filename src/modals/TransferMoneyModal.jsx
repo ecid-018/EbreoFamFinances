@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { formatByCurrency } from '../utils/currency.js';
 import { toISODateString } from '../utils/date.js';
+import { getActiveAccounts, withCurrentAccount } from '../utils/accounts.js';
 import { BottomSheet } from './BottomSheet.jsx';
 
 // The one deliberate exception to the per-user account scoping used
@@ -16,9 +17,19 @@ import { BottomSheet } from './BottomSheet.jsx';
 export function TransferMoneyModal({ mode = 'add', transfer }) {
   const { state, dispatch, closeModal } = useApp();
   const { session } = useAuth();
-  const accounts = state.accounts;
-  const myId = session?.user?.id;
   const isEdit = mode === 'edit';
+  // Archived accounts drop out of the pickers, but an archived account that
+  // an existing transfer already points at must stay selectable while editing
+  // it — otherwise the select silently shows a different account than saved.
+  const activeAccounts = getActiveAccounts(state.accounts);
+  const accounts = isEdit
+    ? withCurrentAccount(
+        withCurrentAccount(activeAccounts, state.accounts, transfer.fromAccountId),
+        state.accounts,
+        transfer.toAccountId
+      )
+    : activeAccounts;
+  const myId = session?.user?.id;
 
   function ownerName(account) {
     if (account.ownerId === myId) return 'You';

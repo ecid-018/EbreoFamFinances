@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { useApp } from '../../context/AppContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useUsdToPhpRate } from '../../hooks/useUsdToPhpRate.js';
+import { getActiveAccounts } from '../../utils/accounts.js';
+import { formatByCurrency } from '../../utils/currency.js';
 import { AccountCard } from './AccountCard.jsx';
-import { SortIcon } from '../shared/Icon.jsx';
+import { SortIcon, ChevronRightIcon, ChevronDownIcon } from '../shared/Icon.jsx';
 import { BottomSheet } from '../../modals/BottomSheet.jsx';
 
 const SORT_OPTIONS = [
@@ -29,23 +31,28 @@ function sortAccounts(accounts, field, direction, usdToPhpRate) {
 }
 
 export function AccountsList() {
-  const { state, openModal } = useApp();
+  const { state, dispatch, openModal } = useApp();
   const { session } = useAuth();
   const [sortSheetOpen, setSortSheetOpen] = useState(false);
   const [sortField, setSortField] = useState('name');
   const [sortDirection, setSortDirection] = useState('asc');
+  const [archivedOpen, setArchivedOpen] = useState(false);
   const hasUsdAccount = state.accounts.some((a) => a.currency === 'USD');
   const { rate: usdToPhpRate } = useUsdToPhpRate(hasUsdAccount);
 
   const myId = session?.user?.id;
+  // Decks show active accounts only. Archived ones keep their balance in the
+  // household totals, so they get their own section rather than vanishing.
+  const active = getActiveAccounts(state.accounts);
+  const archived = state.accounts.filter((a) => a.archivedAt != null);
   const mine = sortAccounts(
-    state.accounts.filter((a) => a.ownerId === myId),
+    active.filter((a) => a.ownerId === myId),
     sortField,
     sortDirection,
     usdToPhpRate
   );
   const theirs = sortAccounts(
-    state.accounts.filter((a) => a.ownerId !== myId),
+    active.filter((a) => a.ownerId !== myId),
     sortField,
     sortDirection,
     usdToPhpRate
@@ -98,6 +105,50 @@ export function AccountsList() {
             {theirs.map((account, index) => (
               <AccountCard key={account.id} account={account} index={index} />
             ))}
+          </div>
+        </div>
+      )}
+
+      {archived.length > 0 && (
+        <div className="ios-group">
+          <div className="ios-card">
+            <button
+              type="button"
+              className="ios-row-wrap list-row"
+              aria-expanded={archivedOpen}
+              onClick={() => setArchivedOpen((v) => !v)}
+            >
+              <div className="list-row__main">
+                <span className="list-row__title">Archived ({archived.length})</span>
+                <span className="list-row__meta">Hidden from pickers — balances still count</span>
+              </div>
+              {archivedOpen ? (
+                <ChevronDownIcon size={16} className="list-row__chevron" />
+              ) : (
+                <ChevronRightIcon size={16} className="list-row__chevron" />
+              )}
+            </button>
+            {archivedOpen &&
+              archived.map((account) => (
+                <div key={account.id} className="ios-row-wrap list-row">
+                  <div className="list-row__main">
+                    <span className="list-row__title">{account.name}</span>
+                    <span className="list-row__meta">
+                      {formatByCurrency(account.balance, account.currency)}
+                      {account.ownerId !== myId ? ' · not yours' : ''}
+                    </span>
+                  </div>
+                  {account.ownerId === myId && (
+                    <button
+                      type="button"
+                      className="settings-photo-btn"
+                      onClick={() => dispatch({ type: 'account/unarchive', payload: { id: account.id } })}
+                    >
+                      Restore
+                    </button>
+                  )}
+                </div>
+              ))}
           </div>
         </div>
       )}

@@ -8,12 +8,21 @@
 // was genuinely confusing when either person's accounts showed up in these
 // pickers. Transfer Money is the deliberate exception (see
 // TransferMoneyModal.jsx), since crossing that boundary is its whole point.
+// Archived accounts stay in state (their balance still counts toward the
+// household totals, and historical entries still point at them) but they are
+// out of every picker and out of the account decks. `archivedAt` is absent on
+// rows created before the column existed, so test for null-ish rather than
+// requiring the property.
+export function getActiveAccounts(accounts) {
+  return accounts.filter((a) => a.archivedAt == null);
+}
+
 export function getSpendableAccounts(accounts, userId) {
-  return accounts.filter((a) => (a.currency ?? 'PHP') === 'PHP' && a.ownerId === userId);
+  return getActiveAccounts(accounts).filter((a) => (a.currency ?? 'PHP') === 'PHP' && a.ownerId === userId);
 }
 
 export function getOwnAccounts(accounts, userId) {
-  return accounts.filter((a) => a.ownerId === userId);
+  return getActiveAccounts(accounts).filter((a) => a.ownerId === userId);
 }
 
 // When editing a pre-existing transaction/income entry that's linked to an

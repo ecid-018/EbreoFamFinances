@@ -1,0 +1,165 @@
+import { describe, it, expect } from 'vitest';
+import { deriveMonthFinancials, deriveDayFinancials } from './derive.js';
+
+// A fixed "today" so daysLeft / isCurrentMonth / isPastMonth are deterministic.
+const TODAY = new Date(2026, 8, 15); // 15 Sep 2026
+const SEP = { year: 2026, monthIndex: 8 };
+const AUG = { year: 2026, monthIndex: 7 };
+const OCT = { year: 2026, monthIndex: 9 };
+
+const U1 = 'user-1';
+
+function fixture() {
+  return {
+    envelopes: [
+      { id: 'e1', name: 'Groceries', monthlyBudget: 100, group: 'Needs' },
+      { id: 'e2', name: 'Fun', monthlyBudget: 0, group: 'Wants' },
+      { id: 'e3', name: 'Savings', monthlyBudget: 50, group: 'Savings' },
+    ],
+    accounts: [
+      { id: 'a1', name: 'Bank', type: 'bank', balance: 1000, currency: 'PHP', ownerId: U1 },
+      { id: 'a2', name: 'USD Cash', type: 'cash', balance: 50, currency: 'USD', ownerId: U1 },
+    ],
+    transactions: [
+      { id: 't1', date: '2026-09-03', amount: 30, note: 'veg', categoryId: 'e1', accountId: 'a1' },
+      { id: 't2', date: '2026-09-10', amount: 5, note: 'arcade', categoryId: 'e2', accountId: 'a1' },
+      { id: 't3', date: '2026-08-20', amount: 999, note: 'last month', categoryId: 'e1', accountId: 'a1' },
+      { id: 't4', date: '2026-09-12', amount: 10, note: 'unknown', categoryId: null, accountId: 'a1' },
+      { id: 't5', date: '2026-09-14', amount: 20, note: 'to savings', categoryId: 'e3', accountId: 'a1' },
+      { id: 't6', date: '2026-07-01', amount: 1, note: 'old unknown', categoryId: null, accountId: null },
+    ],
+    income: [
+      { id: 'i1', date: '2026-09-01', source: 'Salary', amount: 500, accountId: 'a1', budgetMonthKey: '2026-09' },
+      { id: 'i2', date: '2026-08-30', source: 'Early pay', amount: 200, accountId: 'a1', budgetMonthKey: '2026-09' },
+      { id: 'i3', date: '2026-09-05', source: 'USD gift', amount: 100, accountId: 'a2', budgetMonthKey: '2026-09' },
+      { id: 'i4', date: '2026-09-06', source: 'Next month', amount: 300, accountId: 'a1', budgetMonthKey: '2026-10' },
+    ],
+    goals: [
+      { id: 'g1', name: 'Trip', target: 1000, saved: 250 },
+      { id: 'g2', name: 'Empty', target: 0, saved: 0 },
+    ],
+    month: SEP,
+  };
+}
+
+describe('deriveMonthFinancials', () => {
+  const result = deriveMonthFinancials(fixture(), { today: TODAY });
+
+  it('counts income by budgetMonthKey, PHP only, and reports excluded USD separately', () => {
+    expect(result.totalIncome).toBe(700); // i1 + i2; i3 is USD, i4 counts toward October
+    expect(result.monthUsdIncome).toBe(100);
+    expect(result.monthIncomeEntries.map((i) => i.id)).toEqual(['i1', 'i2', 'i3']);
+  });
+
+  it('sums spending for the viewed month only', () => {
+    expect(result.totalSpent).toBe(65); // t1 + t2 + t4 + t5
+  });
+
+  it('derives budget totals, unassigned and safe-to-spend', () => {
+    expect(result.totalBudget).toBe(150);
+    expect(result.unassigned).toBe(550);
+    expect(result.safeToSpend).toBe(635);
+  });
+
+  it('computes per-envelope spent/ratio/isOver and sorts tightest first', () => {
+    const byId = Object.fromEntries(result.envelopeStats.map((e) => [e.id, e]));
+    expect(byId.e1).toMatchObject({ spent: 30, ratio: 0.3, isOver: false });
+    expect(byId.e2).toMatchObject({ spent: 5, ratio: Infinity, isOver: true });
+    expect(byId.e3).toMatchObject({ spent: 20, ratio: 0.4, isOver: false });
+    expect(result.envelopeStats.map((e) => e.id)).toEqual(['e2', 'e3', 'e1']);
+    expect(result.tightestEnvelope.id).toBe('e2');
+    expect(result.overBudgetEnvelopes.map((e) => e.id)).toEqual(['e2']);
+  });
+
+  it('orders envelopeStatsByHighestSpend by spent descending', () => {
+    expect(result.envelopeStatsByHighestSpend.map((e) => e.id)).toEqual(['e1', 'e3', 'e2']);
+  });
+
+  it('groups envelopes in first-seen order of the ratio-sorted list with rollups', () => {
+    expect(result.envelopeGroups.map((g) => g.group)).toEqual(['Wants', 'Savings', 'Needs']);
+    expect(result.envelopeGroups[0]).toMatchObject({ spent: 5, budget: 0, isOver: true });
+    expect(result.envelopeGroups[2]).toMatchObject({ spent: 30, budget: 100, isOver: false });
+  });
+
+  it('lists uncategorised transactions from every month, not just the viewed one', () => {
+    expect(result.uncategorizedTransactions.map((t) => t.id)).toEqual(['t4', 't6']);
+  });
+
+  it('reports days left and month position for the current month', () => {
+    expect(result.daysLeft).toBe(16); // 30 - 15 + 1
+    expect(result.isCurrentMonth).toBe(true);
+    expect(result.isPastMonth).toBe(false);
+  });
+
+  it('treats a past month as closed and a future month as fully open', () => {
+    const past = deriveMonthFinancials({ ...fixture(), month: AUG }, { today: TODAY });
+    expect(past.daysLeft).toBe(0);
+    expect(past.isCurrentMonth).toBe(false);
+    expect(past.isPastMonth).toBe(true);
+    expect(past.totalSpent).toBe(999);
+
+    const future = deriveMonthFinancials({ ...fixture(), month: OCT }, { today: TODAY });
+    expect(future.daysLeft).toBe(31);
+    expect(future.isCurrentMonth).toBe(false);
+    expect(future.isPastMonth).toBe(false);
+    expect(future.totalIncome).toBe(300); // i4 counts toward October
+  });
+
+  it('splits account balances by currency without converting', () => {
+    expect(result.totalPhpAccountBalance).toBe(1000);
+    expect(result.totalUsdAccountBalance).toBe(50);
+  });
+
+  it('computes goals progress and guards against a zero total target', () => {
+    expect(result.goalsProgressPct).toBe(25);
+    const noTargets = deriveMonthFinancials(
+      { ...fixture(), goals: [{ id: 'g', name: 'x', target: 0, saved: 0 }] },
+      { today: TODAY }
+    );
+    expect(noTargets.goalsProgressPct).toBe(0);
+  });
+
+  it("sums this month's spending in the 'Savings' group", () => {
+    expect(result.savingsFundedThisMonth).toBe(20);
+  });
+
+  it('defaults today to the real clock when not supplied', () => {
+    const now = new Date();
+    const viewed = { year: now.getFullYear(), monthIndex: now.getMonth() };
+    const r = deriveMonthFinancials({ ...fixture(), month: viewed });
+    expect(r.isCurrentMonth).toBe(true);
+    expect(r.isPastMonth).toBe(false);
+  });
+});
+
+describe('deriveDayFinancials', () => {
+  it('collects a day of expenses with envelope and account resolved', () => {
+    const day = deriveDayFinancials(fixture(), '2026-09-03');
+    expect(day.daySpent).toBe(30);
+    expect(day.dayIncome).toBe(0);
+    expect(day.dayNet).toBe(-30);
+    expect(day.activity).toHaveLength(1);
+    expect(day.activity[0]).toMatchObject({ kind: 'expense', id: 't1', note: 'veg' });
+    expect(day.activity[0].envelope.id).toBe('e1');
+    expect(day.activity[0].account.id).toBe('a1');
+    expect(day.envelopeSpending.map((e) => e.id)).toEqual(['e1']);
+  });
+
+  it('counts PHP income on the day and keeps USD income separate', () => {
+    const payday = deriveDayFinancials(fixture(), '2026-09-01');
+    expect(payday.dayIncome).toBe(500);
+    expect(payday.dayNet).toBe(500);
+    expect(payday.activity[0]).toMatchObject({ kind: 'income', id: 'i1', note: 'Salary' });
+
+    const usdDay = deriveDayFinancials(fixture(), '2026-09-05');
+    expect(usdDay.dayIncome).toBe(0);
+    expect(usdDay.dayUsdIncome).toBe(100);
+  });
+
+  it('returns empty structures for a day with nothing logged', () => {
+    const quiet = deriveDayFinancials(fixture(), '2026-09-20');
+    expect(quiet).toMatchObject({ dayIncome: 0, daySpent: 0, dayNet: 0 });
+    expect(quiet.activity).toEqual([]);
+    expect(quiet.envelopeSpending).toEqual([]);
+  });
+});
