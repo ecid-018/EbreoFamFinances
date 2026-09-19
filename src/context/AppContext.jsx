@@ -19,6 +19,7 @@ const EMPTY_DOMAIN_STATE = {
   ledger: [],
   profiles: [],
   transfers: [],
+  planSettings: null,
   month: getCurrentMonth(),
 };
 

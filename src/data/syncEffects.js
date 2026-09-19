@@ -60,6 +60,8 @@ export const syncEffects = {
   'income/update': (payload) => repo.updateIncome(payload),
   'income/remove': (payload) => repo.removeIncome(payload.id),
 
+  'planSettings/update': (payload, ctx) => repo.updatePlanSettings(payload, ctx.userId),
+
   'transfer/add': (payload) => repo.addTransfer(payload),
   'transfer/update': (payload) => repo.updateTransfer(payload),
   'transfer/remove': (payload) => repo.removeTransfer(payload.id),
