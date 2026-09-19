@@ -992,6 +992,33 @@ svg {
   margin-bottom: 6px;
 }
 
+.plan-settings {
+  padding: 4px 16px 16px;
+}
+
+.plan-settings__group {
+  font-size: var(--caption-size);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  margin: 18px 0 8px;
+}
+
+.plan-settings__status {
+  margin: -6px 0 4px;
+  padding: 8px 10px;
+  border-radius: var(--radius-control);
+  background: var(--color-fill-track);
+  font-size: var(--footnote-size);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.plan-settings__status--ok {
+  color: var(--color-accent);
+}
+
 .goal-row__priority {
   font-size: var(--caption-size);
   font-weight: 700;

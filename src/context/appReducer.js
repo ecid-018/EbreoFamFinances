@@ -686,6 +686,9 @@ export function appReducer(state, action) {
       };
     }
 
+    case 'planSettings/update':
+      return { ...state, planSettings: { ...state.planSettings, ...action.payload } };
+
     case 'month/next':
       return { ...state, month: addMonths(state.month, 1) };
 

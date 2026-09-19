@@ -77,12 +77,62 @@ function mapTransfer(row) {
     createdBy: row.created_by,
   };
 }
+function mapPlanSettings(row) {
+  if (!row) return null;
+  const n = (v) => (v == null ? null : Number(v));
+  return {
+    payHousehold: n(row.pay_household),
+    payHub: n(row.pay_hub),
+    splitVacationReserve: n(row.split_vacation_reserve),
+    splitInsurance: n(row.split_insurance),
+    splitGoals: n(row.split_goals),
+    splitTrips: n(row.split_trips),
+    splitRetirement: n(row.split_retirement),
+    splitTrading: n(row.split_trading),
+    bankFloorTarget: n(row.bank_floor_target),
+    vacationReserveTarget: n(row.vacation_reserve_target),
+    tradingCapAnnual: n(row.trading_cap_annual),
+    tripsAnnual: n(row.trips_annual),
+    insuranceAnnual: n(row.insurance_annual),
+    windfallGoalsPct: row.windfall_goals_pct ?? null,
+    presignoffActive: row.presignoff_active ?? false,
+    presignoffVacationAmount: n(row.presignoff_vacation_amount),
+    householdAccountId: row.household_account_id ?? null,
+    hubAccountId: row.hub_account_id ?? null,
+    tradingAccountId: row.trading_account_id ?? null,
+    retirementAccountId: row.retirement_account_id ?? null,
+    vacationGoalId: row.vacation_goal_id ?? null,
+    insuranceGoalId: row.insurance_goal_id ?? null,
+    tripsGoalId: row.trips_goal_id ?? null,
+    updatedAt: row.updated_at ?? null,
+  };
+}
+
 function mapProfile(row) {
   return { id: row.id, displayName: row.display_name, avatarUrl: row.avatar_url ?? null };
 }
 
+// plan_settings is fetched tolerantly: if the table is not there yet, the
+// app must still load. Every other table has existed since the first release,
+// but this one arrives with a migration the household applies by hand, and
+// a missing table should degrade the Plan section rather than break the
+// whole app on startup.
+function fetchPlanSettings() {
+  return supabase
+    .from('plan_settings')
+    .select('*')
+    .then(({ data, error }) => {
+      if (error) {
+        console.warn('plan_settings unavailable (migration not applied yet?):', error.message);
+        return null;
+      }
+      return mapPlanSettings(data?.[0] ?? null);
+    });
+}
+
 export async function fetchAll() {
-  const [envelopes, accounts, transactions, income, goals, ledger, profiles, transfers] = await Promise.all([
+  const [envelopes, accounts, transactions, income, goals, ledger, profiles, transfers, planSettings] =
+    await Promise.all([
     supabase.from('envelopes').select('*').then(unwrap),
     supabase.from('accounts').select('*').then(unwrap),
     supabase.from('transactions').select('*').then(unwrap),
@@ -91,6 +141,7 @@ export async function fetchAll() {
     supabase.from('ledger').select('*').order('created_at', { ascending: true }).then(unwrap),
     supabase.from('profiles').select('*').then(unwrap),
     supabase.from('transfers').select('*').then(unwrap),
+    fetchPlanSettings(),
   ]);
 
   return {
@@ -102,6 +153,7 @@ export async function fetchAll() {
     ledger: ledger.map(mapLedgerEntry),
     profiles: profiles.map(mapProfile),
     transfers: transfers.map(mapTransfer),
+    planSettings,
   };
 }
 
@@ -420,6 +472,41 @@ export const repo = {
 
   removeIncome(id) {
     return supabase.rpc('remove_income', { p_id: id }).then(unwrap);
+  },
+
+  // ---- Plan settings (a single shared row; update only, never insert) ----
+  async updatePlanSettings(payload, userId) {
+    await supabase
+      .from('plan_settings')
+      .update({
+        pay_household: payload.payHousehold,
+        pay_hub: payload.payHub,
+        split_vacation_reserve: payload.splitVacationReserve,
+        split_insurance: payload.splitInsurance,
+        split_goals: payload.splitGoals,
+        split_trips: payload.splitTrips,
+        split_retirement: payload.splitRetirement,
+        split_trading: payload.splitTrading,
+        bank_floor_target: payload.bankFloorTarget,
+        vacation_reserve_target: payload.vacationReserveTarget,
+        trading_cap_annual: payload.tradingCapAnnual,
+        trips_annual: payload.tripsAnnual,
+        insurance_annual: payload.insuranceAnnual,
+        windfall_goals_pct: payload.windfallGoalsPct,
+        presignoff_active: payload.presignoffActive ?? false,
+        presignoff_vacation_amount: payload.presignoffVacationAmount,
+        household_account_id: payload.householdAccountId || null,
+        hub_account_id: payload.hubAccountId || null,
+        trading_account_id: payload.tradingAccountId || null,
+        retirement_account_id: payload.retirementAccountId || null,
+        vacation_goal_id: payload.vacationGoalId || null,
+        insurance_goal_id: payload.insuranceGoalId || null,
+        trips_goal_id: payload.tripsGoalId || null,
+        updated_by: userId,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', true)
+      .then(unwrap);
   },
 
   // ---- Profile avatar ----
