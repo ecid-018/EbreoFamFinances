@@ -1,5 +1,7 @@
-const THEME_COLOR_LIGHT = '#f2f2f7';
-const THEME_COLOR_DARK = '#000000';
+// Match --color-bg in tokens.css for each scheme, so the browser/OS chrome
+// blends with the page instead of showing the old cool grey.
+const THEME_COLOR_LIGHT = '#f7f6f3';
+const THEME_COLOR_DARK = '#191817';
 
 export function applyTheme(theme) {
   const root = document.documentElement;

@@ -180,9 +180,12 @@
   /* Cards become a grid once there is room for more than one across. The
      phone account deck keeps its scroll-driven sticky stack below 600px —
      that stack IS the phone interaction model, so it is only flattened here. */
+  /* 280px rather than 300: at 1024-1280 the main column is only ~630px wide
+     once the rail and overview column take their share, and 300px forced a
+     single stretched card per row there. 280 fits two. */
   .account-deck {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 12px;
   }
 
