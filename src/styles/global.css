@@ -328,6 +328,10 @@ svg {
   background: var(--color-card);
   border-radius: var(--radius-card);
   overflow: hidden;
+  /* Notion-style hairline: cards are defined by an edge, not only by
+     contrasting with the page behind them. Keeps them legible now that the
+     page background is a much lighter warm off-white. */
+  border: 1px solid var(--color-separator);
 }
 
 .ios-card--padded {

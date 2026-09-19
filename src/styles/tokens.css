@@ -1,21 +1,25 @@
 :root {
   color-scheme: light;
 
-  /* iOS system colors */
-  --color-bg: #f2f2f7;
+  /* Warm neutral surfaces, after the Notion finance-tracker reference: near
+     black warm text, off-white page, white cards with a hairline border. The
+     accent stays this app's orange — the brand-coloured account cards need a
+     warm family to sit in, and a fully colourless UI would leave buttons and
+     active states with no affordance. */
+  --color-bg: #f7f6f3;
   --color-card: #ffffff;
-  --color-text: #1c1c1e;
-  --color-text-secondary: #8e8e93;
-  --color-separator: #dcdce1;
-  --color-separator-strong: #c7c7cc;
+  --color-text: #2c2c2b;
+  --color-text-secondary: #5f5e59;
+  --color-separator: #e8e6e1;
+  --color-separator-strong: #d6d3cd;
   --color-accent: #e2472b;
   --color-accent-pressed: #b93a22;
-  --color-destructive: #ff3b30;
-  --color-warning: #ff9500;
-  --color-fill-track: rgba(120, 120, 128, 0.2);
+  --color-destructive: #d93a2b;
+  --color-warning: #c47f1a;
+  --color-fill-track: rgba(33, 27, 23, 0.07);
   --color-segment-selected: #ffffff;
-  --color-letterbox: #e3e3e8;
-  --color-overlay: rgba(0, 0, 0, 0.35);
+  --color-letterbox: #edebe6;
+  --color-overlay: rgba(28, 19, 1, 0.32);
 
   /* Type */
   --font-system:
@@ -27,9 +31,9 @@
   --caption-size: 11px;
 
   /* Structure */
-  --radius-card: 14px;
+  --radius-card: 10px;
   --radius-sheet: 16px;
-  --radius-control: 10px;
+  --radius-control: 8px;
   --radius-pill: 999px;
   --max-content-width: 430px;
   --navbar-bar-height: 44px;
@@ -37,8 +41,8 @@
   --row-min-height: 44px;
 
   /* Blur surfaces */
-  --blur-navbar-bg: rgba(242, 242, 247, 0.75);
-  --blur-tabbar-bg: rgba(249, 249, 249, 0.78);
+  --blur-navbar-bg: rgba(247, 246, 243, 0.82);
+  --blur-tabbar-bg: rgba(252, 251, 249, 0.84);
 
   /* Safe areas */
   --safe-top: env(safe-area-inset-top, 0px);
@@ -70,42 +74,42 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
     color-scheme: dark;
-    --color-bg: #000000;
-    --color-card: #1c1c1e;
-    --color-text: #ffffff;
-    --color-text-secondary: #8e8e93;
-    --color-separator: #38383a;
-    --color-separator-strong: #48484a;
+    --color-bg: #191817;
+    --color-card: #232220;
+    --color-text: #edecea;
+    --color-text-secondary: #a19e99;
+    --color-separator: #35332f;
+    --color-separator-strong: #45423d;
     --color-accent: #e2472b;
     --color-accent-pressed: #ff6b4f;
-    --color-destructive: #ff453a;
-    --color-warning: #ff9f0a;
-    --color-fill-track: rgba(120, 120, 128, 0.36);
-    --color-segment-selected: #636366;
-    --color-letterbox: #161618;
-    --color-overlay: rgba(0, 0, 0, 0.55);
-    --blur-navbar-bg: rgba(0, 0, 0, 0.72);
-    --blur-tabbar-bg: rgba(20, 20, 22, 0.78);
+    --color-destructive: #ff5c4d;
+    --color-warning: #e0a13a;
+    --color-fill-track: rgba(255, 250, 240, 0.1);
+    --color-segment-selected: #4a4843;
+    --color-letterbox: #141312;
+    --color-overlay: rgba(0, 0, 0, 0.6);
+    --blur-navbar-bg: rgba(25, 24, 23, 0.8);
+    --blur-tabbar-bg: rgba(30, 29, 27, 0.82);
   }
 }
 
 /* Explicit override to dark, regardless of system preference */
 :root[data-theme='dark'] {
   color-scheme: dark;
-  --color-bg: #000000;
-  --color-card: #1c1c1e;
-  --color-text: #ffffff;
-  --color-text-secondary: #8e8e93;
-  --color-separator: #38383a;
-  --color-separator-strong: #48484a;
+  --color-bg: #191817;
+  --color-card: #232220;
+  --color-text: #edecea;
+  --color-text-secondary: #a19e99;
+  --color-separator: #35332f;
+  --color-separator-strong: #45423d;
   --color-accent: #e2472b;
   --color-accent-pressed: #ff6b4f;
-  --color-destructive: #ff453a;
-  --color-warning: #ff9f0a;
-  --color-fill-track: rgba(120, 120, 128, 0.36);
-  --color-segment-selected: #636366;
-  --color-letterbox: #161618;
-  --color-overlay: rgba(0, 0, 0, 0.55);
-  --blur-navbar-bg: rgba(0, 0, 0, 0.72);
-  --blur-tabbar-bg: rgba(20, 20, 22, 0.78);
+  --color-destructive: #ff5c4d;
+  --color-warning: #e0a13a;
+  --color-fill-track: rgba(255, 250, 240, 0.1);
+  --color-segment-selected: #4a4843;
+  --color-letterbox: #141312;
+  --color-overlay: rgba(0, 0, 0, 0.6);
+  --blur-navbar-bg: rgba(25, 24, 23, 0.8);
+  --blur-tabbar-bg: rgba(30, 29, 27, 0.82);
 }
