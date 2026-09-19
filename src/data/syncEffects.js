@@ -37,6 +37,15 @@ export const syncEffects = {
     return repo.removeGoal(payload.id, existing, ctx.userId);
   },
   'goal/contribute': (payload) => repo.contributeToGoal(payload),
+  'goal/withdraw': (payload) => repo.withdrawFromGoal(payload),
+  'goal/archive': (payload, ctx) => {
+    const existing = ctx.prevState.goals.find((g) => g.id === payload.id);
+    return repo.archiveGoal(payload.id, existing, ctx.userId);
+  },
+  'goal/unarchive': (payload, ctx) => {
+    const existing = ctx.prevState.goals.find((g) => g.id === payload.id);
+    return repo.unarchiveGoal(payload.id, existing, ctx.userId);
+  },
 
   'transaction/add': (payload) => repo.addTransaction(payload),
   'transaction/update': (payload) => repo.updateTransaction(payload),

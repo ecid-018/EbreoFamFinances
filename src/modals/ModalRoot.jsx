@@ -5,6 +5,7 @@ import { IncomeFormModal } from './IncomeFormModal.jsx';
 import { AccountFormModal } from './AccountFormModal.jsx';
 import { GoalFormModal } from './GoalFormModal.jsx';
 import { AddContributionModal } from './AddContributionModal.jsx';
+import { WithdrawFromGoalModal } from './WithdrawFromGoalModal.jsx';
 import { TransferMoneyModal } from './TransferMoneyModal.jsx';
 import { CategoryPickerModal } from './CategoryPickerModal.jsx';
 import { AllocateBudgetSheet } from './AllocateBudgetSheet.jsx';
@@ -28,6 +29,8 @@ export function ModalRoot() {
       return <GoalFormModal {...modalProps} />;
     case 'addContribution':
       return <AddContributionModal {...modalProps} />;
+    case 'withdrawFromGoal':
+      return <WithdrawFromGoalModal {...modalProps} />;
     case 'transferMoney':
       return <TransferMoneyModal {...modalProps} />;
     case 'categoryPicker':

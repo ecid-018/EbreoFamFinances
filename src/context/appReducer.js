@@ -22,7 +22,25 @@ const GOAL_CONTRIBUTE_LABELS = {
   account: 'Funded from account',
   savingsEnvelope: 'Funded via Savings envelope',
   income: 'Funded via new income',
+  payday: 'Funded on payday',
 };
+
+// Mirrors withdraw_from_goal: the goal's saved total drops, but no account
+// balance moves — whatever actually spent the money already recorded that.
+function applyGoalWithdrawal(state, { id, amount, note }) {
+  const existing = state.goals.find((g) => g.id === id);
+  if (!existing || amount > existing.saved) return state;
+  return {
+    ...state,
+    goals: state.goals.map((g) => (g.id === id ? { ...g, saved: g.saved - amount } : g)),
+    ledger: logEntry(state.ledger, {
+      domain: 'Goal',
+      type: 'Withdrawn from goal',
+      name: note || existing.name,
+      amount,
+    }),
+  };
+}
 
 export function appReducer(state, action) {
   switch (action.type) {
@@ -434,8 +452,17 @@ export function appReducer(state, action) {
     }
 
     case 'goal/add': {
-      const { id, name, target, saved = 0 } = action.payload;
-      const goal = { id, name, target, saved };
+      const {
+        id, name, target, saved = 0,
+        priority = null, targetDate = null, heldInAccountId = null,
+        isSinkingFund = false, goalGroup = null,
+      } = action.payload;
+      const goal = {
+        id, name, target, saved,
+        priority, targetDate, heldInAccountId, isSinkingFund, goalGroup,
+        archivedAt: null,
+        createdAt: new Date().toISOString(),
+      };
       return {
         ...state,
         goals: [...state.goals, goal],
@@ -449,12 +476,20 @@ export function appReducer(state, action) {
     }
 
     case 'goal/update': {
-      const { id, name, target } = action.payload;
+      const {
+        id, name, target,
+        priority = null, targetDate = null, heldInAccountId = null,
+        isSinkingFund = false, goalGroup = null,
+      } = action.payload;
       const existing = state.goals.find((g) => g.id === id);
       if (!existing) return state;
       return {
         ...state,
-        goals: state.goals.map((g) => (g.id === id ? { ...g, name, target } : g)),
+        goals: state.goals.map((g) =>
+          g.id === id
+            ? { ...g, name, target, priority, targetDate, heldInAccountId, isSinkingFund, goalGroup }
+            : g
+        ),
         ledger: logEntry(state.ledger, {
           domain: 'Goal',
           type: 'Target updated',
@@ -508,6 +543,29 @@ export function appReducer(state, action) {
         goals: state.goals.map((g) => (g.id === id ? { ...g, saved: g.saved + amount } : g)),
         accounts: account ? adjustAccountBalance(state.accounts, accountId, -amount) : state.accounts,
         ledger,
+      };
+    }
+
+    case 'goal/withdraw':
+      return applyGoalWithdrawal(state, action.payload);
+
+    case 'goal/archive':
+    case 'goal/unarchive': {
+      const { id } = action.payload;
+      const existing = state.goals.find((g) => g.id === id);
+      if (!existing) return state;
+      const isArchiving = action.type === 'goal/archive';
+      return {
+        ...state,
+        goals: state.goals.map((g) =>
+          g.id === id ? { ...g, archivedAt: isArchiving ? new Date().toISOString() : null } : g
+        ),
+        ledger: logEntry(state.ledger, {
+          domain: 'Goal',
+          type: isArchiving ? 'Goal archived' : 'Goal restored',
+          name: existing.name,
+          amount: existing.saved,
+        }),
       };
     }
 

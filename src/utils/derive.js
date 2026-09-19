@@ -7,6 +7,7 @@ import { filterByMonth, getDaysLeftInMonth, isSameMonth } from './date.js';
 import { groupByOrder } from './group.js';
 import { splitIncomeByCurrency } from './accounts.js';
 import { RECEIVABLE_TYPE } from './plan/accountTypes.js';
+import { getGoalsProgressPct } from './plan/goals.js';
 
 function sumBy(items, field) {
   return items.reduce((total, item) => total + item[field], 0);
@@ -72,9 +73,8 @@ export function deriveMonthFinancials(
     accounts.filter((a) => a.type === RECEIVABLE_TYPE && (a.currency ?? 'PHP') === 'PHP'),
     'balance'
   );
-  const totalGoalsSaved = sumBy(goals, 'saved');
-  const totalGoalsTarget = sumBy(goals, 'target');
-  const goalsProgressPct = totalGoalsTarget > 0 ? (totalGoalsSaved / totalGoalsTarget) * 100 : 0;
+  // Sinking funds and archived goals are excluded — see getGoalsProgressPct.
+  const goalsProgressPct = getGoalsProgressPct(goals);
   const savingsFundedThisMonth = sumBy(
     envelopeStats.filter((env) => env.group === 'Savings'),
     'spent'
