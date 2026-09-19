@@ -45,13 +45,24 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* Tablet: widen the content column for touch devices with real screen space
-   to work with. Gated on (pointer: coarse) rather than viewport width alone
-   so a genuine tablet adapts, while a mouse-driven desktop browser resized to
-   the same width still gets the intentional narrow "phone" frame below. */
-@media (pointer: coarse) and (min-width: 600px) {
+/* Breakpoints are width-only. This used to be gated on (pointer: coarse) so
+   only real tablets widened and a mouse-driven desktop kept the narrow phone
+   frame; that was reversed deliberately when the responsive shell landed,
+   because a laptop browser is a real way this app gets used. A capability
+   query also made the layout untestable in headless browsers, which report
+   (pointer: fine) at every width. See src/styles/layout.css. */
+@media (min-width: 600px) {
   :root {
     --max-content-width: 760px;
+    --nav-rail-width: 72px;
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --max-content-width: 100%;
+    --nav-rail-width: 232px;
+    --overview-width: 320px;
   }
 }
 

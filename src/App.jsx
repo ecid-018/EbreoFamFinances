@@ -10,6 +10,9 @@ import { ConfirmDialog } from './components/shared/ConfirmDialog.jsx';
 import { LockIcon } from './components/shared/Icon.jsx';
 import { NavBar } from './components/layout/NavBar.jsx';
 import { BottomTabBar } from './components/layout/BottomTabBar.jsx';
+import { SideNav } from './components/layout/SideNav.jsx';
+import { HouseholdSnapshot } from './components/home/HouseholdSnapshot.jsx';
+import { NeedsAttentionCard } from './components/home/NeedsAttentionCard.jsx';
 import { HomeTab } from './components/tabs/HomeTab.jsx';
 import { BudgetTab } from './components/tabs/BudgetTab.jsx';
 import { TransactionsTab } from './components/tabs/TransactionsTab.jsx';
@@ -40,11 +43,24 @@ function AppShell({ shortPin, onDismissShortPin }) {
 
   return (
     <div className="page">
-      <NavBar />
-      {syncError && <p className="lock-screen__error" style={{ textAlign: 'center', padding: '8px 16px' }}>{syncError}</p>}
-      <main className="content">
-        <ActiveTabComponent />
-      </main>
+      {/* One grid for all three widths: the nav and overview columns are
+          created by layout.css at 600px and 1024px respectively. Below 600px
+          only `main` exists and BottomTabBar renders instead. */}
+      <SideNav />
+      <div className="page__main">
+        <NavBar />
+        {syncError && <p className="lock-screen__error" style={{ textAlign: 'center', padding: '8px 16px' }}>{syncError}</p>}
+        <main className="content">
+          <ActiveTabComponent />
+        </main>
+      </div>
+      {/* Overview column (>=1024px). Later phases fill this with the Plan
+          summary and "Due soon"; for now it reuses the two read-only Home
+          cards. Hidden below 1024px, where they stay inside HomeTab. */}
+      <aside className="page__overview" aria-label="Overview">
+        <HouseholdSnapshot />
+        <NeedsAttentionCard />
+      </aside>
       <BottomTabBar />
       <ModalRoot />
       {shortPin && !loading && (
