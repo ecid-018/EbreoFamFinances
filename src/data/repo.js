@@ -21,6 +21,8 @@ function mapAccount(row) {
     currency: row.currency ?? 'PHP',
     ownerId: row.owner_id,
     archivedAt: row.archived_at ?? null,
+    countsTowardFloor: row.counts_toward_floor ?? false,
+    role: row.role ?? null,
   };
 }
 function mapTransaction(row) {
@@ -180,6 +182,8 @@ export const repo = {
         type: payload.type,
         balance: payload.balance,
         currency: payload.currency ?? 'PHP',
+        counts_toward_floor: payload.countsTowardFloor ?? false,
+        role: payload.role ?? null,
         owner_id: userId,
       })
       .then(unwrap);
@@ -194,6 +198,8 @@ export const repo = {
         type: payload.type,
         balance: payload.balance,
         currency: payload.currency ?? 'PHP',
+        counts_toward_floor: payload.countsTowardFloor ?? false,
+        role: payload.role ?? null,
         updated_at: new Date().toISOString(),
       })
       .eq('id', payload.id)

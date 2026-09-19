@@ -1,3 +1,5 @@
+import { NON_SPENDABLE_TYPES } from './plan/accountTypes.js';
+
 // Expenses and goal contributions stay PHP-only — USD accounts are excluded
 // from those pickers so envelope-budget math never silently blends in a
 // dollar amount. (Income is the one exception: it can target a USD account
@@ -18,7 +20,15 @@ export function getActiveAccounts(accounts) {
 }
 
 export function getSpendableAccounts(accounts, userId) {
-  return getActiveAccounts(accounts).filter((a) => (a.currency ?? 'PHP') === 'PHP' && a.ownerId === userId);
+  return getActiveAccounts(accounts).filter(
+    (a) =>
+      (a.currency ?? 'PHP') === 'PHP' &&
+      a.ownerId === userId &&
+      // A co-op balance can only be spent through the co-op, and a receivable
+      // is owed to the household rather than held by it — neither can pay for
+      // groceries, so they stay out of expense and goal-funding pickers.
+      !NON_SPENDABLE_TYPES.includes(a.type)
+  );
 }
 
 export function getOwnAccounts(accounts, userId) {

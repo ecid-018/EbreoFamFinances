@@ -6,6 +6,7 @@
 import { filterByMonth, getDaysLeftInMonth, isSameMonth } from './date.js';
 import { groupByOrder } from './group.js';
 import { splitIncomeByCurrency } from './accounts.js';
+import { RECEIVABLE_TYPE } from './plan/accountTypes.js';
 
 function sumBy(items, field) {
   return items.reduce((total, item) => total + item[field], 0);
@@ -55,12 +56,20 @@ export function deriveMonthFinancials(
   const tightestEnvelope = envelopeStats[0] ?? null;
   const overBudgetEnvelopes = envelopeStats.filter((env) => env.isOver);
 
+  // A receivable is money owed TO the household, not money it holds, so it is
+  // excluded from the balance totals and reported on its own. Archived
+  // accounts still count — hiding a card must not make its money disappear.
+  const heldAccounts = accounts.filter((a) => a.type !== RECEIVABLE_TYPE);
   const totalPhpAccountBalance = sumBy(
-    accounts.filter((a) => (a.currency ?? 'PHP') === 'PHP'),
+    heldAccounts.filter((a) => (a.currency ?? 'PHP') === 'PHP'),
     'balance'
   );
   const totalUsdAccountBalance = sumBy(
-    accounts.filter((a) => a.currency === 'USD'),
+    heldAccounts.filter((a) => a.currency === 'USD'),
+    'balance'
+  );
+  const totalReceivable = sumBy(
+    accounts.filter((a) => a.type === RECEIVABLE_TYPE && (a.currency ?? 'PHP') === 'PHP'),
     'balance'
   );
   const totalGoalsSaved = sumBy(goals, 'saved');
@@ -90,6 +99,7 @@ export function deriveMonthFinancials(
     monthUsdIncome,
     totalPhpAccountBalance,
     totalUsdAccountBalance,
+    totalReceivable,
     goalsProgressPct,
     savingsFundedThisMonth,
   };

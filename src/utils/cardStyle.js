@@ -99,6 +99,22 @@ const CASH_STYLE = {
   accent: 'none',
 };
 
+// A co-op share account: real money, but held somewhere institutional rather
+// than spendable day to day. Deep teal keeps it distinct from the banks.
+const COOPERATIVE_STYLE = {
+  gradient: ['#134e4a', '#1f7a6f'],
+  textColor: '#ffffff',
+  accent: 'none',
+};
+
+// Money lent out. Deliberately the flattest card in the deck — it is a claim,
+// not cash in hand, and it is excluded from Total Balance.
+const RECEIVABLE_STYLE = {
+  gradient: ['#4a4843', '#6b6862'],
+  textColor: '#ffffff',
+  accent: 'none',
+};
+
 const GENERIC_BANK_STYLE = {
   gradient: ['#3a3a3c', '#5a5a5e'],
   textColor: '#ffffff',
@@ -114,9 +130,15 @@ const GENERIC_EWALLET_STYLE = {
 export function getCardStyle(account) {
   if (account.type === 'cash') return CASH_STYLE;
 
+  // Brand art is checked BEFORE the type fallbacks: PAFCPIC re-tagged as a
+  // cooperative must keep its own logo and colours rather than turn into a
+  // generic teal card. Type art is only for accounts with no brand of their own.
   const lowerName = account.name.toLowerCase();
   const brand = BRAND_STYLES.find(({ match }) => lowerName.includes(match));
   if (brand) return brand;
+
+  if (account.type === 'cooperative') return COOPERATIVE_STYLE;
+  if (account.type === 'receivable') return RECEIVABLE_STYLE;
 
   return account.type === 'ewallet' ? GENERIC_EWALLET_STYLE : GENERIC_BANK_STYLE;
 }

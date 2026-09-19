@@ -992,6 +992,28 @@ svg {
   margin-bottom: 6px;
 }
 
+.form__checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: var(--body-size);
+  line-height: 1.35;
+}
+
+.form__checkbox input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  flex-shrink: 0;
+  accent-color: var(--color-accent);
+}
+
+.form__checkbox-hint {
+  display: block;
+  font-size: var(--footnote-size);
+  color: var(--color-text-secondary);
+}
+
 .form__logo-preview {
   display: flex;
   align-items: center;

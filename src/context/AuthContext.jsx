@@ -45,11 +45,14 @@ export function AuthProvider({ children }) {
     if (userId) {
       // profiles is readable by any signed-in member (RLS: select using true),
       // so this is the first moment the app can learn the real display name.
+      // maybeSingle, not single: a user with no profiles row is a legitimate
+      // state (the fallback below shows their email), but single() treats
+      // zero rows as an error and logs a 406 in the console.
       const { data: profileRow } = await supabase
         .from('profiles')
         .select('display_name')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
       if (profileRow?.display_name) displayName = profileRow.display_name;
     }
     saveDeviceProfile({ email, displayName: displayName ?? email, userId, pinLength: pin.length });
