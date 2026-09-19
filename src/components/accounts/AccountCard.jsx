@@ -25,6 +25,13 @@ export function AccountCard({ account, index }) {
   const [brandfetchFailed, setBrandfetchFailed] = useState(false);
 
   const isOwner = account.ownerId === session?.user?.id;
+  // transfers.from_account_id / to_account_id are NOT NULL with no ON DELETE
+  // action, so deleting an account any transfer references fails outright.
+  // Anything with history is archived instead: hidden, but kept and reversible.
+  const hasHistory =
+    state.transactions.some((t) => t.accountId === account.id) ||
+    state.income.some((i) => i.accountId === account.id) ||
+    state.transfers.some((t) => t.fromAccountId === account.id || t.toAccountId === account.id);
   const ownerProfile = state.profiles.find((p) => p.id === account.ownerId);
   const style = getCardStyle(account);
   const brandfetchUrl = style.logo ? null : getBrandfetchUrlForAccountName(account.name);
@@ -119,12 +126,20 @@ export function AccountCard({ account, index }) {
       </SwipeToDeleteRow>
       {confirmOpen && (
         <ConfirmDialog
-          title={`Delete "${account.name}"?`}
-          message="Any transactions or income tagged to it will be untagged, not deleted."
+          title={hasHistory ? `Archive "${account.name}"?` : `Delete "${account.name}"?`}
+          message={
+            hasHistory
+              ? 'It has transactions, income or transfers, so it is kept for history. It leaves your accounts and every picker, and you can restore it any time.'
+              : 'Any transactions or income tagged to it will be untagged, not deleted.'
+          }
+          confirmLabel={hasHistory ? 'Archive' : 'Delete'}
           onCancel={() => setConfirmOpen(false)}
           onConfirm={() => {
             setConfirmOpen(false);
-            dispatch({ type: 'account/remove', payload: { id: account.id } });
+            dispatch({
+              type: hasHistory ? 'account/archive' : 'account/remove',
+              payload: { id: account.id },
+            });
           }}
         />
       )}

@@ -1694,6 +1694,60 @@ svg {
   font-weight: 600;
 }
 
+/* ---------- Profile picker: per-device profiles ---------- */
+
+.profile-picker__slot {
+  position: relative;
+  display: flex;
+}
+
+.profile-picker__tile:disabled {
+  opacity: 0.6;
+}
+
+.profile-picker__tile--add .profile-picker__avatar--add {
+  background: var(--color-fill-track);
+  color: var(--color-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-picker__remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-pill);
+  border: none;
+  background: var(--color-destructive);
+  color: #fff;
+  font-size: 16px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.add-profile {
+  width: 100%;
+  max-width: 320px;
+  margin-top: 8px;
+  text-align: left;
+}
+
+/* The confirm key replaces the pad's blank cell when the PIN length is not
+   known in advance (any newly set 8-12 digit PIN). */
+.pin-pad__key--confirm {
+  color: var(--color-accent);
+}
+
+.pin-pad__key--confirm:disabled {
+  color: var(--color-text-secondary);
+  opacity: 0.4;
+}
+
 @media (min-width: 480px) {
   .page {
     background: var(--color-letterbox);

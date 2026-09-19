@@ -20,6 +20,7 @@ function mapAccount(row) {
     balance: Number(row.balance),
     currency: row.currency ?? 'PHP',
     ownerId: row.owner_id,
+    archivedAt: row.archived_at ?? null,
   };
 }
 function mapTransaction(row) {
@@ -204,6 +205,32 @@ export const repo = {
     await supabase.from('accounts').delete().eq('id', id).then(unwrap);
     if (existing) {
       await insertLedgerEntry({ date: null, domain: 'Account', type: 'Account removed', name: existing.name, amount: existing.balance, userId });
+    }
+  },
+
+  // Archiving is the fallback when an account can't be deleted: transfers
+  // reference it with a NOT NULL foreign key and no ON DELETE action, so a
+  // delete would fail outright. Plain CRUD — no balance math, so no RPC.
+  async archiveAccount(id, existing, userId) {
+    const now = new Date().toISOString();
+    await supabase
+      .from('accounts')
+      .update({ archived_at: now, updated_at: now })
+      .eq('id', id)
+      .then(unwrap);
+    if (existing) {
+      await insertLedgerEntry({ date: null, domain: 'Account', type: 'Account archived', name: existing.name, amount: existing.balance, userId });
+    }
+  },
+
+  async unarchiveAccount(id, existing, userId) {
+    await supabase
+      .from('accounts')
+      .update({ archived_at: null, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .then(unwrap);
+    if (existing) {
+      await insertLedgerEntry({ date: null, domain: 'Account', type: 'Account restored', name: existing.name, amount: existing.balance, userId });
     }
   },
 

@@ -1,3 +1,18 @@
+-- =========================================================================
+-- 0000_baseline.sql — BASELINE FOR A FRESH PROJECT ONLY
+-- =========================================================================
+-- Verbatim snapshot of supabase/schema.sql immediately BEFORE migration
+-- 0001 (i.e. the schema production had at commit e1cafba). Use it to stand
+-- up a brand-new Supabase project such as staging, then apply 0001+ in order.
+--
+-- DO NOT RUN THIS AGAINST PRODUCTION. Production already has this schema,
+-- applied by hand over time (its physical column order differs, which is
+-- harmless). Running it there fails on the first `create table`.
+--
+-- Every change after this point is an NNNN_description.sql file with a
+-- matching NNNN_description.rollback.sql — see README.md in this folder.
+-- =========================================================================
+
 -- Ebreo Family Finances — Supabase schema, security policies, and atomic
 -- compound-action functions.
 --
@@ -38,11 +53,7 @@ create table accounts (
   currency text not null default 'PHP' check (currency in ('PHP','USD')),
   owner_id uuid not null references auth.users(id),
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  -- Set instead of deleting when an account has transfers/transactions/income
-  -- referencing it (transfers' FKs have no ON DELETE action, deliberately).
-  -- NULL = active. See supabase/migrations/0001_account_archiving.sql.
-  archived_at timestamptz
+  updated_at timestamptz not null default now()
 );
 
 create table transactions (
@@ -563,9 +574,7 @@ create policy "avatar_delete_own" on storage.objects for delete to authenticated
 -- =========================================================================
 -- 5. NEXT STEPS (do these in the dashboard, not SQL)
 -- =========================================================================
--- 1. Authentication → Providers → Email → set "Minimum password length" to 8.
---    (The app asks for 8-12 digits for any NEW pin; existing 6-digit pins keep
---    working until changed, so only raise this once both members have changed.)
+-- 1. Authentication → Providers → Email → set "Minimum password length" to 6.
 -- 2. Authentication → Users → Add user → create Daddy Cid and Mommy Chelle
 --    with their real emails and their PIN as the password.
 -- 3. Run this once per user (in SQL Editor), filling in the real UUID from

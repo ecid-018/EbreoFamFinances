@@ -21,6 +21,14 @@ export const syncEffects = {
     const existing = ctx.prevState.accounts.find((a) => a.id === payload.id);
     return repo.removeAccount(payload.id, existing, ctx.userId);
   },
+  'account/archive': (payload, ctx) => {
+    const existing = ctx.prevState.accounts.find((a) => a.id === payload.id);
+    return repo.archiveAccount(payload.id, existing, ctx.userId);
+  },
+  'account/unarchive': (payload, ctx) => {
+    const existing = ctx.prevState.accounts.find((a) => a.id === payload.id);
+    return repo.unarchiveAccount(payload.id, existing, ctx.userId);
+  },
 
   'goal/add': (payload, ctx) => repo.addGoal(payload, ctx.userId),
   'goal/update': (payload, ctx) => repo.updateGoal(payload, ctx.userId),

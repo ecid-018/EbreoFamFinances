@@ -340,7 +340,7 @@ export function appReducer(state, action) {
 
     case 'account/add': {
       const { id, name, type, balance, currency, ownerId } = action.payload;
-      const account = { id, name, type, balance, currency: currency ?? 'PHP', ownerId };
+      const account = { id, name, type, balance, currency: currency ?? 'PHP', ownerId, archivedAt: null };
       return {
         ...state,
         accounts: [...state.accounts, account],
@@ -365,6 +365,29 @@ export function appReducer(state, action) {
           type: 'Balance updated',
           name,
           amount: balance,
+        }),
+      };
+    }
+
+    // Archive/unarchive only flip a flag: the balance stays in the household
+    // totals and every historical entry keeps pointing at the account. The
+    // pickers and the account decks filter on it (see utils/accounts.js).
+    case 'account/archive':
+    case 'account/unarchive': {
+      const { id } = action.payload;
+      const existing = state.accounts.find((a) => a.id === id);
+      if (!existing) return state;
+      const isArchiving = action.type === 'account/archive';
+      return {
+        ...state,
+        accounts: state.accounts.map((a) =>
+          a.id === id ? { ...a, archivedAt: isArchiving ? new Date().toISOString() : null } : a
+        ),
+        ledger: logEntry(state.ledger, {
+          domain: 'Account',
+          type: isArchiving ? 'Account archived' : 'Account restored',
+          name: existing.name,
+          amount: existing.balance,
         }),
       };
     }

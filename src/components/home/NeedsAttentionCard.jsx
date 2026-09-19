@@ -36,7 +36,7 @@ export function NeedsAttentionCard() {
           <button
             type="button"
             className="ios-row-wrap alert-row"
-            onClick={() => setActiveTab('activity')}
+            onClick={() => setActiveTab('transactions')}
           >
             <WarningIcon size={20} className="alert-row__icon" />
             <div className="list-row__main">

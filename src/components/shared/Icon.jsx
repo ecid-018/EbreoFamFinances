@@ -162,6 +162,14 @@ export function LockIcon(props) {
   );
 }
 
+export function CheckIcon(props) {
+  return (
+    <Svg {...props}>
+      <polyline points="20 6 9 17 4 12" />
+    </Svg>
+  );
+}
+
 export function BackspaceIcon(props) {
   return (
     <Svg {...props}>

@@ -7,13 +7,13 @@ import { BottomSheet } from './BottomSheet.jsx';
 
 const STEP_COPY = {
   current: { title: 'Enter Current PIN', subtitle: 'Confirm it’s you before changing your PIN.' },
-  new: { title: 'Enter New PIN', subtitle: 'Choose a new 6-digit PIN.' },
-  confirm: { title: 'Confirm New PIN', subtitle: 'Enter your new PIN again.' },
+  new: { title: 'Enter New PIN', subtitle: 'Choose a new PIN of 8-12 digits, then press ✓.' },
+  confirm: { title: 'Confirm New PIN', subtitle: 'Enter your new PIN again, then press ✓.' },
 };
 
 export function ChangePinModal() {
   const { closeModal } = useApp();
-  const { currentProfile, signIn, changePassword } = useAuth();
+  const { currentProfile, signIn, changePassword, MIN_PIN_LENGTH } = useAuth();
   const [step, setStep] = useState('current');
   const [draftPin, setDraftPin] = useState('');
   const [filled, setFilled] = useState(0);
@@ -34,7 +34,7 @@ export function ChangePinModal() {
     setError('');
     if (step === 'current') {
       setSubmitting(true);
-      const ok = await signIn(currentProfile.email, pin);
+      const { ok } = await signIn(currentProfile.email, pin);
       setSubmitting(false);
       if (!ok) {
         fail('Incorrect PIN');
@@ -45,12 +45,20 @@ export function ChangePinModal() {
       return;
     }
     if (step === 'new') {
+      if (pin.length < MIN_PIN_LENGTH) {
+        fail(`Use at least ${MIN_PIN_LENGTH} digits`);
+        return;
+      }
       setDraftPin(pin);
       setStep('confirm');
       setFilled(0);
       return;
     }
     if (step === 'confirm') {
+      if (pin.length < MIN_PIN_LENGTH) {
+        fail(`Use at least ${MIN_PIN_LENGTH} digits`);
+        return;
+      }
       if (pin !== draftPin) {
         fail('PINs did not match — try again');
         setDraftPin('');
@@ -74,11 +82,13 @@ export function ChangePinModal() {
     <BottomSheet title={copy.title} onClose={closeModal}>
       <div className="pin-change">
         <p className="pin-change__subtitle">{copy.subtitle}</p>
-        <PinDots length={6} filled={filled} shake={shake} />
+        <PinDots length={step === 'current' ? currentProfile?.pinLength ?? 6 : MIN_PIN_LENGTH} filled={filled} shake={shake} />
         {error && <p className="form__error pin-change__error">{error}</p>}
         <PinPad
           key={`${step}-${attemptKey}`}
-          length={6}
+          minLength={step === 'current' ? 6 : MIN_PIN_LENGTH}
+          maxLength={12}
+          expectedLength={step === 'current' ? currentProfile?.pinLength : undefined}
           onChange={setFilled}
           onComplete={handleComplete}
           disabled={submitting}
