@@ -17,8 +17,13 @@ export function HomeTab() {
         <DayActivityList />
       ) : (
         <>
-          <HouseholdSnapshot />
-          <NeedsAttentionCard />
+          {/* These two also fill the overview column at >=1024px (see
+              App.jsx). layout.css hides this copy at that width so they are
+              not rendered twice. */}
+          <div className="home__overview-cards">
+            <HouseholdSnapshot />
+            <NeedsAttentionCard />
+          </div>
           <SpendingByEnvelopeChart />
         </>
       )}

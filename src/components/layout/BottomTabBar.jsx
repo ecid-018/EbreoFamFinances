@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import { useApp } from '../../context/AppContext.jsx';
-import { HomeIcon, BudgetIcon, PlusIcon, IncomeIcon, ExpenseIcon, TransferIcon, ActivityIcon, MoreIcon } from '../shared/Icon.jsx';
+import { PlusIcon } from '../shared/Icon.jsx';
+import { NAV_ITEMS, ADD_ACTIONS } from './navItems.js';
 
+// Phone-only navigation (hidden from 600px up, where SideNav takes over).
+// Items come from navItems.js so this and SideNav can never disagree.
 export function BottomTabBar() {
   const { activeTab, setActiveTab, openModal } = useApp();
   const [chooserOpen, setChooserOpen] = useState(false);
@@ -11,62 +14,43 @@ export function BottomTabBar() {
     setActiveTab(tab);
   }
 
-  function openAddExpense() {
+  function openAdd(action) {
     setChooserOpen(false);
-    openModal('addExpense');
+    openModal(action.modal, action.props);
   }
 
-  function openAddIncome() {
-    setChooserOpen(false);
-    openModal('incomeForm', { mode: 'add' });
-  }
+  const [first, second, ...rest] = NAV_ITEMS;
 
-  function openTransferMoney() {
-    setChooserOpen(false);
-    openModal('transferMoney');
+  function renderTab({ key, label, Icon }) {
+    return (
+      <button
+        key={key}
+        type="button"
+        className={`tabbar__item ${activeTab === key ? 'tabbar__item--active' : ''}`.trim()}
+        onClick={() => goToTab(key)}
+      >
+        <Icon size={22} />
+        {label}
+      </button>
+    );
   }
 
   return (
     <nav className="tabbar" aria-label="Primary">
       {chooserOpen && <div className="tabbar__scrim" onClick={() => setChooserOpen(false)} />}
       <div className="tabbar__inner">
-        <button
-          type="button"
-          className={`tabbar__item ${activeTab === 'home' ? 'tabbar__item--active' : ''}`.trim()}
-          onClick={() => goToTab('home')}
-        >
-          <HomeIcon size={22} />
-          Home
-        </button>
-        <button
-          type="button"
-          className={`tabbar__item ${activeTab === 'budget' ? 'tabbar__item--active' : ''}`.trim()}
-          onClick={() => goToTab('budget')}
-        >
-          <BudgetIcon size={22} />
-          Budget
-        </button>
+        {[first, second].map(renderTab)}
         <div className="tabbar__add-wrap">
           {chooserOpen && (
             <div className="tabbar__bubbles">
-              <button type="button" className="tabbar__bubble" onClick={openAddIncome}>
-                <span className="tabbar__bubble-icon">
-                  <IncomeIcon size={18} />
-                </span>
-                Add Income
-              </button>
-              <button type="button" className="tabbar__bubble" onClick={openAddExpense}>
-                <span className="tabbar__bubble-icon">
-                  <ExpenseIcon size={18} />
-                </span>
-                Add Expense
-              </button>
-              <button type="button" className="tabbar__bubble" onClick={openTransferMoney}>
-                <span className="tabbar__bubble-icon">
-                  <TransferIcon size={18} />
-                </span>
-                Transfer Money
-              </button>
+              {ADD_ACTIONS.map((action) => (
+                <button key={action.key} type="button" className="tabbar__bubble" onClick={() => openAdd(action)}>
+                  <span className="tabbar__bubble-icon">
+                    <action.Icon size={18} />
+                  </span>
+                  {action.label}
+                </button>
+              ))}
             </div>
           )}
           <button
@@ -80,22 +64,7 @@ export function BottomTabBar() {
             Add
           </button>
         </div>
-        <button
-          type="button"
-          className={`tabbar__item ${activeTab === 'transactions' ? 'tabbar__item--active' : ''}`.trim()}
-          onClick={() => goToTab('transactions')}
-        >
-          <ActivityIcon size={22} />
-          Transactions
-        </button>
-        <button
-          type="button"
-          className={`tabbar__item ${activeTab === 'accounts' ? 'tabbar__item--active' : ''}`.trim()}
-          onClick={() => goToTab('accounts')}
-        >
-          <MoreIcon size={22} />
-          Accounts
-        </button>
+        {rest.map(renderTab)}
       </div>
     </nav>
   );

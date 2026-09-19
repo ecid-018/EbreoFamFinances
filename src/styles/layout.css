@@ -1,0 +1,286 @@
+/* ==========================================================================
+   Responsive shell — phone / tablet / desktop
+   ==========================================================================
+   Breakpoints are WIDTH-ONLY and live only in this file. global.css stays the
+   phone stylesheet; everything here is additive on top of it, so the < 600px
+   rendering is byte-for-byte what it was before this file existed.
+
+     < 600px    phone    BottomTabBar, one column (the original layout)
+     600-1023   tablet   icon rail, wider content column, card grids
+     >= 1024    desktop  labelled sidebar + main + overview column
+
+   The tablet breakpoint used to be gated on (pointer: coarse) so a desktop
+   browser kept the narrow phone frame; that was reversed deliberately — see
+   the note in tokens.css.
+   ========================================================================== */
+
+/* SideNav does not exist on phones; BottomTabBar does. */
+.sidenav,
+.page__overview {
+  display: none;
+}
+
+/* ==========================  >= 600px: tablet  ========================== */
+@media (min-width: 600px) {
+  .page {
+    display: grid;
+    grid-template-columns: var(--nav-rail-width) minmax(0, 1fr);
+    align-items: start;
+  }
+
+  /* The phone nav and its letterbox framing are replaced by the rail. */
+  .tabbar {
+    display: none;
+  }
+
+  .page__main {
+    min-width: 0;
+  }
+
+  .content {
+    padding-bottom: 32px;
+  }
+
+  .sidenav {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    padding: calc(var(--safe-top) + 12px) 8px calc(var(--safe-bottom) + 12px);
+    background: var(--color-card);
+    border-right: 1px solid var(--color-separator);
+  }
+
+  .sidenav__brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px;
+    margin-bottom: 4px;
+  }
+
+  /* Labels are hidden on the rail and revealed in the full sidebar. */
+  .sidenav__label,
+  .sidenav__brand-name {
+    display: none;
+  }
+
+  .sidenav__list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 100%;
+  }
+
+  .sidenav__item,
+  .sidenav__add,
+  .sidenav__profile {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    width: 100%;
+    min-height: 44px;
+    padding: 10px;
+    background: none;
+    border: none;
+    border-radius: var(--radius-control);
+    color: var(--color-text-secondary);
+    font-size: var(--footnote-size);
+    font-weight: 600;
+  }
+
+  .sidenav__item--active {
+    background: var(--color-fill-track);
+    color: var(--color-accent);
+  }
+
+  .sidenav__item:hover,
+  .sidenav__add:hover,
+  .sidenav__profile:hover {
+    background: var(--color-fill-track);
+  }
+
+  .sidenav__item:active,
+  .sidenav__add:active,
+  .sidenav__profile:active {
+    opacity: 0.6;
+  }
+
+  .sidenav__add-wrap {
+    position: relative;
+    width: 100%;
+  }
+
+  .sidenav__add-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    border-radius: var(--radius-pill);
+    background: var(--color-accent);
+  }
+
+  .sidenav__scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+  }
+
+  .sidenav__add-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 41;
+    min-width: 200px;
+    margin-top: 6px;
+    padding: 6px;
+    background: var(--color-card);
+    border: 1px solid var(--color-separator);
+    border-radius: var(--radius-card);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+  }
+
+  .sidenav__add-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 44px;
+    padding: 8px 10px;
+    background: none;
+    border: none;
+    border-radius: var(--radius-control);
+    color: var(--color-text);
+    font-size: var(--body-size);
+    font-weight: 500;
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  .sidenav__add-item:hover {
+    background: var(--color-fill-track);
+  }
+
+  .sidenav__profile {
+    margin-top: auto;
+  }
+
+  .sidenav__profile-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Cards become a grid once there is room for more than one across. The
+     phone account deck keeps its scroll-driven sticky stack below 600px —
+     that stack IS the phone interaction model, so it is only flattened here. */
+  .account-deck {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 12px;
+  }
+
+  .account-card-wrap {
+    position: static;
+    top: auto !important;
+  }
+
+  .account-card-add-wrap {
+    margin-top: 0;
+  }
+}
+
+/* =========================  >= 768px: dialogs  ========================= */
+/* Bottom sheets become centred dialogs. Every modal inherits this from
+   BottomSheet.jsx, which also disables drag-to-dismiss at this width. */
+@media (min-width: 768px) {
+  .sheet-overlay {
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .sheet-panel {
+    max-width: 520px;
+    max-height: min(80vh, 720px);
+    margin: 0 auto;
+    border-radius: var(--radius-card);
+    transform: translateY(12px);
+  }
+
+  .sheet-panel--open {
+    transform: translateY(0);
+  }
+
+  .sheet-drag-affordance {
+    display: none;
+  }
+}
+
+/* ==========================  >= 1024px: desktop  ======================== */
+@media (min-width: 1024px) {
+  .page {
+    grid-template-columns: var(--nav-rail-width) minmax(0, 1fr) var(--overview-width);
+  }
+
+  .sidenav {
+    align-items: stretch;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .sidenav__label,
+  .sidenav__brand-name {
+    display: inline;
+  }
+
+  .sidenav__brand-name {
+    font-size: var(--title-size);
+    font-weight: 700;
+  }
+
+  .sidenav__item,
+  .sidenav__add,
+  .sidenav__profile {
+    justify-content: flex-start;
+    font-size: var(--body-size);
+  }
+
+  .page__overview {
+    display: block;
+    position: sticky;
+    top: 0;
+    max-height: 100vh;
+    overflow-y: auto;
+    padding: calc(var(--safe-top) + 16px) 0 24px;
+  }
+
+  /* The overview column owns these two cards at this width, so the copies
+     inside HomeTab are hidden rather than rendered twice. */
+  .home__overview-cards {
+    display: none;
+  }
+
+  .page__overview .ios-group {
+    margin-left: 0;
+    margin-right: 16px;
+  }
+
+  .content {
+    max-width: 860px;
+    margin-left: 0;
+    padding-left: 8px;
+  }
+
+  .navbar__bar,
+  .navbar__large-wrap {
+    max-width: 860px;
+    margin-left: 0;
+  }
+}
