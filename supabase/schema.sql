@@ -79,6 +79,14 @@ create table goals (
   name text not null,
   target numeric(12,2) not null,
   saved numeric(12,2) not null default 0,
+  -- Plan fields (0003). All nullable/defaulted: a goal created before these
+  -- existed behaves exactly as it always did.
+  priority integer,                -- lower sorts first; null sorts last
+  target_date date,
+  held_in_account_id uuid references accounts(id) on delete set null,
+  is_sinking_fund boolean not null default false,
+  goal_group text,                 -- rollup label for one fund split across accounts
+  archived_at timestamptz,
   created_by uuid references auth.users(id),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -399,6 +407,7 @@ begin
     when 'account' then 'Funded from account'
     when 'savingsEnvelope' then 'Funded via Savings envelope'
     when 'income' then 'Funded via new income'
+    when 'payday' then 'Funded on payday'
     else 'Funded'
   end;
 
@@ -414,6 +423,33 @@ begin
 end;
 $$;
 
+-- Spending a sinking fund: `saved` goes down, but no account balance moves —
+-- the expense or transfer that actually spent the money already did that.
+create or replace function withdraw_from_goal(
+  p_goal_id uuid, p_amount numeric, p_note text
+) returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  v_goal_name text;
+  v_saved numeric;
+begin
+  select name, saved into v_goal_name, v_saved from goals where id = p_goal_id;
+  if not found then raise exception 'Goal not found'; end if;
+  if p_amount is null or p_amount <= 0 then
+    raise exception 'Withdrawal must be greater than zero';
+  end if;
+  if p_amount > v_saved then
+    raise exception 'Cannot withdraw % from %: only % is saved', p_amount, v_goal_name, v_saved;
+  end if;
+
+  update goals set saved = saved - p_amount, updated_at = now() where id = p_goal_id;
+
+  insert into ledger (date, domain, type, name, amount, created_by)
+  values (current_date, 'Goal', 'Withdrawn from goal',
+          coalesce(nullif(p_note, ''), v_goal_name), p_amount, auth.uid());
+end;
+$$;
+
 -- Lock down + explicitly grant execute only to signed-in users (Postgres
 -- makes new functions PUBLIC-executable by default — tighten that here).
 revoke all on function add_transaction(uuid, date, numeric, text, uuid, uuid) from public;
@@ -423,6 +459,7 @@ revoke all on function add_income(uuid, date, text, numeric, uuid, text) from pu
 revoke all on function update_income(uuid, date, text, numeric, uuid, text) from public;
 revoke all on function remove_income(uuid) from public;
 revoke all on function contribute_to_goal(uuid, numeric, uuid, text) from public;
+revoke all on function withdraw_from_goal(uuid, numeric, text) from public;
 
 grant execute on function add_transaction(uuid, date, numeric, text, uuid, uuid) to authenticated;
 grant execute on function update_transaction(uuid, date, numeric, text, uuid, uuid) to authenticated;
@@ -431,6 +468,7 @@ grant execute on function add_income(uuid, date, text, numeric, uuid, text) to a
 grant execute on function update_income(uuid, date, text, numeric, uuid, text) to authenticated;
 grant execute on function remove_income(uuid) to authenticated;
 grant execute on function contribute_to_goal(uuid, numeric, uuid, text) to authenticated;
+grant execute on function withdraw_from_goal(uuid, numeric, text) to authenticated;
 
 -- Moves money between any two accounts, either owner, either currency — the
 -- one deliberate SECURITY DEFINER bypass that lets a transfer touch an

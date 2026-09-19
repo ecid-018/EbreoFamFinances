@@ -48,7 +48,19 @@ function mapIncome(row) {
   };
 }
 function mapGoal(row) {
-  return { id: row.id, name: row.name, target: Number(row.target), saved: Number(row.saved) };
+  return {
+    id: row.id,
+    name: row.name,
+    target: Number(row.target),
+    saved: Number(row.saved),
+    priority: row.priority ?? null,
+    targetDate: row.target_date ?? null,
+    heldInAccountId: row.held_in_account_id ?? null,
+    isSinkingFund: row.is_sinking_fund ?? false,
+    goalGroup: row.goal_group ?? null,
+    archivedAt: row.archived_at ?? null,
+    createdAt: row.created_at ?? null,
+  };
 }
 function mapLedgerEntry(row) {
   return { id: row.id, date: row.date, domain: row.domain, type: row.type, name: row.name, amount: Number(row.amount) };
@@ -244,7 +256,18 @@ export const repo = {
   async addGoal(payload, userId) {
     await supabase
       .from('goals')
-      .insert({ id: payload.id, name: payload.name, target: payload.target, saved: payload.saved ?? 0, created_by: userId })
+      .insert({
+        id: payload.id,
+        name: payload.name,
+        target: payload.target,
+        saved: payload.saved ?? 0,
+        priority: payload.priority ?? null,
+        target_date: payload.targetDate || null,
+        held_in_account_id: payload.heldInAccountId || null,
+        is_sinking_fund: payload.isSinkingFund ?? false,
+        goal_group: payload.goalGroup || null,
+        created_by: userId,
+      })
       .then(unwrap);
     await insertLedgerEntry({ date: null, domain: 'Goal', type: 'Created', name: payload.name, amount: payload.target, userId });
   },
@@ -252,7 +275,16 @@ export const repo = {
   async updateGoal(payload, userId) {
     await supabase
       .from('goals')
-      .update({ name: payload.name, target: payload.target })
+      .update({
+        name: payload.name,
+        target: payload.target,
+        priority: payload.priority ?? null,
+        target_date: payload.targetDate || null,
+        held_in_account_id: payload.heldInAccountId || null,
+        is_sinking_fund: payload.isSinkingFund ?? false,
+        goal_group: payload.goalGroup || null,
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', payload.id)
       .then(unwrap);
     await insertLedgerEntry({ date: null, domain: 'Goal', type: 'Target updated', name: payload.name, amount: payload.target, userId });
@@ -262,6 +294,40 @@ export const repo = {
     await supabase.from('goals').delete().eq('id', id).then(unwrap);
     if (existing) {
       await insertLedgerEntry({ date: null, domain: 'Goal', type: 'Removed', name: existing.name, amount: existing.saved, userId });
+    }
+  },
+
+  // Spending a sinking fund. Deliberately does NOT move an account balance:
+  // the expense or transfer that spent the money already did.
+  withdrawFromGoal(payload) {
+    return supabase
+      .rpc('withdraw_from_goal', {
+        p_goal_id: payload.id,
+        p_amount: payload.amount,
+        p_note: payload.note || null,
+      })
+      .then(unwrap);
+  },
+
+  async archiveGoal(id, existing, userId) {
+    await supabase
+      .from('goals')
+      .update({ archived_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .then(unwrap);
+    if (existing) {
+      await insertLedgerEntry({ date: null, domain: 'Goal', type: 'Goal archived', name: existing.name, amount: existing.saved, userId });
+    }
+  },
+
+  async unarchiveGoal(id, existing, userId) {
+    await supabase
+      .from('goals')
+      .update({ archived_at: null, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .then(unwrap);
+    if (existing) {
+      await insertLedgerEntry({ date: null, domain: 'Goal', type: 'Goal restored', name: existing.name, amount: existing.saved, userId });
     }
   },
 

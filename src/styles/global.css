@@ -992,6 +992,20 @@ svg {
   margin-bottom: 6px;
 }
 
+.goal-row__priority {
+  font-size: var(--caption-size);
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  background: var(--color-fill-track);
+  border-radius: var(--radius-pill);
+  padding: 1px 7px;
+}
+
+.goal-row__meta {
+  font-size: var(--footnote-size);
+  color: var(--color-text-secondary);
+}
+
 .form__checkbox {
   display: flex;
   align-items: flex-start;
