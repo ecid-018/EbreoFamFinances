@@ -26,3 +26,11 @@ dev-dist
 .vercel
 .env*
 !.env.example
+
+# Private household documents. This repository is public: real financial
+# plans, statements and exports must never be committed. Kept as patterns
+# rather than single filenames so a v10 is covered too.
+*.pdf
+*Financial_Plan*
+ebreo-snapshot-*.json
+Icons_and_logo.zip
