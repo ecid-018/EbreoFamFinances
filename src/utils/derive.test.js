@@ -108,6 +108,36 @@ describe('deriveMonthFinancials', () => {
   it('splits account balances by currency without converting', () => {
     expect(result.totalPhpAccountBalance).toBe(1000);
     expect(result.totalUsdAccountBalance).toBe(50);
+    expect(result.totalReceivable).toBe(0);
+  });
+
+  it('keeps receivables out of the balance totals and reports them separately', () => {
+    const withLoan = deriveMonthFinancials(
+      {
+        ...fixture(),
+        accounts: [
+          { id: 'a1', name: 'Bank', type: 'bank', balance: 1000, currency: 'PHP', ownerId: U1 },
+          { id: 'a3', name: 'Lend', type: 'receivable', balance: 400, currency: 'PHP', ownerId: U1 },
+        ],
+      },
+      { today: TODAY }
+    );
+    // The loan is real money, but it is owed to the household rather than
+    // held by it — counting it as cash on hand would overstate what can be spent.
+    expect(withLoan.totalPhpAccountBalance).toBe(1000);
+    expect(withLoan.totalReceivable).toBe(400);
+  });
+
+  it('still counts a cooperative balance as held money', () => {
+    const withCoop = deriveMonthFinancials(
+      {
+        ...fixture(),
+        accounts: [{ id: 'a4', name: 'Co-op', type: 'cooperative', balance: 250, currency: 'PHP', ownerId: U1 }],
+      },
+      { today: TODAY }
+    );
+    expect(withCoop.totalPhpAccountBalance).toBe(250);
+    expect(withCoop.totalReceivable).toBe(0);
   });
 
   it('computes goals progress and guards against a zero total target', () => {

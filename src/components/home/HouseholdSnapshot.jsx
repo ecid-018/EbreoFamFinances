@@ -3,8 +3,13 @@ import { useUsdToPhpRate } from '../../hooks/useUsdToPhpRate.js';
 import { formatPHP, formatUSD } from '../../utils/currency.js';
 
 export function HouseholdSnapshot() {
-  const { totalPhpAccountBalance, totalUsdAccountBalance, goalsProgressPct, savingsFundedThisMonth } =
-    useDerivedFinancials();
+  const {
+    totalPhpAccountBalance,
+    totalUsdAccountBalance,
+    totalReceivable,
+    goalsProgressPct,
+    savingsFundedThisMonth,
+  } = useDerivedFinancials();
   const { rate } = useUsdToPhpRate(totalUsdAccountBalance > 0);
 
   const hasUsd = totalUsdAccountBalance > 0;
@@ -32,8 +37,13 @@ export function HouseholdSnapshot() {
           <div className="stats__value">{Math.round(goalsProgressPct)}%</div>
         </div>
         <div className="stats__col">
-          <div className="stats__label">Funded to Savings</div>
-          <div className="stats__value">{formatPHP(savingsFundedThisMonth)}</div>
+          <div className="stats__label">{totalReceivable > 0 ? 'Owed to Us' : 'Funded to Savings'}</div>
+          <div className="stats__value">
+            {formatPHP(totalReceivable > 0 ? totalReceivable : savingsFundedThisMonth)}
+          </div>
+          {totalReceivable > 0 && (
+            <div className="stats__caption">not counted in Total Balance</div>
+          )}
         </div>
       </div>
     </div>

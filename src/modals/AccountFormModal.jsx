@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext.jsx';
 import { SegmentedControl } from '../components/shared/SegmentedControl.jsx';
+import { ACCOUNT_TYPES, ACCOUNT_ROLES, canCountTowardFloor } from '../utils/plan/accountTypes.js';
 import { getCardStyle } from '../utils/cardStyle.js';
 import { getBrandfetchUrlForAccountName } from '../utils/brandfetch.js';
 import { BottomSheet } from './BottomSheet.jsx';
@@ -12,8 +13,19 @@ export function AccountFormModal({ mode = 'add', account }) {
   const [type, setType] = useState(isEdit ? account.type : 'bank');
   const [currency, setCurrency] = useState(isEdit ? account.currency ?? 'PHP' : 'PHP');
   const [balance, setBalance] = useState(isEdit ? String(account.balance) : '');
+  const [role, setRole] = useState(isEdit ? account.role ?? '' : '');
+  const [countsTowardFloor, setCountsTowardFloor] = useState(isEdit ? account.countsTowardFloor ?? false : false);
   const [error, setError] = useState('');
   const [previewFailed, setPreviewFailed] = useState(false);
+
+  const floorEligible = canCountTowardFloor(type);
+
+  function handleTypeChange(nextType) {
+    setType(nextType);
+    // The flag is meaningless on anything but a bank account, so drop it
+    // rather than leave an invisible true behind on e.g. a cash account.
+    if (!canCountTowardFloor(nextType)) setCountsTowardFloor(false);
+  }
 
   // Live preview of which logo (if any) this account name will resolve to —
   // same lookup chain AccountCard.jsx uses: hand-picked local asset first,
@@ -36,10 +48,28 @@ export function AccountFormModal({ mode = 'add', account }) {
     if (isEdit) {
       dispatch({
         type: 'account/update',
-        payload: { id: account.id, name: name.trim(), type, balance: balanceValue, currency },
+        payload: {
+          id: account.id,
+          name: name.trim(),
+          type,
+          balance: balanceValue,
+          currency,
+          role: role || null,
+          countsTowardFloor: floorEligible && countsTowardFloor,
+        },
       });
     } else {
-      dispatch({ type: 'account/add', payload: { name: name.trim(), type, balance: balanceValue, currency } });
+      dispatch({
+        type: 'account/add',
+        payload: {
+          name: name.trim(),
+          type,
+          balance: balanceValue,
+          currency,
+          role: role || null,
+          countsTowardFloor: floorEligible && countsTowardFloor,
+        },
+      });
     }
     closeModal();
   }
@@ -72,18 +102,50 @@ export function AccountFormModal({ mode = 'add', account }) {
             </div>
           )}
         </label>
-        <div className="form__field">
+        <label className="form__field">
           <span className="form__label">Type</span>
-          <SegmentedControl
-            value={type}
-            onChange={setType}
-            options={[
-              { value: 'bank', label: 'Bank' },
-              { value: 'ewallet', label: 'E-wallet' },
-              { value: 'cash', label: 'Cash' },
-            ]}
-          />
-        </div>
+          <select className="form__input" value={type} onChange={(e) => handleTypeChange(e.target.value)}>
+            {ACCOUNT_TYPES.map((t) => (
+              <option key={t.value} value={t.value}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+          {type === 'receivable' && (
+            <p className="form__label" style={{ marginTop: 6 }}>
+              Money owed to you. Kept out of Total Balance and shown as &ldquo;Owed to Us&rdquo;.
+            </p>
+          )}
+          {type === 'cooperative' && (
+            <p className="form__label" style={{ marginTop: 6 }}>
+              Counts toward Total Balance, but stays out of expense pickers.
+            </p>
+          )}
+        </label>
+        <label className="form__field">
+          <span className="form__label">Role (optional)</span>
+          <select className="form__input" value={role} onChange={(e) => setRole(e.target.value)}>
+            <option value="">No role</option>
+            {ACCOUNT_ROLES.map((r) => (
+              <option key={r.value} value={r.value}>
+                {r.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        {floorEligible && (
+          <label className="form__field form__checkbox">
+            <input
+              type="checkbox"
+              checked={countsTowardFloor}
+              onChange={(e) => setCountsTowardFloor(e.target.checked)}
+            />
+            <span>
+              Counts toward the bank floor
+              <span className="form__checkbox-hint">The balance you aim to keep untouched.</span>
+            </span>
+          </label>
+        )}
         <div className="form__field">
           <span className="form__label">Currency</span>
           <SegmentedControl

@@ -16,6 +16,8 @@ const accounts = [
   { id: 'php-theirs', name: 'Their Bank', type: 'bank', balance: 1, currency: 'PHP', ownerId: THEM, archivedAt: null },
   { id: 'archived-mine', name: 'Old Wallet', type: 'ewallet', balance: 1, currency: 'PHP', ownerId: ME, archivedAt: '2026-09-01T00:00:00Z' },
   { id: 'legacy-no-flag', name: 'Legacy', type: 'bank', balance: 1, currency: 'PHP', ownerId: ME },
+  { id: 'coop-mine', name: 'Co-op', type: 'cooperative', balance: 1, currency: 'PHP', ownerId: ME, archivedAt: null },
+  { id: 'owed-mine', name: 'Lend', type: 'receivable', balance: 1, currency: 'PHP', ownerId: ME, archivedAt: null },
 ];
 
 describe('getActiveAccounts', () => {
@@ -25,6 +27,8 @@ describe('getActiveAccounts', () => {
       'usd-mine',
       'php-theirs',
       'legacy-no-flag',
+      'coop-mine',
+      'owed-mine',
     ]);
   });
 });
@@ -33,11 +37,25 @@ describe('getSpendableAccounts', () => {
   it('keeps only my active PHP accounts', () => {
     expect(getSpendableAccounts(accounts, ME).map((a) => a.id)).toEqual(['php-mine', 'legacy-no-flag']);
   });
+
+  it('excludes cooperative and receivable — neither can pay for groceries', () => {
+    const ids = getSpendableAccounts(accounts, ME).map((a) => a.id);
+    expect(ids).not.toContain('coop-mine');
+    expect(ids).not.toContain('owed-mine');
+  });
 });
 
 describe('getOwnAccounts', () => {
-  it('keeps my active accounts in any currency', () => {
-    expect(getOwnAccounts(accounts, ME).map((a) => a.id)).toEqual(['php-mine', 'usd-mine', 'legacy-no-flag']);
+  it('keeps my active accounts in any currency, including co-op and receivable', () => {
+    // getOwnAccounts feeds the income picker and transfers, where money CAN
+    // legitimately land in a co-op or be lent out.
+    expect(getOwnAccounts(accounts, ME).map((a) => a.id)).toEqual([
+      'php-mine',
+      'usd-mine',
+      'legacy-no-flag',
+      'coop-mine',
+      'owed-mine',
+    ]);
   });
 });
 

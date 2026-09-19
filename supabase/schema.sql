@@ -33,7 +33,7 @@ create table envelopes (
 create table accounts (
   id uuid primary key default gen_random_uuid(),
   name text not null,
-  type text not null check (type in ('bank','ewallet','cash')),
+  type text not null check (type in ('bank','ewallet','cash','cooperative','receivable')),
   balance numeric(12,2) not null default 0,
   currency text not null default 'PHP' check (currency in ('PHP','USD')),
   owner_id uuid not null references auth.users(id),
@@ -42,7 +42,12 @@ create table accounts (
   -- Set instead of deleting when an account has transfers/transactions/income
   -- referencing it (transfers' FKs have no ON DELETE action, deliberately).
   -- NULL = active. See supabase/migrations/0001_account_archiving.sql.
-  archived_at timestamptz
+  archived_at timestamptz,
+  -- Which accounts make up the household's bank floor. Defaults false so the
+  -- floor counts only what is explicitly tagged.
+  counts_toward_floor boolean not null default false,
+  -- Labelling used by the Plan phases. Nullable.
+  role text check (role in ('household','daily','floor','hub','goals','trading','spare'))
 );
 
 create table transactions (

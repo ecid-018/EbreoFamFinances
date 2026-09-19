@@ -10,7 +10,13 @@ import { ConfirmDialog } from '../shared/ConfirmDialog.jsx';
 import { Avatar } from '../shared/Avatar.jsx';
 import { ChipIcon, ContactlessIcon } from '../shared/Icon.jsx';
 
-const TYPE_LABELS = { bank: 'Bank', ewallet: 'E-Wallet', cash: 'Cash' };
+const TYPE_LABELS = {
+  bank: 'Bank',
+  ewallet: 'E-Wallet',
+  cash: 'Cash',
+  cooperative: 'Cooperative',
+  receivable: 'Owed to Us',
+};
 const PEEK_HEIGHT = 64;
 
 // Cards stack via position: sticky (not a static negative-margin overlap) so
