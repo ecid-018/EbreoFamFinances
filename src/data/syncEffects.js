@@ -10,6 +10,10 @@ export const syncEffects = {
     const existing = ctx.prevState.envelopes.find((env) => env.id === payload.id);
     return repo.updateEnvelope(payload, existing, ctx.userId);
   },
+  'envelope/setMonthBudget': (payload, ctx) => {
+    const envelope = ctx.prevState.envelopes.find((env) => env.id === payload.envelopeId);
+    return repo.setEnvelopeMonthBudget({ ...payload, name: envelope?.name ?? 'Envelope' }, ctx.userId);
+  },
   'envelope/remove': (payload, ctx) => {
     const existing = ctx.prevState.envelopes.find((env) => env.id === payload.id);
     return repo.removeEnvelope(payload.id, existing, ctx.userId);
@@ -72,6 +76,12 @@ export const syncEffects = {
 // the optimistic local row and the database row share the same id.
 export const ACTIONS_NEEDING_ID = new Set([
   'envelope/add',
+  // Only for the optimistic row the reducer appends. The id is deliberately
+  // NOT sent to the database: the upsert conflicts on (envelope_id,
+  // month_key), so Postgres owns the primary key and an existing row keeps
+  // its own. The temporary id is replaced by the next refetch, and nothing
+  // resolves budgets by id anyway.
+  'envelope/setMonthBudget',
   'transaction/add',
   'income/add',
   'account/add',

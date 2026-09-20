@@ -1206,6 +1206,15 @@ svg {
   font-weight: 500;
 }
 
+/* Shown when this month has no budget row of its own and the figure is
+   carried from an earlier month. Deliberately quiet: it is context, not a
+   warning — nothing is wrong with an inherited budget. */
+.slider-row__inherited {
+  font-size: var(--caption-size);
+  font-weight: 400;
+  color: var(--color-text-secondary);
+}
+
 .slider-row__value {
   font-size: var(--body-size);
   font-weight: 600;

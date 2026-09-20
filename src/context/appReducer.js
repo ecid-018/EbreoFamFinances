@@ -85,6 +85,31 @@ export function appReducer(state, action) {
       };
     }
 
+    case 'envelope/setMonthBudget': {
+      const { envelopeId, monthKey, amount } = action.payload;
+      const existing = state.envelopeBudgets.find(
+        (b) => b.envelopeId === envelopeId && b.monthKey === monthKey
+      );
+      const envelope = state.envelopes.find((env) => env.id === envelopeId);
+      return {
+        ...state,
+        // Mirrors the upsert: replace the row for this envelope+month if there
+        // is one, otherwise append. envelopes[].monthlyBudget is left alone —
+        // it is the base figure, not this month's.
+        envelopeBudgets: existing
+          ? state.envelopeBudgets.map((b) =>
+              b.envelopeId === envelopeId && b.monthKey === monthKey ? { ...b, amount } : b
+            )
+          : [...state.envelopeBudgets, { id: action.payload.id, envelopeId, monthKey, amount }],
+        ledger: logEntry(state.ledger, {
+          domain: 'Envelope',
+          type: 'Budget set for month',
+          name: `${envelope?.name ?? 'Envelope'} (${monthKey})`,
+          amount,
+        }),
+      };
+    }
+
     case 'envelope/remove': {
       const { id } = action.payload;
       const existing = state.envelopes.find((env) => env.id === id);

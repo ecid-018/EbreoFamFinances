@@ -3,13 +3,14 @@ import { useApp } from '../context/AppContext.jsx';
 import { deriveMonthFinancials } from '../utils/derive.js';
 
 // Thin wrapper: all the math lives in src/utils/derive.js so it can be
-// unit-tested without React. Dependency list is unchanged.
+// unit-tested without React. envelopeBudgets joins the inputs so every
+// consumer sees the budget for the month being viewed, not a single global one.
 export function useDerivedFinancials() {
   const { state } = useApp();
-  const { envelopes, transactions, income, accounts, goals, month } = state;
+  const { envelopes, transactions, income, accounts, goals, month, envelopeBudgets } = state;
 
   return useMemo(
-    () => deriveMonthFinancials({ envelopes, transactions, income, accounts, goals, month }),
-    [envelopes, transactions, income, accounts, goals, month]
+    () => deriveMonthFinancials({ envelopes, transactions, income, accounts, goals, month, envelopeBudgets }),
+    [envelopes, transactions, income, accounts, goals, month, envelopeBudgets]
   );
 }

@@ -12,6 +12,14 @@ function unwrap({ data, error }) {
 function mapEnvelope(row) {
   return { id: row.id, name: row.name, monthlyBudget: Number(row.monthly_budget), group: row.group_name };
 }
+function mapEnvelopeBudget(row) {
+  return {
+    id: row.id,
+    envelopeId: row.envelope_id,
+    monthKey: row.month_key,
+    amount: Number(row.amount),
+  };
+}
 function mapAccount(row) {
   return {
     id: row.id,
@@ -130,8 +138,26 @@ function fetchPlanSettings() {
     });
 }
 
+// Month-scoped budgets (0005). Tolerated as missing for the same reason
+// fetchPlanSettings is: a deploy can land before the migration is applied.
+// With no rows every envelope resolves to its base figure, which is exactly
+// how the app behaved before this phase — so a missing table is degraded, not
+// broken.
+function fetchEnvelopeBudgets() {
+  return supabase
+    .from('envelope_budgets')
+    .select('*')
+    .then(({ data, error }) => {
+      if (error) {
+        console.warn('envelope_budgets unavailable (migration not applied yet?):', error.message);
+        return [];
+      }
+      return (data ?? []).map(mapEnvelopeBudget);
+    });
+}
+
 export async function fetchAll() {
-  const [envelopes, accounts, transactions, income, goals, ledger, profiles, transfers, planSettings] =
+  const [envelopes, accounts, transactions, income, goals, ledger, profiles, transfers, planSettings, envelopeBudgets] =
     await Promise.all([
     supabase.from('envelopes').select('*').then(unwrap),
     supabase.from('accounts').select('*').then(unwrap),
@@ -142,6 +168,7 @@ export async function fetchAll() {
     supabase.from('profiles').select('*').then(unwrap),
     supabase.from('transfers').select('*').then(unwrap),
     fetchPlanSettings(),
+    fetchEnvelopeBudgets(),
   ]);
 
   return {
@@ -154,6 +181,7 @@ export async function fetchAll() {
     profiles: profiles.map(mapProfile),
     transfers: transfers.map(mapTransfer),
     planSettings,
+    envelopeBudgets,
   };
 }
 
@@ -220,6 +248,39 @@ export const repo = {
         userId,
       });
     }
+  },
+
+  // Sets one envelope's budget for one month. Upserts on (envelope_id,
+  // month_key) so editing the same month twice replaces the row rather than
+  // accumulating duplicates — the unique constraint makes that atomic.
+  //
+  // envelopes.monthly_budget is deliberately NOT touched: it stays the base
+  // that months without a row of their own resolve to.
+  async setEnvelopeMonthBudget(payload, userId) {
+    await supabase
+      .from('envelope_budgets')
+      .upsert(
+        {
+          envelope_id: payload.envelopeId,
+          month_key: payload.monthKey,
+          amount: payload.amount,
+          created_by: userId,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'envelope_id,month_key' }
+      )
+      .then(unwrap);
+
+    await insertLedgerEntry({
+      date: null,
+      domain: 'Envelope',
+      type: 'Budget set for month',
+      // The month belongs in the entry: without it the log cannot tell a
+      // September change from an October one.
+      name: `${payload.name} (${payload.monthKey})`,
+      amount: payload.amount,
+      userId,
+    });
   },
 
   async removeEnvelope(id, existing, userId) {
