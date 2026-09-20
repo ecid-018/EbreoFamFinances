@@ -770,10 +770,11 @@ create policy "avatar_delete_own" on storage.objects for delete to authenticated
 --      insert into profiles (id, display_name) values ('<uuid>', 'Daddy Cid');
 --      insert into profiles (id, display_name) values ('<uuid>', 'Mommy Chelle');
 
--- apply_payday must now balance EVERY source account, not just the hub. A
--- payday that takes more out of an account than arrived in it is rejected
--- before anything is written, exactly as before — there are simply several
--- accounts to check instead of one.
+-- apply_payday balances EVERY source account, not just the hub. A payday that
+-- takes more out of an account than arrived in it is rejected before anything
+-- is written. The check is one aggregation over the payload: 0008 used a temp
+-- table cleared with an unqualified DELETE, which Supabase refuses outright,
+-- so no payday could run at all until 0009.
 create or replace function apply_payday(p_payday jsonb)
 returns void
 language plpgsql security definer set search_path = public as $$
@@ -785,39 +786,43 @@ declare
   v_total numeric := 0;
   v_item jsonb;
   v_new_id uuid;
-  v_bad record;
+  v_bad_account uuid;
+  v_bad_out numeric;
+  v_bad_in numeric;
 begin
   if v_payday_id is null then raise exception 'payday id is required'; end if;
 
   perform 1 from paydays where id = v_payday_id;
   if found then return; end if;
 
-  -- Validate before writing anything, so a rejected payday leaves no trace.
-  create temp table if not exists _payday_flow (account_id uuid, inflow numeric, outflow numeric) on commit drop;
-  delete from _payday_flow;
+  select coalesce(sum((i ->> 'amount')::numeric), 0) into v_total
+  from jsonb_array_elements(coalesce(p_payday -> 'incomes', '[]'::jsonb)) i;
 
-  for v_item in select * from jsonb_array_elements(coalesce(p_payday -> 'incomes', '[]'::jsonb)) loop
-    v_total := v_total + (v_item ->> 'amount')::numeric;
-    insert into _payday_flow values ((v_item ->> 'account_id')::uuid, (v_item ->> 'amount')::numeric, 0);
-  end loop;
+  -- Every source account must cover what the payday takes out of it. Runs
+  -- before anything is written, so a rejected payday leaves no partial trace.
+  -- A goal allocation keeps the money where it is but is still spoken for, so
+  -- it counts against the account funding it.
+  select f.account_id, sum(f.outflow), sum(f.inflow)
+    into v_bad_account, v_bad_out, v_bad_in
+  from (
+    select (i ->> 'account_id')::uuid as account_id,
+           (i ->> 'amount')::numeric as inflow, 0::numeric as outflow
+    from jsonb_array_elements(coalesce(p_payday -> 'incomes', '[]'::jsonb)) i
+    union all
+    select (t ->> 'from_account_id')::uuid, 0::numeric, (t ->> 'amount')::numeric
+    from jsonb_array_elements(coalesce(p_payday -> 'transfers', '[]'::jsonb)) t
+    union all
+    select (g ->> 'source_account_id')::uuid, 0::numeric, (g ->> 'amount')::numeric
+    from jsonb_array_elements(coalesce(p_payday -> 'goal_allocations', '[]'::jsonb)) g
+  ) f
+  where f.account_id is not null
+  group by f.account_id
+  having sum(f.outflow) > sum(f.inflow)
+  limit 1;
 
-  for v_item in select * from jsonb_array_elements(coalesce(p_payday -> 'transfers', '[]'::jsonb)) loop
-    insert into _payday_flow values ((v_item ->> 'from_account_id')::uuid, 0, (v_item ->> 'amount')::numeric);
-  end loop;
-
-  -- A goal allocation keeps the money where it is, but it is still spoken for:
-  -- it must be counted against the account it is funded from.
-  for v_item in select * from jsonb_array_elements(coalesce(p_payday -> 'goal_allocations', '[]'::jsonb)) loop
-    insert into _payday_flow values ((v_item ->> 'source_account_id')::uuid, 0, (v_item ->> 'amount')::numeric);
-  end loop;
-
-  select account_id, sum(inflow) as inflow, sum(outflow) as outflow into v_bad
-  from _payday_flow where account_id is not null
-  group by account_id having sum(outflow) > sum(inflow) limit 1;
-
-  if v_bad.account_id is not null then
-    raise exception 'Payday allocates % out of account % but only % arrived there',
-      v_bad.outflow, (select name from accounts where id = v_bad.account_id), v_bad.inflow;
+  if v_bad_account is not null then
+    raise exception 'Payday takes % out of % but only % arrived there',
+      v_bad_out, coalesce((select name from accounts where id = v_bad_account), 'an account'), v_bad_in;
   end if;
 
   insert into paydays (id, date, budget_month_key, total, kind, created_by)

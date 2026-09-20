@@ -1,0 +1,5 @@
+-- Rollback for 0009_fix_payday_validation.sql
+--
+-- There is deliberately nothing here. Rolling back would restore a function
+-- that cannot execute at all. If this needs reverting, re-run 0007, which
+-- validates only the hub but does work.
