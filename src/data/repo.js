@@ -44,6 +44,9 @@ function mapPaydayAllocation(row) {
     label: row.label,
   };
 }
+function mapSplitLineSource(row) {
+  return { lineKey: row.line_key, accountId: row.account_id };
+}
 function mapAccount(row) {
   return {
     id: row.id,
@@ -183,6 +186,19 @@ function fetchEnvelopeBudgets() {
 // Tolerated as missing for the same reason plan_settings and envelope_budgets
 // are: a deploy can land before the migration is applied. With no rows every
 // month is a sea month, which is exactly the pre-phase behaviour.
+function fetchSplitLineSources() {
+  return supabase
+    .from('split_line_sources')
+    .select('*')
+    .then(({ data, error }) => {
+      if (error) {
+        console.warn('split_line_sources unavailable (migration not applied yet?):', error.message);
+        return [];
+      }
+      return (data ?? []).map(mapSplitLineSource);
+    });
+}
+
 function fetchMonthModes() {
   return supabase
     .from('month_modes')
@@ -216,7 +232,7 @@ function fetchPaydayData() {
 }
 
 export async function fetchAll() {
-  const [envelopes, accounts, transactions, income, goals, ledger, profiles, transfers, planSettings, envelopeBudgets, monthModes, paydayData] =
+  const [envelopes, accounts, transactions, income, goals, ledger, profiles, transfers, planSettings, envelopeBudgets, monthModes, paydayData, splitLineSources] =
     await Promise.all([
     supabase.from('envelopes').select('*').then(unwrap),
     supabase.from('accounts').select('*').then(unwrap),
@@ -230,6 +246,7 @@ export async function fetchAll() {
     fetchEnvelopeBudgets(),
     fetchMonthModes(),
     fetchPaydayData(),
+    fetchSplitLineSources(),
   ]);
 
   return {
@@ -245,6 +262,7 @@ export async function fetchAll() {
     envelopeBudgets,
     monthModes,
     ...paydayData,
+    splitLineSources,
   };
 }
 

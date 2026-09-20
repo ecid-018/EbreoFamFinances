@@ -24,6 +24,7 @@ const EMPTY_DOMAIN_STATE = {
   monthModes: [],
   paydays: [],
   paydayAllocations: [],
+  splitLineSources: [],
   month: getCurrentMonth(),
 };
 

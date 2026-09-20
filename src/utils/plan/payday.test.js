@@ -5,6 +5,7 @@ import {
   routeGoalsLine,
   groupByDestination,
   buildRoutedLines,
+  getLineSource,
   computePaydaySplit,
 } from './payday.js';
 
@@ -320,5 +321,76 @@ describe('computePaydaySplit routes every line, not only goals', () => {
     // 500 + 200 + 50 + 100 + 100 + 50 = 1000, all of it accounted for.
     expect(placed.reduce((sum, i) => sum + i.amount, 0)).toBe(1000);
     expect(new Set(placed.map((i) => i.line)).size).toBe(6);
+  });
+});
+
+describe('split line sources', () => {
+  const s2 = {
+    splitGoals: 300, splitRetirement: 100, splitTrading: 0, splitInsurance: 0,
+    splitTrips: 0, splitVacationReserve: 0,
+    hubAccountId: 'his', householdAccountId: 'hers',
+    retirementAccountId: 'ret', presignoffActive: false,
+  };
+  const goals = [goal({ id: 'a', priority: 1, target: 12345, heldInAccountId: 'pafc' })];
+
+  it('defaults every line to the hub when there are no rows', () => {
+    expect(getLineSource('splitGoals', s2, [])).toBe('his');
+    expect(getLineSource('splitRetirement', s2, [])).toBe('his');
+  });
+
+  it('uses a configured source for that line only', () => {
+    const sources = [{ lineKey: 'splitGoals', accountId: 'hers' }];
+    expect(getLineSource('splitGoals', s2, sources)).toBe('hers');
+    expect(getLineSource('splitRetirement', s2, sources)).toBe('his');
+  });
+
+  it('falls back to the hub when the row has no account', () => {
+    expect(getLineSource('splitGoals', s2, [{ lineKey: 'splitGoals', accountId: null }])).toBe('his');
+  });
+
+  it('pays the goals line out of its own source account', () => {
+    const got = computePaydaySplit({
+      settings: s2, goals, sources: [{ lineKey: 'splitGoals', accountId: 'hers' }],
+    });
+    const toPafc = got.transfers.find((t) => t.accountId === 'pafc');
+    expect(toPafc.sourceAccountId).toBe('hers');
+  });
+
+  it('leaves other lines on the hub', () => {
+    const got = computePaydaySplit({
+      settings: s2, goals, sources: [{ lineKey: 'splitGoals', accountId: 'hers' }],
+    });
+    expect(got.transfers.find((t) => t.accountId === 'ret').sourceAccountId).toBe('his');
+  });
+
+  it('reports what each funding account must cover', () => {
+    const got = computePaydaySplit({
+      settings: s2, goals, sources: [{ lineKey: 'splitGoals', accountId: 'hers' }],
+    });
+    expect(got.bySource).toEqual({ hers: 300, his: 100 });
+  });
+
+  it('does not transfer a line into the account that funds it', () => {
+    // Goals held in her account, funded from her account: nothing moves.
+    const inHers = [goal({ id: 'a', priority: 1, target: 12345, heldInAccountId: 'hers' })];
+    const got = computePaydaySplit({
+      settings: s2, goals: inHers, sources: [{ lineKey: 'splitGoals', accountId: 'hers' }],
+    });
+    expect(got.transfers.find((t) => t.accountId === 'hers')).toBeUndefined();
+    expect(got.allocations.some((a) => a.goalId === 'a')).toBe(true);
+  });
+
+  it('keeps two sources into one destination as separate transfers', () => {
+    const both = [
+      goal({ id: 'a', priority: 1, target: 200, heldInAccountId: 'pafc' }),
+      goal({ id: 'r', name: 'R', isSinkingFund: true, heldInAccountId: 'pafc' }),
+    ];
+    const settings3 = { ...s2, splitInsurance: 50, insuranceGoalId: 'r' };
+    const got = computePaydaySplit({
+      settings: settings3, goals: both, sources: [{ lineKey: 'splitGoals', accountId: 'hers' }],
+    });
+    const toPafc = got.transfers.filter((t) => t.accountId === 'pafc');
+    expect(toPafc).toHaveLength(2);
+    expect(new Set(toPafc.map((t) => t.sourceAccountId))).toEqual(new Set(['hers', 'his']));
   });
 });
