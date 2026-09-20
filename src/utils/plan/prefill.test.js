@@ -11,6 +11,10 @@ import {
   resolveBalancingLine,
   matchGoals,
   validatePlanFile,
+  buildApplySteps,
+  summariseSteps,
+  runSteps,
+  OVERLAP_CHOICE,
 } from './prefill.js';
 
 // Every figure below is invented.
@@ -341,5 +345,206 @@ describe('OVERLAP_GROUPS', () => {
     expect(OVERLAP_GROUPS).toContain('Savings');
     expect(OVERLAP_GROUPS).toContain('Insurance');
     expect(OVERLAP_GROUPS).toContain('Trading Allowance');
+  });
+});
+
+describe('buildApplySteps', () => {
+  const envelopes = [env('a', 'A', 100), env('b', 'B', 200), env('s', 'S', 300, 'Savings')];
+  const existingGoal = {
+    id: 'g1',
+    name: 'Existing',
+    target: 1000,
+    saved: 400,
+    priority: 3,
+    targetDate: '2030-01-01',
+    heldInAccountId: 'acct-1',
+    isSinkingFund: false,
+    goalGroup: 'Old group',
+  };
+  const base = {
+    plan: { goals: [] },
+    envelopes,
+    proposed: {},
+    overlapChoices: {},
+    goals: [existingGoal],
+    goalTargets: {},
+    monthKey: '2026-10',
+  };
+
+  it('writes a budget row only where the figure actually differs', () => {
+    const steps = buildApplySteps({ ...base, proposed: { a: 150, b: 200 } });
+    expect(steps).toHaveLength(1);
+    expect(steps[0].action).toEqual({
+      type: 'envelope/setMonthBudget',
+      payload: { envelopeId: 'a', monthKey: '2026-10', amount: 150 },
+    });
+  });
+
+  it('zeroes an overlapping envelope only when explicitly chosen', () => {
+    expect(buildApplySteps({ ...base, overlapChoices: { s: OVERLAP_CHOICE.UNTOUCHED } })).toHaveLength(0);
+    expect(buildApplySteps({ ...base, overlapChoices: { s: OVERLAP_CHOICE.KEEP } })).toHaveLength(0);
+    const zeroed = buildApplySteps({ ...base, overlapChoices: { s: OVERLAP_CHOICE.ZERO } });
+    expect(zeroed).toHaveLength(1);
+    expect(zeroed[0].action.payload).toMatchObject({ envelopeId: 's', amount: 0 });
+  });
+
+  it('does not zero an envelope that is already zero', () => {
+    const steps = buildApplySteps({
+      ...base,
+      envelopes: [env('s', 'S', 0, 'Savings')],
+      overlapChoices: { s: OVERLAP_CHOICE.ZERO },
+    });
+    expect(steps).toHaveLength(0);
+  });
+
+  it('creates a goal with every field the file carries', () => {
+    const plan = {
+      goals: [{ name: 'New fund', target: 500, priority: 2, group: 'Grp', target_date: '2031-06-01', sinking: true }],
+    };
+    const [step] = buildApplySteps({ ...base, plan });
+    expect(step.kind).toBe('goalCreate');
+    expect(step.action).toEqual({
+      type: 'goal/add',
+      payload: {
+        name: 'New fund',
+        target: 500,
+        saved: 0,
+        priority: 2,
+        targetDate: '2031-06-01',
+        goalGroup: 'Grp',
+        isSinkingFund: true,
+        heldInAccountId: null,
+      },
+    });
+  });
+
+  it('never sends a saved amount on an update', () => {
+    const plan = { goals: [{ name: 'Existing', target: 2000 }] };
+    const [step] = buildApplySteps({ ...base, plan });
+    expect(step.kind).toBe('goalUpdate');
+    expect(step.action.payload).not.toHaveProperty('saved');
+  });
+
+  it('carries heldInAccountId through, since the file has no such field', () => {
+    // repo.updateGoal writes every column unconditionally, so omitting this
+    // would silently clear which account holds the goal.
+    const plan = { goals: [{ name: 'Existing', target: 2000 }] };
+    const [step] = buildApplySteps({ ...base, plan });
+    expect(step.action.payload.heldInAccountId).toBe('acct-1');
+  });
+
+  it('keeps existing plan fields when the file does not override them', () => {
+    const plan = { goals: [{ name: 'Existing', target: 2000 }] };
+    const [step] = buildApplySteps({ ...base, plan });
+    expect(step.action.payload).toMatchObject({
+      priority: 3,
+      targetDate: '2030-01-01',
+      goalGroup: 'Old group',
+      isSinkingFund: false,
+    });
+  });
+
+  it('lets the file override an existing plan field', () => {
+    const plan = { goals: [{ name: 'Existing', target: 1000, priority: 9, sinking: true }] };
+    const [step] = buildApplySteps({ ...base, plan });
+    expect(step.action.payload).toMatchObject({ priority: 9, isSinkingFund: true });
+  });
+
+  it('skips a goal that would not change at all', () => {
+    const plan = {
+      goals: [
+        { name: 'Existing', target: 1000, priority: 3, group: 'Old group', target_date: '2030-01-01' },
+      ],
+    };
+    expect(buildApplySteps({ ...base, plan })).toHaveLength(0);
+  });
+
+  it('honours an edited target from the preview over the file', () => {
+    const plan = { goals: [{ name: 'Existing', target: 2000 }] };
+    const [step] = buildApplySteps({ ...base, plan, goalTargets: { Existing: 7777 } });
+    expect(step.action.payload.target).toBe(7777);
+  });
+
+  it('orders budgets before goals', () => {
+    const plan = { goals: [{ name: 'New fund', target: 500 }] };
+    const steps = buildApplySteps({ ...base, plan, proposed: { a: 150 } });
+    expect(steps.map((s) => s.kind)).toEqual(['budget', 'goalCreate']);
+  });
+
+  it('never emits a delete of any kind', () => {
+    const plan = { goals: [{ name: 'New fund', target: 500 }] };
+    const steps = buildApplySteps({ ...base, plan, proposed: { a: 0 }, overlapChoices: { s: OVERLAP_CHOICE.ZERO } });
+    expect(steps.every((s) => !/remove|delete/i.test(s.action.type))).toBe(true);
+  });
+
+  it('ignores a proposed figure for an envelope that no longer exists', () => {
+    expect(buildApplySteps({ ...base, proposed: { gone: 50 } })).toHaveLength(0);
+  });
+});
+
+describe('summariseSteps', () => {
+  it('counts each kind', () => {
+    const steps = [
+      { kind: 'budget' }, { kind: 'budget' }, { kind: 'zero' },
+      { kind: 'goalCreate' }, { kind: 'goalUpdate' },
+    ];
+    expect(summariseSteps(steps)).toEqual({
+      budgets: 2, zeroed: 1, goalsCreated: 1, goalsUpdated: 1, total: 5,
+    });
+  });
+
+  it('handles an empty list', () => {
+    expect(summariseSteps([])).toEqual({ budgets: 0, zeroed: 0, goalsCreated: 0, goalsUpdated: 0, total: 0 });
+  });
+});
+
+describe('runSteps', () => {
+  const step = (n) => ({ kind: 'budget', label: `step ${n}`, action: { type: 't', payload: { n } } });
+
+  it('runs every step in order and reports success', async () => {
+    const seen = [];
+    const got = await runSteps([step(1), step(2), step(3)], async (a) => seen.push(a.payload.n));
+    expect(seen).toEqual([1, 2, 3]);
+    expect(got.ok).toBe(true);
+    expect(got.applied).toHaveLength(3);
+    expect(got.remaining).toHaveLength(0);
+  });
+
+  it('stops at the first failure and reports both sides', async () => {
+    const seen = [];
+    const got = await runSteps([step(1), step(2), step(3)], async (a) => {
+      if (a.payload.n === 2) throw new Error('boom');
+      seen.push(a.payload.n);
+    });
+    expect(seen).toEqual([1]);
+    expect(got.ok).toBe(false);
+    expect(got.applied.map((s) => s.label)).toEqual(['step 1']);
+    expect(got.failed.step.label).toBe('step 2');
+    expect(got.failed.message).toBe('boom');
+    expect(got.remaining.map((s) => s.label)).toEqual(['step 3']);
+  });
+
+  it('does not count the failing step as applied', async () => {
+    const got = await runSteps([step(1)], async () => {
+      throw new Error('nope');
+    });
+    expect(got.applied).toHaveLength(0);
+    expect(got.remaining).toHaveLength(0);
+  });
+
+  it('reports progress as it goes', async () => {
+    const seen = [];
+    await runSteps([step(1), step(2)], async () => {}, (p) => seen.push(`${p.done}/${p.total}`));
+    expect(seen).toEqual(['1/2', '2/2']);
+  });
+
+  it('succeeds trivially on an empty list', async () => {
+    const got = await runSteps([], async () => { throw new Error('never'); });
+    expect(got.ok).toBe(true);
+  });
+
+  it('survives a thrown non-Error', async () => {
+    const got = await runSteps([step(1)], async () => { throw 'plain string'; });
+    expect(got.failed.message).toBe('plain string');
   });
 });

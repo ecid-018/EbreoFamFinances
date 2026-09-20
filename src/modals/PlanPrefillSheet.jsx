@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext.jsx';
 import { useDerivedFinancials } from '../hooks/useDerivedFinancials.js';
 import { addMonths, getCurrentMonth, getMonthKey, getMonthName } from '../utils/date.js';
-import { validatePlanFile, suggestMapping, buildEnvelopeProposal, matchGoals } from '../utils/plan/prefill.js';
+import { validatePlanFile, suggestMapping, buildEnvelopeProposal, matchGoals, runSteps } from '../utils/plan/prefill.js';
 import { EnvelopesStep } from '../components/prefill/EnvelopesStep.jsx';
 import { GoalsStep } from '../components/prefill/GoalsStep.jsx';
 import { SplitStep } from '../components/prefill/SplitStep.jsx';
@@ -16,10 +16,11 @@ const STEP_LABELS = { load: 'File', envelopes: 'Envelopes', goals: 'Goals', spli
 // in the browser with FileReader and never uploaded, stored or sent anywhere —
 // it holds the household's real figures and the repository is public.
 //
-// NOTHING IS APPLIED FROM HERE YET. The summary is read-only by design; the
-// apply path lands in a follow-up once these previews have been reviewed.
+// Applying runs through the app's own actions (dispatch), so every change is
+// validated and logged in the ledger exactly as a manual edit would be. It goes
+// one step at a time and stops at the first failure — see runSteps.
 export function PlanPrefillSheet() {
-  const { state, closeModal } = useApp();
+  const { state, dispatch, refetchAll, closeModal } = useApp();
   const { envelopeStats } = useDerivedFinancials();
 
   const [step, setStep] = useState('load');
@@ -40,6 +41,23 @@ export function PlanPrefillSheet() {
   const [overlapChoices, setOverlapChoices] = useState({});
   const [goalTargets, setGoalTargets] = useState({});
   const [actualHub, setActualHub] = useState('');
+
+  const [applying, setApplying] = useState(false);
+  const [progress, setProgress] = useState({ done: 0, total: 0 });
+  const [result, setResult] = useState(null);
+
+  async function handleApply(steps) {
+    setApplying(true);
+    setProgress({ done: 0, total: steps.length });
+    // dispatch returns the sync promise (see AppContext), which is what makes
+    // awaiting each step and stopping on a failure possible at all.
+    const outcome = await runSteps(steps, (action) => dispatch(action), setProgress);
+    setResult(outcome);
+    setApplying(false);
+    // Always refetch, including after a failure: the optimistic reducer has
+    // already moved on locally and only the server knows what actually landed.
+    await refetchAll();
+  }
 
   const groupNames = useMemo(() => [...new Set(state.envelopes.map((env) => env.group))], [state.envelopes]);
 
@@ -99,8 +117,9 @@ export function PlanPrefillSheet() {
   }
 
   const stepIndex = STEPS.indexOf(step);
-  const canGoBack = stepIndex > 0;
-  const canGoNext = stepIndex < STEPS.length - 1 && plan;
+  const locked = applying || Boolean(result);
+  const canGoBack = stepIndex > 0 && !locked;
+  const canGoNext = stepIndex < STEPS.length - 1 && plan && !locked;
 
   return (
     <BottomSheet title="Plan prefill" onClose={closeModal}>
@@ -111,7 +130,7 @@ export function PlanPrefillSheet() {
               key={s}
               type="button"
               className={`prefill-steps__item${s === step ? ' prefill-steps__item--active' : ''}`}
-              disabled={i > 0 && !plan}
+              disabled={(i > 0 && !plan) || locked}
               onClick={() => setStep(s)}
             >
               {STEP_LABELS[s]}
@@ -186,6 +205,10 @@ export function PlanPrefillSheet() {
           goalTargets={goalTargets}
           targetMonthKey={targetMonthKey}
           targetMonthLabel={targetMonthLabel}
+          applying={applying}
+          progress={progress}
+          result={result}
+          onApply={handleApply}
         />
       )}
 
@@ -194,9 +217,15 @@ export function PlanPrefillSheet() {
           <button type="button" className="btn-secondary" disabled={!canGoBack} onClick={() => setStep(STEPS[stepIndex - 1])}>
             Back
           </button>
-          <button type="button" className="btn-block" disabled={!canGoNext} onClick={() => setStep(STEPS[stepIndex + 1])}>
-            Next
-          </button>
+          {result ? (
+            <button type="button" className="btn-block" onClick={closeModal}>
+              Done
+            </button>
+          ) : (
+            <button type="button" className="btn-block" disabled={!canGoNext} onClick={() => setStep(STEPS[stepIndex + 1])}>
+              Next
+            </button>
+          )}
         </div>
       )}
     </BottomSheet>
