@@ -171,6 +171,148 @@ export function matchGoals(fileGoals = [], existingGoals = []) {
   });
 }
 
+// Turns a reviewed preview into the ordered list of actions to dispatch. Kept
+// pure so the exact payloads — especially the goal ones, where a missing field
+// is destructive — are unit-testable without a browser.
+//
+// Order matters: budgets first, then goal creates, then goal target changes.
+// If something fails half way, what already went through is the earlier, more
+// mechanical part rather than a half-built set of goals.
+export function buildApplySteps({
+  plan,
+  envelopes = [],
+  proposed = {},
+  overlapChoices = {},
+  goals = [],
+  goalTargets = {},
+  monthKey,
+}) {
+  const steps = [];
+  const byId = new Map(envelopes.map((envelope) => [envelope.id, envelope]));
+
+  // 1. Budgets that actually differ. An envelope whose proposed figure equals
+  //    what it already resolves to needs no row.
+  for (const [envelopeId, amount] of Object.entries(proposed)) {
+    const envelope = byId.get(envelopeId);
+    if (!envelope || amount === envelope.monthlyBudget) continue;
+    steps.push({
+      kind: 'budget',
+      label: `${envelope.name} budget for ${monthKey}`,
+      action: { type: 'envelope/setMonthBudget', payload: { envelopeId, monthKey, amount } },
+    });
+  }
+
+  // 2. Overlapping envelopes explicitly chosen to be zeroed. "Keep" and
+  //    "leave untouched" both write nothing — the difference is a decision
+  //    recorded, not an action.
+  for (const [envelopeId, choice] of Object.entries(overlapChoices)) {
+    if (choice !== OVERLAP_CHOICE.ZERO) continue;
+    const envelope = byId.get(envelopeId);
+    if (!envelope || envelope.monthlyBudget === 0 || proposed[envelopeId] !== undefined) continue;
+    steps.push({
+      kind: 'zero',
+      label: `${envelope.name} set to zero for ${monthKey}`,
+      action: { type: 'envelope/setMonthBudget', payload: { envelopeId, monthKey, amount: 0 } },
+    });
+  }
+
+  for (const match of matchGoals(plan.goals, goals)) {
+    const { fileGoal, existing, action } = match;
+    const target = goalTargets[fileGoal.name] ?? match.proposedTarget;
+
+    if (action === 'create') {
+      steps.push({
+        kind: 'goalCreate',
+        label: `Create goal “${fileGoal.name}”`,
+        action: {
+          type: 'goal/add',
+          payload: {
+            name: fileGoal.name,
+            target,
+            // A new goal starts empty. The file carries no saved amount and
+            // this tool never invents one.
+            saved: 0,
+            priority: fileGoal.priority ?? null,
+            targetDate: fileGoal.target_date ?? null,
+            goalGroup: fileGoal.group ?? null,
+            isSinkingFund: fileGoal.sinking ?? false,
+            heldInAccountId: null,
+          },
+        },
+      });
+      continue;
+    }
+
+    const fields = {
+      priority: fileGoal.priority ?? existing.priority ?? null,
+      targetDate: fileGoal.target_date ?? existing.targetDate ?? null,
+      goalGroup: fileGoal.group ?? existing.goalGroup ?? null,
+      isSinkingFund: fileGoal.sinking ?? existing.isSinkingFund ?? false,
+      // The file has no concept of which account holds a goal, and
+      // repo.updateGoal writes every column unconditionally — omitting this
+      // would silently clear it. Always carried through from the existing row.
+      heldInAccountId: existing.heldInAccountId ?? null,
+    };
+
+    const unchanged =
+      target === existing.target &&
+      fields.priority === (existing.priority ?? null) &&
+      fields.targetDate === (existing.targetDate ?? null) &&
+      fields.goalGroup === (existing.goalGroup ?? null) &&
+      fields.isSinkingFund === (existing.isSinkingFund ?? false);
+    if (unchanged) continue;
+
+    steps.push({
+      kind: 'goalUpdate',
+      label: `Update goal “${fileGoal.name}”`,
+      // saved is deliberately absent: goal/update does not carry it and
+      // repo.updateGoal never writes it.
+      action: { type: 'goal/update', payload: { id: existing.id, name: existing.name, target, ...fields } },
+    });
+  }
+
+  return steps;
+}
+
+// Runs the steps one at a time and STOPS at the first failure, reporting what
+// went through and what did not. Sequential rather than parallel on purpose:
+// a half-applied set is far easier to reason about when the order is known,
+// and the caller can tell the household exactly where it stopped.
+//
+// `run` is injected (the app passes its dispatch, which returns the sync
+// promise) so the loop itself is testable without React or a network.
+export async function runSteps(steps = [], run, onProgress) {
+  const applied = [];
+
+  for (let index = 0; index < steps.length; index += 1) {
+    const step = steps[index];
+    try {
+      await run(step.action);
+    } catch (err) {
+      return {
+        ok: false,
+        applied,
+        failed: { step, message: err?.message ?? String(err) },
+        remaining: steps.slice(index + 1),
+      };
+    }
+    applied.push(step);
+    onProgress?.({ done: applied.length, total: steps.length });
+  }
+
+  return { ok: true, applied, failed: null, remaining: [] };
+}
+
+export function summariseSteps(steps = []) {
+  return {
+    budgets: steps.filter((step) => step.kind === 'budget').length,
+    zeroed: steps.filter((step) => step.kind === 'zero').length,
+    goalsCreated: steps.filter((step) => step.kind === 'goalCreate').length,
+    goalsUpdated: steps.filter((step) => step.kind === 'goalUpdate').length,
+    total: steps.length,
+  };
+}
+
 function isFiniteNumber(value) {
   return typeof value === 'number' && Number.isFinite(value);
 }

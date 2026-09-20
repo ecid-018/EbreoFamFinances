@@ -2018,3 +2018,16 @@ svg {
 .prefill-nav .btn-secondary {
   flex: 1;
 }
+
+/* Outcome of an apply run. Bordered rather than filled so a partial failure
+   reads as information to act on, not an alarm — what came before the failure
+   is genuinely saved. */
+.prefill-result {
+  padding: 12px;
+  border-radius: var(--radius-card);
+  border: 1px solid var(--color-separator-strong);
+}
+
+.prefill-result--failed {
+  border-color: var(--color-destructive);
+}

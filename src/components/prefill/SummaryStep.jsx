@@ -1,9 +1,11 @@
+import { useMemo, useState } from 'react';
 import { formatPHP } from '../../utils/currency.js';
-import { matchGoals, OVERLAP_CHOICE } from '../../utils/plan/prefill.js';
+import { buildApplySteps, summariseSteps } from '../../utils/plan/prefill.js';
+import { ConfirmDialog } from '../shared/ConfirmDialog.jsx';
 
-// The confirm step — except there is deliberately nothing to confirm yet.
-// Apply is not wired in this change: these previews are for review first, and
-// the write path lands once they have been checked against real data.
+// The confirm-and-apply step. Everything is applied through the app's own
+// actions, so each change is validated and logged in the ledger exactly as a
+// manual edit would be — nothing here talks to the database directly.
 export function SummaryStep({
   plan,
   envelopes,
@@ -13,38 +15,51 @@ export function SummaryStep({
   goalTargets,
   targetMonthKey,
   targetMonthLabel,
+  applying,
+  progress,
+  result,
+  onApply,
 }) {
-  const budgetChanges = envelopes.filter(
-    (env) => proposed[env.id] !== undefined && proposed[env.id] !== env.monthlyBudget
-  );
-  const zeroed = envelopes.filter((env) => overlapChoices[env.id] === OVERLAP_CHOICE.ZERO);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
-  const matches = matchGoals(plan.goals, goals);
-  const creates = matches.filter((m) => m.action === 'create');
-  const targetChanges = matches.filter(
-    (m) => m.action === 'update' && (goalTargets[m.fileGoal.name] ?? m.proposedTarget) !== m.currentTarget
+  const steps = useMemo(
+    () =>
+      buildApplySteps({
+        plan,
+        envelopes,
+        proposed,
+        overlapChoices,
+        goals,
+        goalTargets,
+        monthKey: targetMonthKey,
+      }),
+    [plan, envelopes, proposed, overlapChoices, goals, goalTargets, targetMonthKey]
   );
+  const counts = summariseSteps(steps);
+
+  const budgetSteps = steps.filter((step) => step.kind === 'budget' || step.kind === 'zero');
+  const byId = new Map(envelopes.map((envelope) => [envelope.id, envelope]));
 
   return (
     <div className="prefill-step">
-      <h3 className="prefill-heading">What would be applied</h3>
+      <h3 className="prefill-heading">{result ? 'What was applied' : 'What would be applied'}</h3>
 
       <ul className="prefill-summary">
         <li>
-          <strong>{budgetChanges.length}</strong> envelope {budgetChanges.length === 1 ? 'budget' : 'budgets'} changed
-          for {targetMonthLabel}
+          <strong>{counts.budgets}</strong> envelope {counts.budgets === 1 ? 'budget' : 'budgets'} changed for{' '}
+          {targetMonthLabel}
           <span className="prefill-table__muted"> ({targetMonthKey})</span>
         </li>
-        {zeroed.length > 0 && (
+        {counts.zeroed > 0 && (
           <li>
-            <strong>{zeroed.length}</strong> overlapping {zeroed.length === 1 ? 'envelope' : 'envelopes'} set to zero
+            <strong>{counts.zeroed}</strong> overlapping {counts.zeroed === 1 ? 'envelope' : 'envelopes'} set to zero
           </li>
         )}
         <li>
-          <strong>{creates.length}</strong> {creates.length === 1 ? 'goal' : 'goals'} created
+          <strong>{counts.goalsCreated}</strong> {counts.goalsCreated === 1 ? 'goal' : 'goals'} created
         </li>
         <li>
-          <strong>{targetChanges.length}</strong> goal {targetChanges.length === 1 ? 'target' : 'targets'} changed
+          <strong>{counts.goalsUpdated}</strong> goal {counts.goalsUpdated === 1 ? 'target' : 'targets'} changed
         </li>
       </ul>
 
@@ -54,7 +69,7 @@ export function SummaryStep({
         ever deleted — deleting one would strip the category from its past transactions.
       </p>
 
-      {budgetChanges.length > 0 && (
+      {!result && budgetSteps.length > 0 && (
         <table className="prefill-table">
           <thead>
             <tr>
@@ -64,25 +79,101 @@ export function SummaryStep({
             </tr>
           </thead>
           <tbody>
-            {budgetChanges.map((env) => (
-              <tr key={env.id}>
-                <td>{env.name}</td>
-                <td className="prefill-table__num">{formatPHP(env.monthlyBudget)}</td>
-                <td className="prefill-table__num">{formatPHP(proposed[env.id])}</td>
-              </tr>
-            ))}
+            {budgetSteps.map((step) => {
+              const envelope = byId.get(step.action.payload.envelopeId);
+              return (
+                <tr key={step.action.payload.envelopeId}>
+                  <td>{envelope.name}</td>
+                  <td className="prefill-table__num">{formatPHP(envelope.monthlyBudget)}</td>
+                  <td className="prefill-table__num">{formatPHP(step.action.payload.amount)}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       )}
 
-      <div className="prefill-blocked">
-        <p className="prefill-blocked__title">Nothing is applied yet</p>
-        <p className="prefill-note">
-          The apply step is deliberately not wired in this change. Review these previews against your real data
-          first; writing comes next, and will run one action at a time, stop at the first failure and report exactly
-          what did and did not get through.
-        </p>
-      </div>
+      {applying && (
+        <div className="prefill-blocked">
+          <p className="prefill-blocked__title">
+            Applying… {progress.done} of {progress.total}
+          </p>
+          <p className="prefill-note">One change at a time. Leave this open until it finishes.</p>
+        </div>
+      )}
+
+      {result && (
+        <div className={`prefill-result${result.ok ? '' : ' prefill-result--failed'}`}>
+          <p className="prefill-blocked__title">
+            {result.ok
+              ? `Applied all ${result.applied.length}. Everything went through.`
+              : `Stopped after ${result.applied.length} of ${result.applied.length + result.remaining.length + 1}.`}
+          </p>
+
+          {!result.ok && (
+            <>
+              <p className="form__error">
+                Failed on: {result.failed.step.label} — {result.failed.message}
+              </p>
+              <p className="prefill-note">
+                {result.applied.length === 0
+                  ? 'It failed on the very first change, so nothing was applied at all — everything is exactly as it was.'
+                  : 'Everything before it was applied and is saved. Nothing after it was attempted, so the rest is exactly as it was.'}{' '}
+                Fixing the cause and running the prefill again will pick up only what is still outstanding.
+              </p>
+              {result.remaining.length > 0 && (
+                <>
+                  <p className="prefill-note">
+                    <strong>Not attempted ({result.remaining.length}):</strong>
+                  </p>
+                  <ul className="prefill-list">
+                    {result.remaining.map((step) => (
+                      <li key={step.label}>{step.label}</li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </>
+          )}
+
+          {result.applied.length > 0 && (
+            <>
+              <p className="prefill-note">
+                <strong>Applied ({result.applied.length}):</strong>
+              </p>
+              <ul className="prefill-list">
+                {result.applied.map((step) => (
+                  <li key={step.label}>{step.label}</li>
+                ))}
+              </ul>
+            </>
+          )}
+        </div>
+      )}
+
+      {!result && (
+        <button
+          type="button"
+          className="btn-block"
+          disabled={applying || counts.total === 0}
+          onClick={() => setConfirmOpen(true)}
+        >
+          {counts.total === 0 ? 'Nothing to apply' : `Apply ${counts.total} ${counts.total === 1 ? 'change' : 'changes'}`}
+        </button>
+      )}
+
+      {confirmOpen && (
+        <ConfirmDialog
+          title={`Apply ${counts.total} ${counts.total === 1 ? 'change' : 'changes'}?`}
+          message={`${counts.budgets} envelope budgets for ${targetMonthLabel}, ${counts.goalsCreated} goals created, ${counts.goalsUpdated} goal targets changed. Earlier months and every saved amount stay as they are.`}
+          confirmLabel="Apply"
+          onCancel={() => setConfirmOpen(false)}
+          onConfirm={() => {
+            setConfirmOpen(false);
+            onApply(steps);
+          }}
+        />
+      )}
     </div>
   );
 }
