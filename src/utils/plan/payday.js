@@ -98,11 +98,21 @@ const ACCOUNT_LINES = [
 
 const LINE_LABEL = Object.fromEntries(SPLIT_FIELDS.map((f) => [f.key, f.label]));
 
-export function buildRoutedLines({ lines, settings, goals = [] }) {
+// Which account a line is paid from. A line with no row is paid from the hub,
+// so an empty table behaves exactly as before split_line_sources existed.
+export function getLineSource(line, settings, sources = []) {
+  const row = sources.find((r) => r.lineKey === line);
+  return row?.accountId ?? settings?.hubAccountId ?? null;
+}
+
+export function buildRoutedLines({ lines, settings, goals = [], sources = [] }) {
   const items = [];
 
   const { routed, unrouted } = routeGoalsLine(Math.max(0, lines.splitGoals ?? 0), goals);
-  for (const r of routed) items.push({ ...r, line: 'splitGoals', label: r.goalName, missingTarget: false });
+  const goalsSource = getLineSource('splitGoals', settings, sources);
+  for (const r of routed) {
+    items.push({ ...r, line: 'splitGoals', label: r.goalName, missingTarget: false, sourceAccountId: goalsSource });
+  }
 
   for (const { line, pointer } of SINKING_LINES) {
     const amount = round2(lines[line] ?? 0);
@@ -115,6 +125,7 @@ export function buildRoutedLines({ lines, settings, goals = [] }) {
       label: goal?.name ?? LINE_LABEL[line],
       amount,
       accountId: goal?.heldInAccountId ?? null,
+      sourceAccountId: getLineSource(line, settings, sources),
       // No goal configured for this line: the money has no destination and
       // must be shown as such rather than quietly staying put.
       missingTarget: !goal,
@@ -132,6 +143,7 @@ export function buildRoutedLines({ lines, settings, goals = [] }) {
       label: LINE_LABEL[line],
       amount,
       accountId,
+      sourceAccountId: getLineSource(line, settings, sources),
       missingTarget: !accountId,
     });
   }
@@ -161,16 +173,24 @@ export function groupByDestination(routed, hubAccountId) {
       unconfigured: Boolean(item.missingTarget) || !item.accountId,
     };
 
-    if (!item.accountId || item.accountId === hubAccountId) {
+    // Money already sitting in the account that funds it needs no transfer —
+    // moving it to itself would be a no-op with a misleading ledger entry.
+    const source = item.sourceAccountId ?? hubAccountId ?? null;
+    if (!item.accountId || item.accountId === source) {
       allocations.push(entry);
       continue;
     }
-    const existing = transfers.get(item.accountId);
+    // Keyed by the PAIR: two lines paid from different accounts into the same
+    // destination are two transfers, not one.
+    const key = `${source}->${item.accountId}`;
+    const existing = transfers.get(key);
     if (existing) {
       existing.amount = round2(existing.amount + item.amount);
       existing.items.push(entry);
     } else {
-      transfers.set(item.accountId, { accountId: item.accountId, amount: item.amount, items: [entry] });
+      transfers.set(key, {
+        accountId: item.accountId, sourceAccountId: source, amount: item.amount, items: [entry],
+      });
     }
   }
 
@@ -178,7 +198,7 @@ export function groupByDestination(routed, hubAccountId) {
 }
 
 // The whole calculation for one payday.
-export function computePaydaySplit({ settings, goals = [], kind = PAYDAY_KINDS.PAY, hubAmount = null }) {
+export function computePaydaySplit({ settings, goals = [], kind = PAYDAY_KINDS.PAY, hubAmount = null, sources = [] }) {
   if (!settings) return null;
 
   if (kind === PAYDAY_KINDS.WINDFALL) {
@@ -187,7 +207,7 @@ export function computePaydaySplit({ settings, goals = [], kind = PAYDAY_KINDS.P
     const toGoals = round2((total * pct) / 100);
     const toTrips = round2(total - toGoals);
     const lines = { splitGoals: toGoals, splitTrips: toTrips };
-    const { items, unrouted } = buildRoutedLines({ lines, settings, goals });
+    const { items, unrouted } = buildRoutedLines({ lines, settings, goals, sources });
     return {
       kind,
       lines,
@@ -208,7 +228,7 @@ export function computePaydaySplit({ settings, goals = [], kind = PAYDAY_KINDS.P
   const adjusted = { ...planned, splitGoals: round2((planned.splitGoals ?? 0) + difference) };
 
   const { lines, applied, heldBack } = applyPresignoffRule(adjusted, { settings, goals });
-  const { items, unrouted } = buildRoutedLines({ lines, settings, goals });
+  const { items, unrouted } = buildRoutedLines({ lines, settings, goals, sources });
 
   return {
     kind,
@@ -223,5 +243,12 @@ export function computePaydaySplit({ settings, goals = [], kind = PAYDAY_KINDS.P
     ...groupByDestination(items, settings.hubAccountId),
     unrouted,
     total: actual,
+    // What each funding account has to cover. The screen needs this to say
+    // "his BPI must supply X" rather than assuming one hub does everything.
+    bySource: items.reduce((acc, i) => {
+      const key = i.sourceAccountId ?? 'none';
+      acc[key] = round2((acc[key] ?? 0) + i.amount);
+      return acc;
+    }, {}),
   };
 }

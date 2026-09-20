@@ -27,8 +27,8 @@ export function PaydayModal() {
   const householdAmount = household === '' ? 0 : Number(household);
 
   const split = useMemo(
-    () => computePaydaySplit({ settings, goals: state.goals, kind, hubAmount }),
-    [settings, state.goals, kind, hubAmount]
+    () => computePaydaySplit({ settings, goals: state.goals, kind, hubAmount, sources: state.splitLineSources }),
+    [settings, state.goals, kind, hubAmount, state.splitLineSources]
   );
 
   // Both BPI accounts are called "BPI Savings" — one each. Naming the owner is
@@ -82,7 +82,9 @@ export function PaydayModal() {
       incomes,
       transfers: split.transfers.map((t) => ({
         id: generateId(),
-        from_account_id: settings.hubAccountId,
+        // Each line is paid from its own source account, which is not always
+        // the hub — see split_line_sources.
+        from_account_id: t.sourceAccountId ?? settings.hubAccountId,
         to_account_id: t.accountId,
         amount: t.amount,
         note: `Payday — ${t.items.map((i) => i.label).join(', ')}`,
@@ -91,7 +93,14 @@ export function PaydayModal() {
       // to an account and have no goal to credit.
       goal_allocations: [...split.transfers.flatMap((t) => t.items), ...split.allocations]
         .filter((i) => i.goalId)
-        .map((i) => ({ goal_id: i.goalId, amount: i.amount, label: i.label })),
+        .map((i) => ({
+          goal_id: i.goalId,
+          amount: i.amount,
+          label: i.label,
+          // The RPC balances every account, so an allocation has to say which
+          // one it is funded from even though no money moves.
+          source_account_id: i.sourceAccountId ?? settings.hubAccountId,
+        })),
     };
 
     const outcome = await dispatch({ type: 'payday/apply', payload });
@@ -186,7 +195,7 @@ export function PaydayModal() {
                 {split.transfers.map((t) => (
                   <tr key={t.accountId}>
                     <td>
-                      Transfer to {accountName(t.accountId)}
+                      {accountName(t.sourceAccountId)} → {accountName(t.accountId)}
                       <span className="prefill-table__muted"> · {t.items.map((i) => i.label).join(', ')}</span>
                     </td>
                     <td className="prefill-table__num">{formatPHP(t.amount)}</td>
@@ -205,6 +214,26 @@ export function PaydayModal() {
                 ))}
               </tbody>
             </table>
+          </>
+        )}
+
+        {split?.bySource && Object.keys(split.bySource).length > 1 && (
+          <>
+            <h3 className="prefill-heading">What each account supplies</h3>
+            <table className="prefill-table">
+              <tbody>
+                {Object.entries(split.bySource).map(([id, amount]) => (
+                  <tr key={id}>
+                    <td>{id === 'none' ? 'No source set' : accountName(id)}</td>
+                    <td className="prefill-table__num">{formatPHP(amount)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="prefill-note">
+              Each account must have at least this much arrive in it, or the payday is rejected before anything is
+              written.
+            </p>
           </>
         )}
 
