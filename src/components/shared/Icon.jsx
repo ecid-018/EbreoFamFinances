@@ -34,6 +34,15 @@ export function BudgetIcon(props) {
   );
 }
 
+export function GoalIcon(props) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="12" r="8" />
+      <circle cx="12" cy="12" r="3" />
+    </Svg>
+  );
+}
+
 export function PlusIcon(props) {
   return (
     <Svg {...props}>

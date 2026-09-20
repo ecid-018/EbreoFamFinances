@@ -63,7 +63,7 @@ export function AddContributionModal({ goalId, goalName }) {
   }
 
   return (
-    <BottomSheet title={`Contribute to ${goalName}`} onClose={closeModal}>
+    <BottomSheet title={`Contribute to ${goalName}`} onClose={closeModal} fullScreen>
       <form className="form" onSubmit={handleSubmit}>
         <div className="form__field">
           <span className="form__label">Fund From</span>

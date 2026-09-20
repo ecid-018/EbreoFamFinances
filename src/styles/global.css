@@ -2062,3 +2062,67 @@ svg {
   max-width: 260px;
   margin-top: 8px;
 }
+
+/* ---- Full-screen data entry ---------------------------------------------
+   Add expense, income, transfer, payday and the forms fill the screen rather
+   than sitting in a sheet. They cannot be dismissed by tapping outside or by
+   dragging: a half-typed expense lost to a stray tap is the worst thing this
+   app can do to someone, and it was happening. Cancel and Escape remain. */
+.sheet-overlay--full {
+  padding: 0;
+  align-items: stretch;
+  justify-content: stretch;
+}
+
+.sheet-panel--full {
+  width: 100%;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  /* No drag handle to offset. The minimum keeps the title off the very top
+     edge on a device with no notch, where the safe inset is 0. */
+  padding-top: max(var(--safe-top), 12px);
+}
+
+.sheet-panel--full .sheet-header {
+  flex: 0 0 auto;
+}
+
+.sheet-panel--full .sheet-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  /* Room for the on-screen keyboard and the home indicator. */
+  padding-bottom: calc(var(--safe-bottom, 0px) + 32px);
+}
+
+/* A worded Cancel rather than a bare ×: on a full screen there is no visible
+   "outside" to tap, so the way out has to be unmistakable. */
+.sheet-cancel {
+  border: none;
+  background: none;
+  padding: 4px 2px;
+  font-size: var(--body-size);
+  color: var(--color-accent);
+  cursor: pointer;
+}
+
+/* From tablet width up a full-screen form would be a lot of empty space, so
+   it becomes a tall centred dialog instead — still undismissable by backdrop. */
+@media (min-width: 768px) {
+  .sheet-overlay--full {
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .sheet-panel--full {
+    width: min(560px, 100%);
+    height: min(88dvh, 900px);
+    border-radius: var(--radius-card);
+    padding-top: 0;
+  }
+}

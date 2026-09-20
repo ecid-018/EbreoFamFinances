@@ -1,4 +1,4 @@
-import { HomeIcon, BudgetIcon, ActivityIcon, MoreIcon, IncomeIcon, ExpenseIcon, TransferIcon } from '../shared/Icon.jsx';
+import { HomeIcon, BudgetIcon, ActivityIcon, MoreIcon, IncomeIcon, ExpenseIcon, TransferIcon, GoalIcon } from '../shared/Icon.jsx';
 
 // The tab keys here must match the TABS map in App.jsx. Both the phone
 // BottomTabBar and the wider-screen SideNav render from this list, so a new
@@ -6,6 +6,7 @@ import { HomeIcon, BudgetIcon, ActivityIcon, MoreIcon, IncomeIcon, ExpenseIcon, 
 export const NAV_ITEMS = [
   { key: 'home', label: 'Home', Icon: HomeIcon },
   { key: 'budget', label: 'Budget', Icon: BudgetIcon },
+  { key: 'goals', label: 'Goals', Icon: GoalIcon },
   { key: 'transactions', label: 'Transactions', Icon: ActivityIcon },
   { key: 'accounts', label: 'Accounts', Icon: MoreIcon },
 ];

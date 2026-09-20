@@ -124,7 +124,7 @@ export function TransferMoneyModal({ mode = 'add', transfer }) {
   }
 
   return (
-    <BottomSheet title={isEdit ? 'Edit Transfer' : 'Transfer Money'} onClose={closeModal}>
+    <BottomSheet title={isEdit ? 'Edit Transfer' : 'Transfer Money'} onClose={closeModal} fullScreen>
       <form className="form" onSubmit={handleSubmit}>
         <label className="form__field">
           <span className="form__label">Date</span>
