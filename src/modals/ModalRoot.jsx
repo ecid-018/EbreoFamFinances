@@ -11,6 +11,7 @@ import { CategoryPickerModal } from './CategoryPickerModal.jsx';
 import { AllocateBudgetSheet } from './AllocateBudgetSheet.jsx';
 import { ChangePinModal } from './ChangePinModal.jsx';
 import { SettingsSheet } from './SettingsSheet.jsx';
+import { PlanPrefillSheet } from './PlanPrefillSheet.jsx';
 
 export function ModalRoot() {
   const { modal } = useApp();
@@ -41,6 +42,8 @@ export function ModalRoot() {
       return <ChangePinModal />;
     case 'settings':
       return <SettingsSheet />;
+    case 'planPrefill':
+      return <PlanPrefillSheet />;
     default:
       return null;
   }
