@@ -179,20 +179,20 @@ describe('computePaydaySplit', () => {
   });
 
   it('gives a surplus to the goals line only', () => {
-    const got = computePaydaySplit({ settings: settings(), goals, hubAmount: 1200 });
+    const got = computePaydaySplit({ settings: settings(), goals, amountToSplit: 1200 });
     expect(got.difference).toBe(200);
     expect(got.lines.splitGoals).toBe(700);
     expect(got.lines.splitRetirement).toBe(200);
   });
 
   it('takes a shortfall out of the goals line only', () => {
-    const got = computePaydaySplit({ settings: settings(), goals, hubAmount: 800 });
+    const got = computePaydaySplit({ settings: settings(), goals, amountToSplit: 800 });
     expect(got.lines.splitGoals).toBe(300);
     expect(got.lines.splitTrips).toBe(100);
   });
 
   it('flags a goals line driven below zero', () => {
-    const got = computePaydaySplit({ settings: settings(), goals, hubAmount: 100 });
+    const got = computePaydaySplit({ settings: settings(), goals, amountToSplit: 100 });
     expect(got.belowZero).toBe(true);
   });
 
@@ -204,7 +204,7 @@ describe('computePaydaySplit', () => {
   });
 
   it('splits a windfall by percentage and routes the goals share', () => {
-    const got = computePaydaySplit({ settings: settings(), goals, kind: PAYDAY_KINDS.WINDFALL, hubAmount: 1000 });
+    const got = computePaydaySplit({ settings: settings(), goals, kind: PAYDAY_KINDS.WINDFALL, amountToSplit: 1000 });
     expect(got.lines.splitGoals).toBe(900);
     expect(got.lines.splitTrips).toBe(100);
     expect(got.transfers[0].amount).toBe(900);
