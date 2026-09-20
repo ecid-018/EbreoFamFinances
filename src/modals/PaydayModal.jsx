@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { formatPHP } from '../utils/currency.js';
 import { getMonthKey, toISODateString } from '../utils/date.js';
 import { generateId } from '../utils/id.js';
-import { computePaydaySplit, PAYDAY_KINDS, SPLIT_FIELDS } from '../utils/plan/payday.js';
+import { computePaydaySplit, getExpectedLanding, PAYDAY_KINDS, SPLIT_FIELDS } from '../utils/plan/payday.js';
 import { SegmentedControl } from '../components/shared/SegmentedControl.jsx';
 import { BottomSheet } from './BottomSheet.jsx';
 
@@ -20,8 +20,16 @@ export function PaydayModal() {
 
   const [kind, setKind] = useState(PAYDAY_KINDS.PAY);
   const [date, setDate] = useState(toISODateString());
-  const [household, setHousehold] = useState(String(settings?.payHousehold ?? ''));
-  const [hub, setHub] = useState(String(settings?.payHub ?? ''));
+  // Prefilled with what each account is expected to RECEIVE, derived from the
+  // lines it funds. pay_household is the spending allowance and pay_hub is the
+  // total split across both accounts — neither is a landing figure, and using
+  // them here put the larger sum in the wrong account.
+  const [household, setHousehold] = useState(() =>
+    String(getExpectedLanding(settings?.householdAccountId, settings, state.splitLineSources) || '')
+  );
+  const [hub, setHub] = useState(() =>
+    String(getExpectedLanding(settings?.hubAccountId, settings, state.splitLineSources) || '')
+  );
   const [applying, setApplying] = useState(false);
   const [error, setError] = useState('');
 

@@ -6,6 +6,7 @@ import {
   groupByDestination,
   buildRoutedLines,
   getLineSource,
+  getExpectedLanding,
   computePaydaySplit,
 } from './payday.js';
 
@@ -392,5 +393,40 @@ describe('split line sources', () => {
     const toPafc = got.transfers.filter((t) => t.accountId === 'pafc');
     expect(toPafc).toHaveLength(2);
     expect(new Set(toPafc.map((t) => t.sourceAccountId))).toEqual(new Set(['hers', 'his']));
+  });
+});
+
+describe('getExpectedLanding', () => {
+  const settings = {
+    payHousehold: 110, payHub: 240,
+    splitGoals: 133, splitRetirement: 47, splitInsurance: 28,
+    splitTrips: 12, splitTrading: 11, splitVacationReserve: 6,
+    hubAccountId: 'his', householdAccountId: 'hers',
+  };
+  const sources = [{ lineKey: 'splitGoals', accountId: 'hers' }];
+
+  it('gives the household account its spending money plus the lines it funds', () => {
+    expect(getExpectedLanding('hers', settings, sources)).toBe(243); // 110 + 133
+  });
+
+  it('gives the hub only the lines it funds', () => {
+    expect(getExpectedLanding('his', settings, sources)).toBe(104); // 47+28+12+11+6
+  });
+
+  it('puts every line on the hub when no source is configured', () => {
+    expect(getExpectedLanding('his', settings, [])).toBe(237);
+    expect(getExpectedLanding('hers', settings, [])).toBe(110);
+  });
+
+  it('is not pay_hub, which is the total split across accounts', () => {
+    // The bug this replaced: prefilling the hub field with pay_hub put the
+    // whole split into one account.
+    expect(getExpectedLanding('his', settings, sources)).not.toBe(settings.payHub);
+  });
+
+  it('returns 0 for an unknown or missing account', () => {
+    expect(getExpectedLanding('nobody', settings, sources)).toBe(0);
+    expect(getExpectedLanding(null, settings, sources)).toBe(0);
+    expect(getExpectedLanding('his', null, sources)).toBe(0);
   });
 });
