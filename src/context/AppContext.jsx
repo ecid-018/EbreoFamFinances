@@ -22,6 +22,8 @@ const EMPTY_DOMAIN_STATE = {
   planSettings: null,
   envelopeBudgets: [],
   monthModes: [],
+  paydays: [],
+  paydayAllocations: [],
   month: getCurrentMonth(),
 };
 

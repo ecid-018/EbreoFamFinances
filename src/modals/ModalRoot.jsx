@@ -12,6 +12,7 @@ import { AllocateBudgetSheet } from './AllocateBudgetSheet.jsx';
 import { ChangePinModal } from './ChangePinModal.jsx';
 import { SettingsSheet } from './SettingsSheet.jsx';
 import { PlanPrefillSheet } from './PlanPrefillSheet.jsx';
+import { PaydayModal } from './PaydayModal.jsx';
 
 export function ModalRoot() {
   const { modal } = useApp();
@@ -44,6 +45,8 @@ export function ModalRoot() {
       return <SettingsSheet />;
     case 'planPrefill':
       return <PlanPrefillSheet />;
+    case 'payday':
+      return <PaydayModal />;
     default:
       return null;
   }

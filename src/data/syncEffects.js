@@ -10,6 +10,11 @@ export const syncEffects = {
     const existing = ctx.prevState.envelopes.find((env) => env.id === payload.id);
     return repo.updateEnvelope(payload, existing, ctx.userId);
   },
+  // No optimistic reducer case: a payday fans out into income, transfers and
+  // goal contributions that the RPC writes atomically. Guessing at all of that
+  // locally would be a second copy of the math, so the screen waits for the
+  // refetch instead.
+  'payday/apply': (payload) => repo.applyPayday(payload),
   'month/setMode': (payload, ctx) => repo.setMonthMode(payload, ctx.userId),
   'envelope/setMonthBudget': (payload, ctx) => {
     const envelope = ctx.prevState.envelopes.find((env) => env.id === payload.envelopeId);

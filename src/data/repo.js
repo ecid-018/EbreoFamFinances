@@ -23,6 +23,27 @@ function mapEnvelopeBudget(row) {
 function mapMonthMode(row) {
   return { monthKey: row.month_key, mode: row.mode };
 }
+function mapPayday(row) {
+  return {
+    id: row.id,
+    date: row.date,
+    budgetMonthKey: row.budget_month_key,
+    total: Number(row.total),
+    kind: row.kind,
+  };
+}
+function mapPaydayAllocation(row) {
+  return {
+    id: row.id,
+    paydayId: row.payday_id,
+    kind: row.kind,
+    incomeId: row.income_id,
+    transferId: row.transfer_id,
+    goalId: row.goal_id,
+    amount: Number(row.amount),
+    label: row.label,
+  };
+}
 function mapAccount(row) {
   return {
     id: row.id,
@@ -175,8 +196,27 @@ function fetchMonthModes() {
     });
 }
 
+// Tolerated as missing, like every table added since 0004: a deploy can land
+// before the migration is applied, and with no paydays the zero-based check
+// subtracts nothing, which is exactly the pre-phase behaviour.
+function fetchPaydayData() {
+  return Promise.all([
+    supabase.from('paydays').select('*').then(({ data, error }) => (error ? null : data ?? [])),
+    supabase.from('payday_allocations').select('*').then(({ data, error }) => (error ? null : data ?? [])),
+  ]).then(([paydays, allocations]) => {
+    if (paydays === null || allocations === null) {
+      console.warn('paydays unavailable (migration not applied yet?)');
+      return { paydays: [], paydayAllocations: [] };
+    }
+    return {
+      paydays: paydays.map(mapPayday),
+      paydayAllocations: allocations.map(mapPaydayAllocation),
+    };
+  });
+}
+
 export async function fetchAll() {
-  const [envelopes, accounts, transactions, income, goals, ledger, profiles, transfers, planSettings, envelopeBudgets, monthModes] =
+  const [envelopes, accounts, transactions, income, goals, ledger, profiles, transfers, planSettings, envelopeBudgets, monthModes, paydayData] =
     await Promise.all([
     supabase.from('envelopes').select('*').then(unwrap),
     supabase.from('accounts').select('*').then(unwrap),
@@ -189,6 +229,7 @@ export async function fetchAll() {
     fetchPlanSettings(),
     fetchEnvelopeBudgets(),
     fetchMonthModes(),
+    fetchPaydayData(),
   ]);
 
   return {
@@ -203,6 +244,7 @@ export async function fetchAll() {
     planSettings,
     envelopeBudgets,
     monthModes,
+    ...paydayData,
   };
 }
 
@@ -306,6 +348,14 @@ export const repo = {
 
   // Tags one month as sea or vacation. Upserts on the primary key so flipping
   // the same month twice replaces the row rather than failing.
+  // One call, one transaction. Every income row, transfer and goal
+  // contribution the payday implies is written by apply_payday calling the
+  // same functions the rest of the app calls — there is no second copy of the
+  // balance math here, and a failure anywhere rolls the whole payday back.
+  async applyPayday(payload) {
+    await supabase.rpc('apply_payday', { p_payday: payload }).then(unwrap);
+  },
+
   async setMonthMode(payload, userId) {
     await supabase
       .from('month_modes')
