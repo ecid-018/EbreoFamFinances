@@ -11,6 +11,8 @@ import { BottomSheet } from './BottomSheet.jsx';
 // One payday, applied as one transaction. The split is computed by the pure
 // function in utils/plan/payday.js; this screen only shows it, lets the two
 // incoming amounts be corrected, and hands the result to apply_payday.
+const round2 = (n) => Math.round(n * 100) / 100;
+
 export function PaydayModal() {
   const { state, dispatch, refetchAll, closeModal } = useApp();
   const { session } = useAuth();
@@ -26,10 +28,28 @@ export function PaydayModal() {
   const hubAmount = hub === '' ? null : Number(hub);
   const householdAmount = household === '' ? 0 : Number(household);
 
+  // Since split_line_sources, several accounts fund the plan. What gets split
+  // is what arrives in the hub, plus whatever is left in the household account
+  // once the household's own spending money is set aside. Those are different
+  // numbers and conflating them is how the hub looked ~170k short.
+  const householdSurplus = Math.max(0, householdAmount - (settings?.payHousehold ?? 0));
+  const amountToSplit = hubAmount == null && household === '' ? null : round2((hubAmount ?? 0) + householdSurplus);
+
   const split = useMemo(
-    () => computePaydaySplit({ settings, goals: state.goals, kind, hubAmount, sources: state.splitLineSources }),
-    [settings, state.goals, kind, hubAmount, state.splitLineSources]
+    () => computePaydaySplit({ settings, goals: state.goals, kind, amountToSplit, sources: state.splitLineSources }),
+    [settings, state.goals, kind, amountToSplit, state.splitLineSources]
   );
+
+  // Each source account can only supply what actually arrived in it, less any
+  // household spending money that must stay behind.
+  const availableBySource = {};
+  if (settings) {
+    availableBySource[settings.hubAccountId] = hubAmount ?? 0;
+    if (settings.householdAccountId) availableBySource[settings.householdAccountId] = householdSurplus;
+  }
+  const shortfalls = Object.entries(split?.bySource ?? {})
+    .filter(([id, needed]) => id !== 'none' && needed > (availableBySource[id] ?? 0) + 0.005)
+    .map(([id, needed]) => ({ id, needed, available: availableBySource[id] ?? 0 }));
 
   // Both BPI accounts are called "BPI Savings" — one each. Naming the owner is
   // the only way the two incoming lines can be told apart.
@@ -65,11 +85,13 @@ export function PaydayModal() {
         source: kind === PAYDAY_KINDS.WINDFALL ? 'Windfall (household)' : 'Allotment',
       });
     }
-    if (split.total > 0) {
+    if ((hubAmount ?? 0) > 0) {
       incomes.push({
         id: generateId(),
         account_id: settings.hubAccountId,
-        amount: split.total,
+        // What actually landed in the hub, not the total being split — the
+        // rest of that total is already sitting in the household account.
+        amount: hubAmount,
         source: kind === PAYDAY_KINDS.WINDFALL ? 'Windfall' : 'Pay',
       });
     }
@@ -143,7 +165,10 @@ export function PaydayModal() {
               type="number" inputMode="decimal" min="0" step="0.01" className="form__input"
               value={household} onChange={(e) => setHousehold(e.target.value)}
             />
-            <span className="form__checkbox-hint">Household allotment. Not split; it lands and stays.</span>
+            <span className="form__checkbox-hint">
+              What actually landed here. {formatPHP(settings.payHousehold ?? 0)} stays for household spending; anything
+              above that is available to the lines this account funds.
+            </span>
           </label>
         )}
 
@@ -155,7 +180,7 @@ export function PaydayModal() {
           />
           {!isWindfall && split && (
             <span className="form__checkbox-hint">
-              Planned {formatPHP(split.plannedTotal)}.{' '}
+              Total to split {formatPHP(amountToSplit ?? 0)} against a plan of {formatPHP(split.plannedTotal)}.{' '}
               {split.difference === 0
                 ? 'Matches the plan.'
                 : `${split.difference > 0 ? 'Over' : 'Short'} by ${formatPHP(Math.abs(split.difference))}, absorbed by the goals line.`}
@@ -231,9 +256,14 @@ export function PaydayModal() {
               </tbody>
             </table>
             <p className="prefill-note">
-              Each account must have at least this much arrive in it, or the payday is rejected before anything is
+              Each account must have at least this much available, or the payday is rejected before anything is
               written.
             </p>
+            {shortfalls.map((sf) => (
+              <p key={sf.id} className="form__error">
+                {accountName(sf.id)} needs {formatPHP(sf.needed)} but only {formatPHP(sf.available)} is available.
+              </p>
+            ))}
           </>
         )}
 
@@ -257,7 +287,7 @@ export function PaydayModal() {
         )}
         {error && <p className="form__error">{error}</p>}
 
-        <button type="button" className="btn-block" disabled={applying || !split || split.belowZero} onClick={handleApply}>
+        <button type="button" className="btn-block" disabled={applying || !split || split.belowZero || shortfalls.length > 0} onClick={handleApply}>
           {applying ? 'Applying…' : 'Apply payday'}
         </button>
         <p className="prefill-note">

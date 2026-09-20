@@ -198,11 +198,11 @@ export function groupByDestination(routed, hubAccountId) {
 }
 
 // The whole calculation for one payday.
-export function computePaydaySplit({ settings, goals = [], kind = PAYDAY_KINDS.PAY, hubAmount = null, sources = [] }) {
+export function computePaydaySplit({ settings, goals = [], kind = PAYDAY_KINDS.PAY, amountToSplit = null, sources = [] }) {
   if (!settings) return null;
 
   if (kind === PAYDAY_KINDS.WINDFALL) {
-    const total = round2(hubAmount ?? 0);
+    const total = round2(amountToSplit ?? 0);
     const pct = settings.windfallGoalsPct ?? 0;
     const toGoals = round2((total * pct) / 100);
     const toTrips = round2(total - toGoals);
@@ -223,7 +223,10 @@ export function computePaydaySplit({ settings, goals = [], kind = PAYDAY_KINDS.P
 
   // What actually arrived may differ from the plan. Every line stays fixed and
   // the goals line absorbs the difference, the same rule the plan file names.
-  const actual = hubAmount == null ? plannedTotal : round2(hubAmount);
+  //
+  // This is the total being split across ALL source accounts, not what landed
+  // in any one of them — since split_line_sources, those are different numbers.
+  const actual = amountToSplit == null ? plannedTotal : round2(amountToSplit);
   const difference = round2(actual - plannedTotal);
   const adjusted = { ...planned, splitGoals: round2((planned.splitGoals ?? 0) + difference) };
 
