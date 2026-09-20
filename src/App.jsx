@@ -16,12 +16,14 @@ import { NeedsAttentionCard } from './components/home/NeedsAttentionCard.jsx';
 import { HomeTab } from './components/tabs/HomeTab.jsx';
 import { BudgetTab } from './components/tabs/BudgetTab.jsx';
 import { TransactionsTab } from './components/tabs/TransactionsTab.jsx';
+import { GoalsTab } from './components/tabs/GoalsTab.jsx';
 import { AccountsTab } from './components/tabs/AccountsTab.jsx';
 import { ModalRoot } from './modals/ModalRoot.jsx';
 
 const TABS = {
   home: HomeTab,
   budget: BudgetTab,
+  goals: GoalsTab,
   transactions: TransactionsTab,
   accounts: AccountsTab,
 };

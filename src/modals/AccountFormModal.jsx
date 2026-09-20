@@ -75,7 +75,7 @@ export function AccountFormModal({ mode = 'add', account }) {
   }
 
   return (
-    <BottomSheet title={isEdit ? 'Edit Account' : 'Add Account'} onClose={closeModal}>
+    <BottomSheet title={isEdit ? 'Edit Account' : 'Add Account'} onClose={closeModal} fullScreen>
       <form className="form" onSubmit={handleSubmit}>
         <label className="form__field">
           <span className="form__label">Name</span>

@@ -79,7 +79,7 @@ export function EnvelopeFormModal({ mode, envelope }) {
   }
 
   return (
-    <BottomSheet title={isEdit ? 'Edit Envelope' : 'Add Envelope'} onClose={closeModal}>
+    <BottomSheet title={isEdit ? 'Edit Envelope' : 'Add Envelope'} onClose={closeModal} fullScreen>
       <form className="form" onSubmit={handleSubmit}>
         <label className="form__field">
           <span className="form__label">Name</span>

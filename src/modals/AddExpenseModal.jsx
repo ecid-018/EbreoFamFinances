@@ -69,7 +69,7 @@ export function AddExpenseModal({ mode = 'add', transaction }) {
   }
 
   return (
-    <BottomSheet title={isEdit ? 'Edit Expense' : 'Add Expense'} onClose={closeModal}>
+    <BottomSheet title={isEdit ? 'Edit Expense' : 'Add Expense'} onClose={closeModal} fullScreen>
       <form className="form" onSubmit={handleSubmit}>
         <label className="form__field">
           <span className="form__label">Date</span>

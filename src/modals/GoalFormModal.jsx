@@ -59,7 +59,7 @@ export function GoalFormModal({ mode = 'add', goal }) {
   }
 
   return (
-    <BottomSheet title={isEdit ? 'Edit Savings Goal' : 'Add Savings Goal'} onClose={closeModal}>
+    <BottomSheet title={isEdit ? 'Edit Savings Goal' : 'Add Savings Goal'} onClose={closeModal} fullScreen>
       <form className="form" onSubmit={handleSubmit}>
         <label className="form__field">
           <span className="form__label">Name</span>

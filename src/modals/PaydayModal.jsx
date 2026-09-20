@@ -72,7 +72,7 @@ export function PaydayModal() {
 
   if (!settings || !settings.hubAccountId) {
     return (
-      <BottomSheet title="Payday" onClose={closeModal}>
+      <BottomSheet title="Payday" onClose={closeModal} fullScreen>
         <p className="prefill-note">
           Payday needs the plan set up first — at least the hub account and the split. Settings → Plan.
         </p>

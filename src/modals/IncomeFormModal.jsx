@@ -65,7 +65,7 @@ export function IncomeFormModal({ mode = 'add', entry }) {
   }
 
   return (
-    <BottomSheet title={isEdit ? 'Edit Income' : 'Add Income'} onClose={closeModal}>
+    <BottomSheet title={isEdit ? 'Edit Income' : 'Add Income'} onClose={closeModal} fullScreen>
       <form className="form" onSubmit={handleSubmit}>
         <label className="form__field">
           <span className="form__label">Date Received</span>

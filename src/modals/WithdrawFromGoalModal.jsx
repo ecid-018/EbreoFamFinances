@@ -32,7 +32,7 @@ export function WithdrawFromGoalModal({ goalId, goalName }) {
   }
 
   return (
-    <BottomSheet title={`Spend from ${goalName}`} onClose={closeModal}>
+    <BottomSheet title={`Spend from ${goalName}`} onClose={closeModal} fullScreen>
       <form className="form" onSubmit={handleSubmit}>
         <p className="form__label">
           {formatPHP(available)} saved. This lowers the fund only — log the expense itself separately.
