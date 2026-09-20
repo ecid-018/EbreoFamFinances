@@ -21,6 +21,7 @@ const EMPTY_DOMAIN_STATE = {
   transfers: [],
   planSettings: null,
   envelopeBudgets: [],
+  monthModes: [],
   month: getCurrentMonth(),
 };
 
@@ -105,18 +106,21 @@ export function AppProvider({ children }) {
       dispatch(finalAction);
 
       const effect = syncEffects[finalAction.type];
-      if (!effect || !userId) return Promise.resolve();
-      // The promise is RETURNED as well as caught. Callers that ignore it keep
-      // the old fire-and-forget behaviour exactly; a caller applying a batch
-      // can await each one and stop on the first failure. The rethrow is what
-      // makes that possible, so the local catch stays responsible for the
-      // user-visible error either way.
-      return Promise.resolve(effect(finalAction.payload, { userId, prevState })).catch((err) => {
-        console.error(`Sync failed for ${finalAction.type}:`, err);
-        setSyncError("Couldn't save your last change — refreshing to reconnect…");
-        refetchAll();
-        throw err;
-      });
+      if (!effect || !userId) return Promise.resolve({ ok: true });
+      // Resolves to an outcome and NEVER rejects. A caller applying a batch can
+      // await this and stop on the first failure; the overwhelming majority of
+      // callers ignore the return value entirely, and a rejected promise nobody
+      // is holding becomes an unhandled rejection on every sync failure. The
+      // user-visible handling stays here either way.
+      return Promise.resolve(effect(finalAction.payload, { userId, prevState })).then(
+        () => ({ ok: true }),
+        (err) => {
+          console.error(`Sync failed for ${finalAction.type}:`, err);
+          setSyncError("Couldn't save your last change — refreshing to reconnect…");
+          refetchAll();
+          return { ok: false, error: err };
+        }
+      );
     },
     [userId, refetchAll]
   );

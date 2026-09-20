@@ -20,6 +20,9 @@ function mapEnvelopeBudget(row) {
     amount: Number(row.amount),
   };
 }
+function mapMonthMode(row) {
+  return { monthKey: row.month_key, mode: row.mode };
+}
 function mapAccount(row) {
   return {
     id: row.id,
@@ -156,8 +159,24 @@ function fetchEnvelopeBudgets() {
     });
 }
 
+// Tolerated as missing for the same reason plan_settings and envelope_budgets
+// are: a deploy can land before the migration is applied. With no rows every
+// month is a sea month, which is exactly the pre-phase behaviour.
+function fetchMonthModes() {
+  return supabase
+    .from('month_modes')
+    .select('*')
+    .then(({ data, error }) => {
+      if (error) {
+        console.warn('month_modes unavailable (migration not applied yet?):', error.message);
+        return [];
+      }
+      return (data ?? []).map(mapMonthMode);
+    });
+}
+
 export async function fetchAll() {
-  const [envelopes, accounts, transactions, income, goals, ledger, profiles, transfers, planSettings, envelopeBudgets] =
+  const [envelopes, accounts, transactions, income, goals, ledger, profiles, transfers, planSettings, envelopeBudgets, monthModes] =
     await Promise.all([
     supabase.from('envelopes').select('*').then(unwrap),
     supabase.from('accounts').select('*').then(unwrap),
@@ -169,6 +188,7 @@ export async function fetchAll() {
     supabase.from('transfers').select('*').then(unwrap),
     fetchPlanSettings(),
     fetchEnvelopeBudgets(),
+    fetchMonthModes(),
   ]);
 
   return {
@@ -182,6 +202,7 @@ export async function fetchAll() {
     transfers: transfers.map(mapTransfer),
     planSettings,
     envelopeBudgets,
+    monthModes,
   };
 }
 
@@ -279,6 +300,32 @@ export const repo = {
       // September change from an October one.
       name: `${payload.name} (${payload.monthKey})`,
       amount: payload.amount,
+      userId,
+    });
+  },
+
+  // Tags one month as sea or vacation. Upserts on the primary key so flipping
+  // the same month twice replaces the row rather than failing.
+  async setMonthMode(payload, userId) {
+    await supabase
+      .from('month_modes')
+      .upsert(
+        {
+          month_key: payload.monthKey,
+          mode: payload.mode,
+          created_by: userId,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'month_key' }
+      )
+      .then(unwrap);
+
+    await insertLedgerEntry({
+      date: null,
+      domain: 'Month',
+      type: 'Mode set',
+      name: `${payload.monthKey} — ${payload.mode}`,
+      amount: 0,
       userId,
     });
   },

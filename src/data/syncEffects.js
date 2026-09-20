@@ -10,6 +10,7 @@ export const syncEffects = {
     const existing = ctx.prevState.envelopes.find((env) => env.id === payload.id);
     return repo.updateEnvelope(payload, existing, ctx.userId);
   },
+  'month/setMode': (payload, ctx) => repo.setMonthMode(payload, ctx.userId),
   'envelope/setMonthBudget': (payload, ctx) => {
     const envelope = ctx.prevState.envelopes.find((env) => env.id === payload.envelopeId);
     return repo.setEnvelopeMonthBudget({ ...payload, name: envelope?.name ?? 'Envelope' }, ctx.userId);

@@ -85,6 +85,23 @@ export function appReducer(state, action) {
       };
     }
 
+    case 'month/setMode': {
+      const { monthKey, mode } = action.payload;
+      const exists = state.monthModes.some((m) => m.monthKey === monthKey);
+      return {
+        ...state,
+        monthModes: exists
+          ? state.monthModes.map((m) => (m.monthKey === monthKey ? { ...m, mode } : m))
+          : [...state.monthModes, { monthKey, mode }],
+        ledger: logEntry(state.ledger, {
+          domain: 'Month',
+          type: 'Mode set',
+          name: `${monthKey} — ${mode}`,
+          amount: 0,
+        }),
+      };
+    }
+
     case 'envelope/setMonthBudget': {
       const { envelopeId, monthKey, amount } = action.payload;
       const existing = state.envelopeBudgets.find(
