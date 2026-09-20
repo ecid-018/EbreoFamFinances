@@ -317,6 +317,35 @@ function isFiniteNumber(value) {
   return typeof value === 'number' && Number.isFinite(value);
 }
 
+// A JSON syntax error from the engine reads like "Expected ',' or '}' after
+// property value in JSON at position 64", which says nothing useful to someone
+// looking at a file in an editor. This pulls out the line and column and hands
+// back the offending line so the screen can point straight at it.
+export function describeJsonError(raw = '', error) {
+  const message = error?.message ?? String(error);
+  let line = null;
+  let column = null;
+
+  const lineColumn = /line (\d+) column (\d+)/i.exec(message);
+  if (lineColumn) {
+    line = Number(lineColumn[1]);
+    column = Number(lineColumn[2]);
+  } else {
+    // Older engines report only a character offset; derive line and column.
+    const position = /position (\d+)/i.exec(message);
+    if (position) {
+      const offset = Number(position[1]);
+      const before = raw.slice(0, offset);
+      line = before.split('\n').length;
+      column = offset - before.lastIndexOf('\n');
+    }
+  }
+
+  const lines = raw.split('\n');
+  const snippet = line && lines[line - 1] !== undefined ? lines[line - 1] : null;
+  return { line, column, snippet, message };
+}
+
 export function validatePlanFile(data) {
   const errors = [];
 
