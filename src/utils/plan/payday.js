@@ -105,6 +105,24 @@ export function getLineSource(line, settings, sources = []) {
   return row?.accountId ?? settings?.hubAccountId ?? null;
 }
 
+// What a given account is expected to receive on payday: the lines it funds,
+// plus the household's spending money if it is the household account.
+//
+// plan_settings stores pay_household (spending money) and pay_hub (the TOTAL
+// being split, across every source since split_line_sources). Neither is what
+// lands in a particular account, so prefilling a field with either is wrong
+// the moment more than one account funds the plan. This derives the real
+// figure from the lines themselves.
+export function getExpectedLanding(accountId, settings, sources = []) {
+  if (!accountId || !settings) return 0;
+  const fromLines = SPLIT_FIELDS.reduce(
+    (sum, f) => (getLineSource(f.key, settings, sources) === accountId ? sum + (settings[f.key] ?? 0) : sum),
+    0
+  );
+  const household = accountId === settings.householdAccountId ? settings.payHousehold ?? 0 : 0;
+  return round2(fromLines + household);
+}
+
 export function buildRoutedLines({ lines, settings, goals = [], sources = [] }) {
   const items = [];
 
