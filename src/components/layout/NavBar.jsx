@@ -2,7 +2,8 @@ import { useApp } from '../../context/AppContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useDerivedFinancials } from '../../hooks/useDerivedFinancials.js';
 import { useScrollCollapse } from '../../hooks/useScrollCollapse.js';
-import { getMonthName, addDays, getWeekdayName, getDayLabel, isToday } from '../../utils/date.js';
+import { getMonthName, getMonthKey, addDays, getWeekdayName, getDayLabel, isToday } from '../../utils/date.js';
+import { MONTH_MODES } from '../../utils/plan/monthModes.js';
 import { SegmentedControl } from '../shared/SegmentedControl.jsx';
 import { Avatar } from '../shared/Avatar.jsx';
 import { ChevronLeftIcon, ChevronRightIcon, SettingsIcon } from '../shared/Icon.jsx';
@@ -10,7 +11,7 @@ import { ChevronLeftIcon, ChevronRightIcon, SettingsIcon } from '../shared/Icon.
 export function NavBar() {
   const { state, dispatch, openModal, viewMode, setViewMode, viewDay, setViewDay } = useApp();
   const { session, currentProfile } = useAuth();
-  const { daysLeft, isPastMonth } = useDerivedFinancials();
+  const { daysLeft, isPastMonth, monthMode } = useDerivedFinancials();
   const liveProfile = state.profiles.find((p) => p.id === session?.user?.id);
   const displayProfile = currentProfile && {
     displayName: currentProfile.displayName,
@@ -29,6 +30,15 @@ export function NavBar() {
   const smallTitle = isDayMode ? getDayLabel(viewDay).replace(`, ${viewDay.slice(0, 4)}`, '') : monthName;
   const largeTitle = isDayMode ? getWeekdayName(viewDay) : monthLabel;
   const subtitle = isDayMode ? (isToday(viewDay) ? 'Today' : getDayLabel(viewDay)) : monthSubtitle;
+
+  // Tagging a month says how it is funded — a paid month at sea from income, a
+  // month at home from the vacation reserve. It never changes the budgets
+  // themselves, only what the zero-based check measures them against.
+  const monthKey = getMonthKey(state.month.year, state.month.monthIndex);
+  function handleModeChange(mode) {
+    if (mode === monthMode) return;
+    dispatch({ type: 'month/setMode', payload: { monthKey, mode } });
+  }
 
   const prevLabel = isDayMode ? 'Previous Day' : 'Previous Month';
   const nextLabel = isDayMode ? 'Next Day' : 'Next Month';
@@ -91,6 +101,18 @@ export function NavBar() {
           )}
         </div>
         <p className="navbar__subtitle">{subtitle}</p>
+        {!isDayMode && (
+          <div className="navbar__month-mode">
+            <SegmentedControl
+              value={monthMode}
+              onChange={handleModeChange}
+              options={[
+                { value: MONTH_MODES.SEA, label: 'At sea' },
+                { value: MONTH_MODES.VACATION, label: 'On vacation' },
+              ]}
+            />
+          </div>
+        )}
       </div>
     </header>
   );

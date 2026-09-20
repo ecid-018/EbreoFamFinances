@@ -164,7 +164,13 @@ svg {
   max-width: var(--max-content-width);
   margin: 0 auto;
   padding: 2px 16px 14px;
-  max-height: 130px;
+  /* The collapse animates max-height, so this has to clear the tallest the
+     expanded header ever gets: title, profile row, subtitle and the sea/
+     vacation toggle. At 130px the subtitle was already being clipped at phone
+     widths -- it sat a pixel past the cap and simply never showed. Raised to
+     fit everything, and kept close to the natural height so collapsing starts
+     moving immediately rather than after a dead stretch. */
+  max-height: 240px;
   opacity: 1;
   overflow: hidden;
   transition: max-height 0.24s ease, opacity 0.16s ease, padding 0.24s ease;
@@ -2047,4 +2053,12 @@ svg {
 .prefill-snippet code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   white-space: pre;
+}
+
+/* Sea / vacation toggle under the month title. Narrow and quiet: it is set
+   once per month and then left alone, so it should not compete with the month
+   stepper above it. */
+.navbar__month-mode {
+  max-width: 260px;
+  margin-top: 8px;
 }

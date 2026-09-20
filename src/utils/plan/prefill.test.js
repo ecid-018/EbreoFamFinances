@@ -539,6 +539,22 @@ describe('runSteps', () => {
     expect(seen).toEqual(['1/2', '2/2']);
   });
 
+  it('stops on a resolved failure outcome, not only a thrown error', async () => {
+    // How the app's dispatch actually reports failure.
+    const got = await runSteps([step(1), step(2)], async (a) =>
+      a.payload.n === 2 ? { ok: false, error: new Error('rejected by server') } : { ok: true }
+    );
+    expect(got.ok).toBe(false);
+    expect(got.applied).toHaveLength(1);
+    expect(got.failed.message).toBe('rejected by server');
+  });
+
+  it('treats a resolved ok outcome as success', async () => {
+    const got = await runSteps([step(1), step(2)], async () => ({ ok: true }));
+    expect(got.ok).toBe(true);
+    expect(got.applied).toHaveLength(2);
+  });
+
   it('succeeds trivially on an empty list', async () => {
     const got = await runSteps([], async () => { throw new Error('never'); });
     expect(got.ok).toBe(true);

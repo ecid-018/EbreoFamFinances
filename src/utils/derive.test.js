@@ -220,6 +220,72 @@ describe('deriveMonthFinancials with month-scoped budgets', () => {
   });
 });
 
+describe('deriveMonthFinancials with month modes', () => {
+  // fixture(): budgets 100 + 0 + 50 = 150. Invented figures throughout.
+  const vacationGoal = { id: 'vg', name: 'Vacation reserve', target: 1000, saved: 600, saved_: 0 };
+  const settings = { vacationGoalId: 'vg' };
+
+  function run(over) {
+    const f = fixture();
+    return deriveMonthFinancials(
+      { ...f, goals: [...f.goals, vacationGoal], month: SEP, ...over },
+      { today: TODAY }
+    );
+  }
+
+  it('is unchanged when no month is tagged', () => {
+    const tagged = run({ monthModes: [] });
+    const plain = deriveMonthFinancials({ ...fixture(), month: SEP }, { today: TODAY });
+    expect(tagged.unassigned).toBe(plain.unassigned);
+    expect(tagged.safeToSpend).toBe(plain.safeToSpend);
+    expect(tagged.monthMode).toBe('sea');
+  });
+
+  it('measures a vacation month against the reserve, not income', () => {
+    const got = run({
+      monthModes: [{ monthKey: '2026-09', mode: 'vacation' }],
+      planSettings: settings,
+    });
+    expect(got.monthMode).toBe('vacation');
+    expect(got.available).toMatchObject({ amount: 600, source: 'vacationReserve' });
+    expect(got.unassigned).toBe(450); // 600 reserve - 150 budgeted
+  });
+
+  it('does not report a vacation month as wildly over budget', () => {
+    // The failure this exists to prevent: with no income, measuring against
+    // income makes every month at home look catastrophic.
+    const againstIncome = run({ monthModes: [], income: [] });
+    const againstReserve = run({
+      monthModes: [{ monthKey: '2026-09', mode: 'vacation' }],
+      planSettings: settings,
+      income: [],
+    });
+    expect(againstIncome.unassigned).toBeLessThan(0);
+    expect(againstReserve.unassigned).toBeGreaterThan(0);
+  });
+
+  it('leaves another month alone when only one is tagged', () => {
+    const got = deriveMonthFinancials(
+      { ...fixture(), month: OCT, monthModes: [{ monthKey: '2026-09', mode: 'vacation' }], planSettings: settings },
+      { today: TODAY }
+    );
+    expect(got.monthMode).toBe('sea');
+    expect(got.available.source).toBe('income');
+  });
+
+  it('falls back to income when the plan names no vacation goal', () => {
+    const got = run({ monthModes: [{ monthKey: '2026-09', mode: 'vacation' }], planSettings: null });
+    expect(got.available).toMatchObject({ source: 'income', unconfigured: true });
+  });
+
+  it('does not change what was spent or budgeted, only what they are measured against', () => {
+    const sea = run({ monthModes: [] });
+    const vac = run({ monthModes: [{ monthKey: '2026-09', mode: 'vacation' }], planSettings: settings });
+    expect(vac.totalSpent).toBe(sea.totalSpent);
+    expect(vac.totalBudget).toBe(sea.totalBudget);
+  });
+});
+
 describe('deriveDayFinancials', () => {
   it('collects a day of expenses with envelope and account resolved', () => {
     const day = deriveDayFinancials(fixture(), '2026-09-03');

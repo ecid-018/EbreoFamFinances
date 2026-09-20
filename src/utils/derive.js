@@ -9,13 +9,14 @@ import { splitIncomeByCurrency } from './accounts.js';
 import { RECEIVABLE_TYPE } from './plan/accountTypes.js';
 import { getGoalsProgressPct } from './plan/goals.js';
 import { resolveEnvelopesForMonth } from './plan/monthBudgets.js';
+import { getMonthMode, getAvailableToAllocate } from './plan/monthModes.js';
 
 function sumBy(items, field) {
   return items.reduce((total, item) => total + item[field], 0);
 }
 
 export function deriveMonthFinancials(
-  { envelopes, transactions, income, accounts, goals, month, envelopeBudgets = [] },
+  { envelopes, transactions, income, accounts, goals, month, envelopeBudgets = [], monthModes = [], planSettings = null },
   { today = new Date() } = {}
 ) {
   // The month dimension stops here. Every envelope below carries the budget
@@ -23,11 +24,8 @@ export function deriveMonthFinancials(
   // unchanged from when there was only one budget per envelope. An empty
   // envelopeBudgets (no migration yet, or no month has diverged) resolves
   // every envelope to its base figure, which is exactly the old behaviour.
-  const resolvedEnvelopes = resolveEnvelopesForMonth(
-    envelopes,
-    envelopeBudgets,
-    getMonthKey(month.year, month.monthIndex)
-  );
+  const monthKey = getMonthKey(month.year, month.monthIndex);
+  const resolvedEnvelopes = resolveEnvelopesForMonth(envelopes, envelopeBudgets, monthKey);
 
   const monthTransactions = filterByMonth(transactions, month.year, month.monthIndex);
   const monthIncomeEntries = filterByMonth(income, month.year, month.monthIndex, 'budgetMonthKey');
@@ -35,8 +33,16 @@ export function deriveMonthFinancials(
   const { phpTotal: totalIncome, usdTotal: monthUsdIncome } = splitIncomeByCurrency(monthIncomeEntries, accounts);
   const totalSpent = sumBy(monthTransactions, 'amount');
   const totalBudget = sumBy(resolvedEnvelopes, 'monthlyBudget');
-  const unassigned = totalIncome - totalBudget;
-  const safeToSpend = totalIncome - totalSpent;
+
+  // A vacation month has no pay coming in; it spends the reserve the paid
+  // months built. Measuring it against its own (zero) income would report every
+  // month at home as catastrophically over budget, so both the zero-based check
+  // and Safe to Spend compare against whichever pool actually funds the month.
+  // With no month tagged, `available` is income and every figure is unchanged.
+  const monthMode = getMonthMode(monthModes, monthKey);
+  const available = getAvailableToAllocate({ mode: monthMode, totalIncome, goals, planSettings });
+  const unassigned = available.amount - totalBudget;
+  const safeToSpend = available.amount - totalSpent;
 
   const envelopeStats = resolvedEnvelopes
     .map((env) => {
@@ -109,6 +115,8 @@ export function deriveMonthFinancials(
     overBudgetEnvelopes,
     monthIncomeEntries,
     monthUsdIncome,
+    monthMode,
+    available,
     totalPhpAccountBalance,
     totalUsdAccountBalance,
     totalReceivable,

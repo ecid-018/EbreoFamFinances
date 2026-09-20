@@ -286,16 +286,23 @@ export async function runSteps(steps = [], run, onProgress) {
 
   for (let index = 0; index < steps.length; index += 1) {
     const step = steps[index];
+    const stop = (reason) => ({
+      ok: false,
+      applied,
+      failed: { step, message: reason?.message ?? String(reason) },
+      remaining: steps.slice(index + 1),
+    });
+
+    let outcome;
     try {
-      await run(step.action);
+      outcome = await run(step.action);
     } catch (err) {
-      return {
-        ok: false,
-        applied,
-        failed: { step, message: err?.message ?? String(err) },
-        remaining: steps.slice(index + 1),
-      };
+      // `run` may throw outright, or resolve to { ok: false }. The app's
+      // dispatch does the latter, deliberately, so that callers which ignore
+      // the result do not leave an unhandled rejection behind.
+      return stop(err);
     }
+    if (outcome && outcome.ok === false) return stop(outcome.error ?? 'Sync failed');
     applied.push(step);
     onProgress?.({ done: applied.length, total: steps.length });
   }

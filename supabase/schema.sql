@@ -134,6 +134,19 @@ create table envelope_budgets (
   unique (envelope_id, month_key)
 );
 
+-- Sea or vacation, per month (0006). A month with no row is 'sea'. This does
+-- NOT change what an envelope's budget IS -- 0005 made budgets month-scoped --
+-- only what the zero-based check measures them against: income in a paid month,
+-- the vacation reserve's saved amount in a month at home. The spec's
+-- envelopes.vacation_budget column is deliberately not here; it would be a
+-- second way of saying what envelope_budgets already says.
+create table month_modes (
+  month_key text primary key check (month_key ~ '^\d{4}-(0[1-9]|1[0-2])$'),
+  mode text not null check (mode in ('sea', 'vacation')),
+  created_by uuid references auth.users(id),
+  updated_at timestamptz not null default now()
+);
+
 -- One shared row of household plan figures (0004). `id boolean primary key
 -- default true check (id)` is a singleton guard: only one row can ever exist.
 -- Every amount is nullable — null means "not decided yet", which must never
@@ -198,6 +211,7 @@ alter table goals enable row level security;
 alter table ledger enable row level security;
 alter table transfers enable row level security;
 alter table envelope_budgets enable row level security;
+alter table month_modes enable row level security;
 alter table plan_settings enable row level security;
 
 create policy "profiles_select" on profiles for select to authenticated using (true);
@@ -218,6 +232,11 @@ create policy "envelope_budgets_select" on envelope_budgets for select to authen
 create policy "envelope_budgets_insert" on envelope_budgets for insert to authenticated with check (created_by = auth.uid());
 create policy "envelope_budgets_update" on envelope_budgets for update to authenticated using (true) with check (true);
 create policy "envelope_budgets_delete" on envelope_budgets for delete to authenticated using (true);
+
+create policy "month_modes_select" on month_modes for select to authenticated using (true);
+create policy "month_modes_insert" on month_modes for insert to authenticated with check (created_by = auth.uid());
+create policy "month_modes_update" on month_modes for update to authenticated using (true) with check (true);
+create policy "month_modes_delete" on month_modes for delete to authenticated using (true);
 
 -- plan_settings is the single shared row; there is deliberately no insert or
 -- delete policy, so RLS denies both and the singleton cannot be duplicated or
