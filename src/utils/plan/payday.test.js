@@ -4,6 +4,7 @@ import {
   applyPresignoffRule,
   routeGoalsLine,
   groupByDestination,
+  buildRoutedLines,
   computePaydaySplit,
 } from './payday.js';
 
@@ -158,7 +159,7 @@ describe('groupByDestination', () => {
     );
     expect(got.transfers).toHaveLength(1);
     expect(got.transfers[0].amount).toBe(25);
-    expect(got.transfers[0].goals).toHaveLength(2);
+    expect(got.transfers[0].items).toHaveLength(2);
   });
 });
 
@@ -213,5 +214,111 @@ describe('computePaydaySplit', () => {
     const got = computePaydaySplit({ settings: settings(), goals: inHub });
     expect(got.transfers).toHaveLength(0);
     expect(got.allocations[0].amount).toBe(500);
+  });
+});
+
+describe('buildRoutedLines', () => {
+  const settings2 = (over = {}) => ({
+    hubAccountId: 'hub',
+    insuranceGoalId: 'ins', tripsGoalId: 'trp', vacationGoalId: 'vac',
+    retirementAccountId: 'ret', tradingAccountId: 'trd',
+    ...over,
+  });
+  const sinkingGoals = [
+    goal({ id: 'ins', name: 'Insurance fund', isSinkingFund: true, heldInAccountId: 'hub' }),
+    goal({ id: 'trp', name: 'Trips fund', isSinkingFund: true, heldInAccountId: 'hub' }),
+    goal({ id: 'vac', name: 'Vacation reserve', isSinkingFund: true, heldInAccountId: 'hub' }),
+  ];
+  const lines = {
+    splitGoals: 0, splitInsurance: 100, splitTrips: 50,
+    splitVacationReserve: 25, splitRetirement: 200, splitTrading: 10,
+  };
+
+  it('sends each sinking-fund line to its own goal', () => {
+    const { items } = buildRoutedLines({ lines, settings: settings2(), goals: sinkingGoals });
+    const byLine = Object.fromEntries(items.map((i) => [i.line, i]));
+    expect(byLine.splitInsurance).toMatchObject({ goalId: 'ins', amount: 100 });
+    expect(byLine.splitTrips).toMatchObject({ goalId: 'trp', amount: 50 });
+    expect(byLine.splitVacationReserve).toMatchObject({ goalId: 'vac', amount: 25 });
+  });
+
+  it('sends retirement and trading to their accounts, with no goal', () => {
+    const { items } = buildRoutedLines({ lines, settings: settings2(), goals: sinkingGoals });
+    const byLine = Object.fromEntries(items.map((i) => [i.line, i]));
+    expect(byLine.splitRetirement).toMatchObject({ accountId: 'ret', goalId: null, amount: 200 });
+    expect(byLine.splitTrading).toMatchObject({ accountId: 'trd', goalId: null, amount: 10 });
+  });
+
+  it('marks a line whose destination is not configured', () => {
+    const { items } = buildRoutedLines({ lines, settings: settings2({ retirementAccountId: null }), goals: sinkingGoals });
+    expect(items.find((i) => i.line === 'splitRetirement').missingTarget).toBe(true);
+  });
+
+  it('marks a sinking line whose goal does not exist', () => {
+    const { items } = buildRoutedLines({ lines, settings: settings2(), goals: [] });
+    expect(items.find((i) => i.line === 'splitInsurance')).toMatchObject({ missingTarget: true, goalId: null });
+  });
+
+  it('skips a line that is zero or negative', () => {
+    const { items } = buildRoutedLines({
+      lines: { ...lines, splitTrading: 0, splitRetirement: -5 },
+      settings: settings2(), goals: sinkingGoals,
+    });
+    expect(items.map((i) => i.line)).not.toContain('splitTrading');
+    expect(items.map((i) => i.line)).not.toContain('splitRetirement');
+  });
+
+  it('keeps a sinking fund held in the hub as an allocation, not a transfer', () => {
+    const { items } = buildRoutedLines({ lines, settings: settings2(), goals: sinkingGoals });
+    const grouped = groupByDestination(items, 'hub');
+    const sinkingAllocs = grouped.allocations.filter((a) => a.line.startsWith('split'));
+    expect(sinkingAllocs.map((a) => a.goalId)).toEqual(expect.arrayContaining(['ins', 'trp', 'vac']));
+    expect(grouped.transfers.map((t) => t.accountId)).toEqual(expect.arrayContaining(['ret', 'trd']));
+  });
+
+  it('flags a sinking line whose goal exists but has no account set', () => {
+    // The goal is configured, so missingTarget is false — but the money still
+    // has nowhere to go, and calling that "stays in the hub" would read as a
+    // decision rather than an omission.
+    const noAccount = [goal({ id: 'ins', name: 'Insurance fund', isSinkingFund: true, heldInAccountId: null })];
+    const { items } = buildRoutedLines({ lines, settings: settings2(), goals: noAccount });
+    const grouped = groupByDestination(items, 'hub');
+    expect(grouped.allocations.find((a) => a.goalId === 'ins').unconfigured).toBe(true);
+  });
+
+  it('does not flag a sinking fund deliberately held in the hub', () => {
+    const { items } = buildRoutedLines({ lines, settings: settings2(), goals: sinkingGoals });
+    const grouped = groupByDestination(items, 'hub');
+    expect(grouped.allocations.find((a) => a.goalId === 'ins').unconfigured).toBe(false);
+  });
+
+  it('transfers a sinking fund held somewhere other than the hub', () => {
+    const elsewhere = [goal({ id: 'ins', name: 'Insurance fund', isSinkingFund: true, heldInAccountId: 'other' })];
+    const { items } = buildRoutedLines({ lines, settings: settings2(), goals: elsewhere });
+    const grouped = groupByDestination(items, 'hub');
+    expect(grouped.transfers.find((t) => t.accountId === 'other')).toBeTruthy();
+  });
+});
+
+describe('computePaydaySplit routes every line, not only goals', () => {
+  it('produces a destination for all six lines', () => {
+    const s = {
+      splitGoals: 500, splitRetirement: 200, splitTrading: 50,
+      splitInsurance: 100, splitTrips: 100, splitVacationReserve: 50,
+      hubAccountId: 'hub', retirementAccountId: 'ret', tradingAccountId: 'trd',
+      insuranceGoalId: 'ins', tripsGoalId: 'trp', vacationGoalId: 'vac',
+      presignoffActive: false, windfallGoalsPct: 90,
+    };
+    const goals = [
+      goal({ id: 'a', priority: 1, target: 12345, heldInAccountId: 'other' }),
+      goal({ id: 'ins', name: 'I', isSinkingFund: true, heldInAccountId: 'hub' }),
+      goal({ id: 'trp', name: 'T', isSinkingFund: true, heldInAccountId: 'hub' }),
+      goal({ id: 'vac', name: 'V', isSinkingFund: true, heldInAccountId: 'hub' }),
+    ];
+    const got = computePaydaySplit({ settings: s, goals });
+    const placed = [...got.transfers.flatMap((t) => t.items), ...got.allocations];
+    // 500 + 200 + 50 + 100 + 100 + 50 = 1000, all of it accounted for.
+    expect(placed.reduce((sum, i) => sum + i.amount, 0)).toBe(1000);
+    expect(new Set(placed.map((i) => i.line)).size).toBe(6);
   });
 });
