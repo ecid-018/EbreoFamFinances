@@ -1,8 +1,15 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../context/AppContext.jsx';
 import { useDerivedFinancials } from '../hooks/useDerivedFinancials.js';
 import { addMonths, getCurrentMonth, getMonthKey, getMonthName } from '../utils/date.js';
-import { validatePlanFile, suggestMapping, buildEnvelopeProposal, matchGoals, runSteps } from '../utils/plan/prefill.js';
+import {
+  validatePlanFile,
+  suggestMapping,
+  buildEnvelopeProposal,
+  matchGoals,
+  runSteps,
+  describeJsonError,
+} from '../utils/plan/prefill.js';
 import { EnvelopesStep } from '../components/prefill/EnvelopesStep.jsx';
 import { GoalsStep } from '../components/prefill/GoalsStep.jsx';
 import { SplitStep } from '../components/prefill/SplitStep.jsx';
@@ -27,6 +34,8 @@ export function PlanPrefillSheet() {
   const [plan, setPlan] = useState(null);
   const [fileName, setFileName] = useState('');
   const [errors, setErrors] = useState([]);
+  const [syntaxError, setSyntaxError] = useState(null);
+  const errorRef = useRef(null);
 
   // Budgets are month-scoped now, so the prefill needs a target month. Next
   // month is the default: the point of a prefill is the month that has not
@@ -59,6 +68,12 @@ export function PlanPrefillSheet() {
     await refetchAll();
   }
 
+  // The file input sits near the top of a long sheet, so on a phone an error
+  // rendered under it can land below the fold and look like nothing happened.
+  useEffect(() => {
+    if (errors.length || syntaxError) errorRef.current?.scrollIntoView({ block: 'nearest' });
+  }, [errors, syntaxError]);
+
   const groupNames = useMemo(() => [...new Set(state.envelopes.map((env) => env.group))], [state.envelopes]);
 
   function handleFile(event) {
@@ -69,14 +84,17 @@ export function PlanPrefillSheet() {
     const reader = new FileReader();
     reader.onerror = () => setErrors(['Could not read that file.']);
     reader.onload = () => {
+      const raw = String(reader.result);
       let parsed;
       try {
-        parsed = JSON.parse(String(reader.result));
+        parsed = JSON.parse(raw);
       } catch (err) {
         setPlan(null);
-        setErrors([`That file is not valid JSON — ${err.message}`]);
+        setSyntaxError(describeJsonError(raw, err));
+        setErrors([]);
         return;
       }
+      setSyntaxError(null);
 
       const result = validatePlanFile(parsed);
       if (!result.ok) {
@@ -149,9 +167,29 @@ export function PlanPrefillSheet() {
             <span className="form__label">Plan file (JSON)</span>
             <input type="file" accept="application/json,.json" className="form__input" onChange={handleFile} />
           </label>
-          {fileName && !errors.length && <p className="prefill-note">Loaded {fileName}</p>}
+          {fileName && !errors.length && !syntaxError && <p className="prefill-note">Loaded {fileName}</p>}
+
+          {syntaxError && (
+            <div className="prefill-errors" ref={errorRef}>
+              <p className="form__error">
+                {fileName} is not valid JSON
+                {syntaxError.line ? `, at line ${syntaxError.line}` : ''}
+                {syntaxError.column ? `, column ${syntaxError.column}` : ''}.
+              </p>
+              {syntaxError.snippet !== null && (
+                <pre className="prefill-snippet">
+                  <code>{`${syntaxError.line} | ${syntaxError.snippet}`}</code>
+                </pre>
+              )}
+              <p className="prefill-note">
+                Usually a stray character, a missing comma, or a trailing comma before a closing brace. Fix that line
+                and choose the file again.
+              </p>
+            </div>
+          )}
+
           {errors.length > 0 && (
-            <div className="prefill-errors">
+            <div className="prefill-errors" ref={errorRef}>
               <p className="form__error">That file could not be used:</p>
               <ul>
                 {errors.map((error) => (
@@ -222,9 +260,13 @@ export function PlanPrefillSheet() {
               Done
             </button>
           ) : (
-            <button type="button" className="btn-block" disabled={!canGoNext} onClick={() => setStep(STEPS[stepIndex + 1])}>
-              Next
-            </button>
+            // Nothing on the last step: Apply lives in the summary itself, and
+            // a disabled Next beside it reads as the flow being stuck.
+            stepIndex < STEPS.length - 1 && (
+              <button type="button" className="btn-block" disabled={!canGoNext} onClick={() => setStep(STEPS[stepIndex + 1])}>
+                Next
+              </button>
+            )
           )}
         </div>
       )}

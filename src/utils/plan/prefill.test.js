@@ -11,6 +11,7 @@ import {
   resolveBalancingLine,
   matchGoals,
   validatePlanFile,
+  describeJsonError,
   buildApplySteps,
   summariseSteps,
   runSteps,
@@ -546,5 +547,43 @@ describe('runSteps', () => {
   it('survives a thrown non-Error', async () => {
     const got = await runSteps([step(1)], async () => { throw 'plain string'; });
     expect(got.failed.message).toBe('plain string');
+  });
+});
+
+describe('describeJsonError', () => {
+  function caught(raw) {
+    try {
+      JSON.parse(raw);
+    } catch (err) {
+      return describeJsonError(raw, err);
+    }
+    throw new Error('expected a parse failure');
+  }
+
+  it('points at the offending line and hands back its text', () => {
+    const got = caught('{\n  "a": 1,\n  "b": 2x3\n}');
+    expect(got.line).toBe(3);
+    expect(got.snippet).toContain('"b"');
+  });
+
+  it('derives line and column when only an offset is reported', () => {
+    const got = describeJsonError('{\n  "a": 1,\n  "b": 2x3\n}', new Error('Bad JSON at position 20'));
+    expect(got.line).toBe(3);
+    expect(got.column).toBe(9);
+  });
+
+  it('survives an error with no position information', () => {
+    const got = describeJsonError('{}', new Error('something else'));
+    expect(got.line).toBeNull();
+    expect(got.snippet).toBeNull();
+    expect(got.message).toBe('something else');
+  });
+
+  it('survives a line number past the end of the file', () => {
+    expect(describeJsonError('{}', new Error('at line 99 column 1')).snippet).toBeNull();
+  });
+
+  it('handles a non-Error being thrown', () => {
+    expect(describeJsonError('{}', 'plain string').message).toBe('plain string');
   });
 });
