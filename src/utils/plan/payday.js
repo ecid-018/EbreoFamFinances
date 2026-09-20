@@ -77,28 +77,100 @@ export function routeGoalsLine(amount, goals) {
   return { routed, unrouted: round2(left) };
 }
 
-// Groups routed amounts by where the money has to end up. A goal held in the
-// hub needs no transfer — the money is already there — so it becomes an
-// allocation instead. That distinction is the whole point of this function.
+// Where each split line's money is supposed to end up.
+//
+// Only the goals line is routed by priority. The other five have a fixed
+// destination named in plan_settings, which is what those pointers are for:
+// the three sinking-fund lines top up their own goal, and retirement and
+// trading go to their account. Before this, those five were displayed and then
+// silently did nothing — the money stayed in the hub with no record of what it
+// was for.
+const SINKING_LINES = [
+  { line: 'splitInsurance', pointer: 'insuranceGoalId' },
+  { line: 'splitTrips', pointer: 'tripsGoalId' },
+  { line: 'splitVacationReserve', pointer: 'vacationGoalId' },
+];
+
+const ACCOUNT_LINES = [
+  { line: 'splitRetirement', pointer: 'retirementAccountId' },
+  { line: 'splitTrading', pointer: 'tradingAccountId' },
+];
+
+const LINE_LABEL = Object.fromEntries(SPLIT_FIELDS.map((f) => [f.key, f.label]));
+
+export function buildRoutedLines({ lines, settings, goals = [] }) {
+  const items = [];
+
+  const { routed, unrouted } = routeGoalsLine(Math.max(0, lines.splitGoals ?? 0), goals);
+  for (const r of routed) items.push({ ...r, line: 'splitGoals', label: r.goalName, missingTarget: false });
+
+  for (const { line, pointer } of SINKING_LINES) {
+    const amount = round2(lines[line] ?? 0);
+    if (amount <= 0) continue;
+    const goal = goals.find((g) => g.id === settings?.[pointer]);
+    items.push({
+      line,
+      goalId: goal?.id ?? null,
+      goalName: goal?.name ?? null,
+      label: goal?.name ?? LINE_LABEL[line],
+      amount,
+      accountId: goal?.heldInAccountId ?? null,
+      // No goal configured for this line: the money has no destination and
+      // must be shown as such rather than quietly staying put.
+      missingTarget: !goal,
+    });
+  }
+
+  for (const { line, pointer } of ACCOUNT_LINES) {
+    const amount = round2(lines[line] ?? 0);
+    if (amount <= 0) continue;
+    const accountId = settings?.[pointer] ?? null;
+    items.push({
+      line,
+      goalId: null,
+      goalName: null,
+      label: LINE_LABEL[line],
+      amount,
+      accountId,
+      missingTarget: !accountId,
+    });
+  }
+
+  return { items, unrouted };
+}
+
+// Groups routed amounts by where the money has to end up. Anything already in
+// the hub, or with no destination configured, becomes an allocation rather than
+// a transfer — moving money from the hub to itself would be a no-op with a
+// misleading ledger entry.
 export function groupByDestination(routed, hubAccountId) {
   const transfers = new Map();
   const allocations = [];
 
   for (const item of routed) {
-    if (!item.accountId || item.accountId === hubAccountId) {
+    const entry = {
+      ...item,
+      label: item.label ?? item.goalName ?? LINE_LABEL[item.line] ?? 'Unallocated',
       // Both stay in the hub, but for very different reasons. A goal HELD in
-      // the hub is deliberate. A goal with no account set is unconfigured, and
-      // its money would sit in the hub by accident — the screen has to say
-      // which is which rather than making the second look intentional.
-      allocations.push({ ...item, unconfigured: !item.accountId });
+      // the hub is deliberate. Something with no destination at all is
+      // unconfigured, and its money would sit there by accident.
+      //
+      // `||` not `??`: a sinking line can have a goal (missingTarget false) and
+      // still have no account on that goal, which is just as unconfigured. `??`
+      // short-circuited on the false and reported it as deliberate.
+      unconfigured: Boolean(item.missingTarget) || !item.accountId,
+    };
+
+    if (!item.accountId || item.accountId === hubAccountId) {
+      allocations.push(entry);
       continue;
     }
     const existing = transfers.get(item.accountId);
     if (existing) {
       existing.amount = round2(existing.amount + item.amount);
-      existing.goals.push(item);
+      existing.items.push(entry);
     } else {
-      transfers.set(item.accountId, { accountId: item.accountId, amount: item.amount, goals: [item] });
+      transfers.set(item.accountId, { accountId: item.accountId, amount: item.amount, items: [entry] });
     }
   }
 
@@ -114,12 +186,13 @@ export function computePaydaySplit({ settings, goals = [], kind = PAYDAY_KINDS.P
     const pct = settings.windfallGoalsPct ?? 0;
     const toGoals = round2((total * pct) / 100);
     const toTrips = round2(total - toGoals);
-    const { routed, unrouted } = routeGoalsLine(toGoals, goals);
+    const lines = { splitGoals: toGoals, splitTrips: toTrips };
+    const { items, unrouted } = buildRoutedLines({ lines, settings, goals });
     return {
       kind,
-      lines: { splitGoals: toGoals, splitTrips: toTrips },
+      lines,
       presignoff: { applied: false },
-      ...groupByDestination(routed, settings.hubAccountId),
+      ...groupByDestination(items, settings.hubAccountId),
       unrouted,
       total,
     };
@@ -135,7 +208,7 @@ export function computePaydaySplit({ settings, goals = [], kind = PAYDAY_KINDS.P
   const adjusted = { ...planned, splitGoals: round2((planned.splitGoals ?? 0) + difference) };
 
   const { lines, applied, heldBack } = applyPresignoffRule(adjusted, { settings, goals });
-  const { routed, unrouted } = routeGoalsLine(Math.max(0, lines.splitGoals ?? 0), goals);
+  const { items, unrouted } = buildRoutedLines({ lines, settings, goals });
 
   return {
     kind,
@@ -147,7 +220,7 @@ export function computePaydaySplit({ settings, goals = [], kind = PAYDAY_KINDS.P
     // A goals line driven below zero cannot be routed; the screen has to say so
     // rather than quietly funding nothing.
     belowZero: (lines.splitGoals ?? 0) < 0,
-    ...groupByDestination(routed, settings.hubAccountId),
+    ...groupByDestination(items, settings.hubAccountId),
     unrouted,
     total: actual,
   };

@@ -85,13 +85,13 @@ export function PaydayModal() {
         from_account_id: settings.hubAccountId,
         to_account_id: t.accountId,
         amount: t.amount,
-        note: `Payday — ${t.goals.map((g) => g.goalName).join(', ')}`,
+        note: `Payday — ${t.items.map((i) => i.label).join(', ')}`,
       })),
-      goal_allocations: [...split.transfers.flatMap((t) => t.goals), ...split.allocations].map((g) => ({
-        goal_id: g.goalId,
-        amount: g.amount,
-        label: g.goalName,
-      })),
+      // Only items that actually point at a goal. Retirement and trading move
+      // to an account and have no goal to credit.
+      goal_allocations: [...split.transfers.flatMap((t) => t.items), ...split.allocations]
+        .filter((i) => i.goalId)
+        .map((i) => ({ goal_id: i.goalId, amount: i.amount, label: i.label })),
     };
 
     const outcome = await dispatch({ type: 'payday/apply', payload });
@@ -187,17 +187,17 @@ export function PaydayModal() {
                   <tr key={t.accountId}>
                     <td>
                       Transfer to {accountName(t.accountId)}
-                      <span className="prefill-table__muted"> · {t.goals.map((g) => g.goalName).join(', ')}</span>
+                      <span className="prefill-table__muted"> · {t.items.map((i) => i.label).join(', ')}</span>
                     </td>
                     <td className="prefill-table__num">{formatPHP(t.amount)}</td>
                   </tr>
                 ))}
                 {split.allocations.map((a) => (
-                  <tr key={a.goalId}>
+                  <tr key={a.line + (a.goalId ?? '')}>
                     <td>
-                      {a.goalName}
+                      {a.label}
                       <span className={a.unconfigured ? 'prefill-down' : 'prefill-table__muted'}>
-                        {a.unconfigured ? ' · no account set — money stays in the hub' : ' · stays in the hub'}
+                        {a.unconfigured ? ' · no destination set — money stays in the hub' : ' · stays in the hub'}
                       </span>
                     </td>
                     <td className="prefill-table__num">{formatPHP(a.amount)}</td>
@@ -210,8 +210,9 @@ export function PaydayModal() {
 
         {split?.allocations.some((a) => a.unconfigured) && (
           <p className="form__error">
-            Some goals have no account set, so their share would sit in the hub instead of moving anywhere. Set
-            &ldquo;Held in&rdquo; on those goals first, or apply this knowing the money stays put.
+            Some lines have no destination set, so their share would sit in the hub instead of moving anywhere. Set
+            &ldquo;Held in&rdquo; on those goals, or the missing account in Settings → Plan, or apply this knowing
+            the money stays put.
           </p>
         )}
         {split?.unrouted > 0 && (
