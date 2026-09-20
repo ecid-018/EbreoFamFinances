@@ -1841,3 +1841,180 @@ svg {
     background: var(--color-bg);
   }
 }
+
+/* ---- Plan prefill -------------------------------------------------------
+   Dense preview tables: the whole point of this screen is comparing current
+   against proposed, so rows stay tight and numbers right-aligned. Scrolls
+   horizontally on a phone rather than wrapping figures onto two lines. */
+.prefill-step {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.prefill-steps {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  margin-bottom: 16px;
+  padding-bottom: 4px;
+}
+
+.prefill-steps__item {
+  flex: 0 0 auto;
+  padding: 6px 12px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--color-fill-track);
+  color: var(--color-text-secondary);
+  font-size: var(--caption-size);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.prefill-steps__item--active {
+  background: var(--color-accent);
+  color: #fff;
+}
+
+.prefill-steps__item:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.prefill-heading {
+  margin: 8px 0 0;
+  font-size: var(--body-size);
+  font-weight: 600;
+}
+
+.prefill-note {
+  margin: 0;
+  font-size: var(--caption-size);
+  color: var(--color-text-secondary);
+  line-height: 1.45;
+}
+
+.prefill-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--caption-size);
+  display: block;
+  overflow-x: auto;
+}
+
+.prefill-table th,
+.prefill-table td {
+  padding: 6px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--color-separator);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.prefill-table th {
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.prefill-table__num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.prefill-table__muted {
+  color: var(--color-text-secondary);
+}
+
+.prefill-table__input {
+  width: 110px;
+  text-align: right;
+  padding: 4px 6px;
+}
+
+/* The mapping select has to show enough of an envelope or group name to be
+   picked with confidence. On a phone the table scrolls sideways rather than
+   squeezing this down to an unreadable stub. */
+.prefill-table select {
+  min-width: 180px;
+  padding: 4px 6px;
+}
+
+.prefill-up {
+  color: var(--color-accent);
+}
+
+.prefill-down {
+  color: var(--color-destructive);
+}
+
+.prefill-row--balancing td {
+  font-weight: 600;
+}
+
+.prefill-totals {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  border-radius: var(--radius-card);
+  background: var(--color-fill-track);
+}
+
+.prefill-totals__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: var(--caption-size);
+  font-variant-numeric: tabular-nums;
+}
+
+.prefill-totals__row--total {
+  padding-top: 6px;
+  border-top: 1px solid var(--color-separator);
+  font-weight: 600;
+}
+
+.prefill-list,
+.prefill-summary {
+  margin: 0;
+  padding-left: 20px;
+  font-size: var(--caption-size);
+  line-height: 1.7;
+}
+
+.prefill-errors ul {
+  margin: 4px 0 0;
+  padding-left: 20px;
+}
+
+.prefill-load {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* The apply path is deliberately not wired yet. This block says so on the
+   screen rather than leaving a dead button for someone to press. */
+.prefill-blocked {
+  padding: 12px;
+  border-radius: var(--radius-card);
+  border: 1px dashed var(--color-separator-strong);
+}
+
+.prefill-blocked__title {
+  margin: 0 0 4px;
+  font-size: var(--body-size);
+  font-weight: 600;
+}
+
+.prefill-nav {
+  display: flex;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.prefill-nav .btn-block,
+.prefill-nav .btn-secondary {
+  flex: 1;
+}
