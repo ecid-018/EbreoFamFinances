@@ -116,6 +116,60 @@ create table transfers (
   updated_at timestamptz not null default now()
 );
 
+-- Month-scoped envelope budgets (0005). SPARSE: a month only gets rows when
+-- its budget differs from what came before. envelopes.monthly_budget is the
+-- base and is never rewritten, so months recorded before this table existed
+-- keep resolving to the figures they always had. Resolution order is: the row
+-- for the viewed month -> else the newest row for an earlier month -> else
+-- envelopes.monthly_budget. month_key is 'YYYY-MM' text, which sorts
+-- chronologically under plain string comparison.
+create table envelope_budgets (
+  id uuid primary key default gen_random_uuid(),
+  envelope_id uuid not null references envelopes(id) on delete cascade,
+  month_key text not null check (month_key ~ '^\d{4}-(0[1-9]|1[0-2])$'),
+  amount numeric(12,2) not null,
+  created_by uuid references auth.users(id),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (envelope_id, month_key)
+);
+
+-- One shared row of household plan figures (0004). `id boolean primary key
+-- default true check (id)` is a singleton guard: only one row can ever exist.
+-- Every amount is nullable — null means "not decided yet", which must never
+-- be shown or treated as zero. No real figures live in this repo; the
+-- household enters them in Settings and they stay in the database.
+create table plan_settings (
+  id boolean primary key default true check (id),
+  pay_household numeric(12,2),
+  pay_hub numeric(12,2),
+  split_vacation_reserve numeric(12,2),
+  split_insurance numeric(12,2),
+  split_goals numeric(12,2),
+  split_trips numeric(12,2),
+  split_retirement numeric(12,2),
+  split_trading numeric(12,2),
+  bank_floor_target numeric(12,2),
+  vacation_reserve_target numeric(12,2),
+  trading_cap_annual numeric(12,2),
+  trips_annual numeric(12,2),
+  insurance_annual numeric(12,2),
+  windfall_goals_pct integer check (windfall_goals_pct between 0 and 100),
+  presignoff_active boolean not null default false,
+  presignoff_vacation_amount numeric(12,2),
+  household_account_id uuid references accounts(id) on delete set null,
+  hub_account_id uuid references accounts(id) on delete set null,
+  trading_account_id uuid references accounts(id) on delete set null,
+  retirement_account_id uuid references accounts(id) on delete set null,
+  vacation_goal_id uuid references goals(id) on delete set null,
+  insurance_goal_id uuid references goals(id) on delete set null,
+  trips_goal_id uuid references goals(id) on delete set null,
+  updated_by uuid references auth.users(id),
+  updated_at timestamptz not null default now()
+);
+
+insert into plan_settings (id) values (true) on conflict do nothing;
+
 create index on transactions (category_id);
 create index on transactions (account_id);
 create index on transactions (date);
@@ -125,6 +179,9 @@ create index on accounts (owner_id);
 create index on ledger (date);
 create index on transfers (from_account_id);
 create index on transfers (to_account_id);
+-- Serves the resolver's "rows for this envelope at or before month X,
+-- newest first" lookup.
+create index on envelope_budgets (envelope_id, month_key desc);
 
 -- =========================================================================
 -- 2. ROW LEVEL SECURITY
@@ -140,6 +197,8 @@ alter table accounts enable row level security;
 alter table goals enable row level security;
 alter table ledger enable row level security;
 alter table transfers enable row level security;
+alter table envelope_budgets enable row level security;
+alter table plan_settings enable row level security;
 
 create policy "profiles_select" on profiles for select to authenticated using (true);
 create policy "profiles_update_own" on profiles for update to authenticated
@@ -154,6 +213,17 @@ create policy "envelopes_select" on envelopes for select to authenticated using 
 create policy "envelopes_insert" on envelopes for insert to authenticated with check (created_by = auth.uid());
 create policy "envelopes_update" on envelopes for update to authenticated using (true) with check (true);
 create policy "envelopes_delete" on envelopes for delete to authenticated using (true);
+
+create policy "envelope_budgets_select" on envelope_budgets for select to authenticated using (true);
+create policy "envelope_budgets_insert" on envelope_budgets for insert to authenticated with check (created_by = auth.uid());
+create policy "envelope_budgets_update" on envelope_budgets for update to authenticated using (true) with check (true);
+create policy "envelope_budgets_delete" on envelope_budgets for delete to authenticated using (true);
+
+-- plan_settings is the single shared row; there is deliberately no insert or
+-- delete policy, so RLS denies both and the singleton cannot be duplicated or
+-- removed by the app.
+create policy "plan_settings_select" on plan_settings for select to authenticated using (true);
+create policy "plan_settings_update" on plan_settings for update to authenticated using (true) with check (true);
 
 create policy "transactions_select" on transactions for select to authenticated using (true);
 create policy "transactions_insert" on transactions for insert to authenticated with check (created_by = auth.uid());

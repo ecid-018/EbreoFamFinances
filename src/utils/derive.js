@@ -3,30 +3,42 @@
 // wrappers around these two functions. Keeping this free of React and of
 // hidden clock reads (`today` is a parameter) is what makes it unit-testable
 // and is the safety net for later changes to how budgets are resolved.
-import { filterByMonth, getDaysLeftInMonth, isSameMonth } from './date.js';
+import { filterByMonth, getDaysLeftInMonth, getMonthKey, isSameMonth } from './date.js';
 import { groupByOrder } from './group.js';
 import { splitIncomeByCurrency } from './accounts.js';
 import { RECEIVABLE_TYPE } from './plan/accountTypes.js';
 import { getGoalsProgressPct } from './plan/goals.js';
+import { resolveEnvelopesForMonth } from './plan/monthBudgets.js';
 
 function sumBy(items, field) {
   return items.reduce((total, item) => total + item[field], 0);
 }
 
 export function deriveMonthFinancials(
-  { envelopes, transactions, income, accounts, goals, month },
+  { envelopes, transactions, income, accounts, goals, month, envelopeBudgets = [] },
   { today = new Date() } = {}
 ) {
+  // The month dimension stops here. Every envelope below carries the budget
+  // that applies in the month being viewed, so all the math after this line is
+  // unchanged from when there was only one budget per envelope. An empty
+  // envelopeBudgets (no migration yet, or no month has diverged) resolves
+  // every envelope to its base figure, which is exactly the old behaviour.
+  const resolvedEnvelopes = resolveEnvelopesForMonth(
+    envelopes,
+    envelopeBudgets,
+    getMonthKey(month.year, month.monthIndex)
+  );
+
   const monthTransactions = filterByMonth(transactions, month.year, month.monthIndex);
   const monthIncomeEntries = filterByMonth(income, month.year, month.monthIndex, 'budgetMonthKey');
 
   const { phpTotal: totalIncome, usdTotal: monthUsdIncome } = splitIncomeByCurrency(monthIncomeEntries, accounts);
   const totalSpent = sumBy(monthTransactions, 'amount');
-  const totalBudget = sumBy(envelopes, 'monthlyBudget');
+  const totalBudget = sumBy(resolvedEnvelopes, 'monthlyBudget');
   const unassigned = totalIncome - totalBudget;
   const safeToSpend = totalIncome - totalSpent;
 
-  const envelopeStats = envelopes
+  const envelopeStats = resolvedEnvelopes
     .map((env) => {
       const spent = sumBy(
         monthTransactions.filter((t) => t.categoryId === env.id),

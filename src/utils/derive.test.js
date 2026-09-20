@@ -162,6 +162,64 @@ describe('deriveMonthFinancials', () => {
   });
 });
 
+describe('deriveMonthFinancials with month-scoped budgets', () => {
+  // Invented figures. Base budgets come from fixture(): e1=100, e2=0, e3=50.
+  const base = () => deriveMonthFinancials({ ...fixture(), month: SEP }, { today: TODAY });
+
+  it('is unchanged when no month has its own budget', () => {
+    const withEmpty = deriveMonthFinancials(
+      { ...fixture(), month: SEP, envelopeBudgets: [] },
+      { today: TODAY }
+    );
+    expect(withEmpty.totalBudget).toBe(base().totalBudget);
+  });
+
+  it('uses the row for the month being viewed', () => {
+    const got = deriveMonthFinancials(
+      { ...fixture(), month: OCT, envelopeBudgets: [{ envelopeId: 'e1', monthKey: '2026-10', amount: 400 }] },
+      { today: TODAY }
+    );
+    expect(got.totalBudget).toBe(450); // 400 + 0 + 50
+  });
+
+  it('leaves an earlier month on its base figure', () => {
+    // The property this table exists for: October's budget must not rewrite
+    // what September was measured against.
+    const budgets = [{ envelopeId: 'e1', monthKey: '2026-10', amount: 400 }];
+    const sep = deriveMonthFinancials({ ...fixture(), month: SEP, envelopeBudgets: budgets }, { today: TODAY });
+    expect(sep.totalBudget).toBe(base().totalBudget);
+    expect(sep.envelopeStats.find((e) => e.id === 'e1').monthlyBudget).toBe(100);
+  });
+
+  it('recomputes isOver against the month figure, not the base', () => {
+    // e1 spends 30 in September. A September budget of 10 puts it over;
+    // the base of 100 would not.
+    const got = deriveMonthFinancials(
+      { ...fixture(), month: SEP, envelopeBudgets: [{ envelopeId: 'e1', monthKey: '2026-09', amount: 10 }] },
+      { today: TODAY }
+    );
+    const e1 = got.envelopeStats.find((e) => e.id === 'e1');
+    expect(e1.spent).toBe(30);
+    expect(e1.isOver).toBe(true);
+    expect(got.overBudgetEnvelopes.map((e) => e.id)).toContain('e1');
+  });
+
+  it('carries a budget forward to later months', () => {
+    const budgets = [{ envelopeId: 'e1', monthKey: '2026-08', amount: 70 }];
+    const sep = deriveMonthFinancials({ ...fixture(), month: SEP, envelopeBudgets: budgets }, { today: TODAY });
+    expect(sep.envelopeStats.find((e) => e.id === 'e1').monthlyBudget).toBe(70);
+  });
+
+  it('keeps group rollups consistent with the month figure', () => {
+    const got = deriveMonthFinancials(
+      { ...fixture(), month: OCT, envelopeBudgets: [{ envelopeId: 'e1', monthKey: '2026-10', amount: 400 }] },
+      { today: TODAY }
+    );
+    const needs = got.envelopeGroups.find((g) => g.group === 'Needs');
+    expect(needs.budget).toBe(400);
+  });
+});
+
 describe('deriveDayFinancials', () => {
   it('collects a day of expenses with envelope and account resolved', () => {
     const day = deriveDayFinancials(fixture(), '2026-09-03');

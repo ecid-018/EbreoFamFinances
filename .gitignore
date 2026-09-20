@@ -32,5 +32,6 @@ dev-dist
 # rather than single filenames so a v10 is covered too.
 *.pdf
 *Financial_Plan*
+plan.local.json
 ebreo-snapshot-*.json
 Icons_and_logo.zip

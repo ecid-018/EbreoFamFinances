@@ -6,6 +6,11 @@ export const EnvelopeSliderRow = memo(function EnvelopeSliderRow({
   envelope,
   value,
   groups,
+  readOnly = false,
+  // True when this month has no budget row of its own and the figure shown is
+  // carried from an earlier month (or the envelope's base). Editing it writes
+  // a row for this month, which is why it is worth showing the difference.
+  inherited = false,
   onChange,
   onCommit,
   onMove,
@@ -17,7 +22,10 @@ export const EnvelopeSliderRow = memo(function EnvelopeSliderRow({
   return (
     <div className="slider-row">
       <div className="slider-row__top">
-        <span className="slider-row__name">{envelope.name}</span>
+        <span className="slider-row__name">
+          {envelope.name}
+          {inherited && !readOnly && <span className="slider-row__inherited"> · carried forward</span>}
+        </span>
         <span className="slider-row__value">{formatPHP(value)}</span>
       </div>
       <input
@@ -27,12 +35,13 @@ export const EnvelopeSliderRow = memo(function EnvelopeSliderRow({
         max={sliderMax}
         step={50}
         value={value}
+        disabled={readOnly}
         onChange={(e) => onChange(envelope.id, Number(e.target.value))}
         onMouseUp={() => onCommit(envelope.id)}
         onTouchEnd={() => onCommit(envelope.id)}
         aria-label={`${envelope.name} budget`}
       />
-      <div className="slider-row__controls">
+      {!readOnly && <div className="slider-row__controls">
         <select
           className="slider-row__move-select"
           value={envelope.group}
@@ -47,7 +56,7 @@ export const EnvelopeSliderRow = memo(function EnvelopeSliderRow({
         <button type="button" className="slider-row__remove" onClick={() => setConfirmOpen(true)}>
           Remove
         </button>
-      </div>
+      </div>}
       {confirmOpen && (
         <ConfirmDialog
           title={`Delete "${envelope.name}"?`}

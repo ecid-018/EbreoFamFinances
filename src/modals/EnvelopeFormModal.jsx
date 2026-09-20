@@ -1,13 +1,30 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext.jsx';
+import { useDerivedFinancials } from '../hooks/useDerivedFinancials.js';
 import { GroupSelect } from '../components/shared/GroupSelect.jsx';
+import { getMonthKey, getMonthName } from '../utils/date.js';
+import { generateId } from '../utils/id.js';
 import { BottomSheet } from './BottomSheet.jsx';
 
+// The budget field edits the month being VIEWED, not a single global figure —
+// see src/utils/plan/monthBudgets.js. Name and group are not month-scoped and
+// still write the envelope row, which is why the submit below splits into two
+// dispatches rather than one.
 export function EnvelopeFormModal({ mode, envelope }) {
   const { state, dispatch, closeModal } = useApp();
+  const { envelopeStats } = useDerivedFinancials();
   const isEdit = mode === 'edit';
+
+  const monthKey = getMonthKey(state.month.year, state.month.monthIndex);
+  const monthLabel = `${getMonthName(state.month.year, state.month.monthIndex)} ${state.month.year}`;
+  // The figure for this month, which is not necessarily the prop's own — the
+  // caller may have handed us a base envelope row.
+  const resolved = isEdit ? envelopeStats.find((env) => env.id === envelope.id) : null;
+
   const [name, setName] = useState(isEdit ? envelope.name : '');
-  const [monthlyBudget, setMonthlyBudget] = useState(isEdit ? String(envelope.monthlyBudget) : '');
+  const [monthlyBudget, setMonthlyBudget] = useState(
+    isEdit ? String(resolved?.monthlyBudget ?? envelope.monthlyBudget) : ''
+  );
   const [group, setGroup] = useState(isEdit ? envelope.group : '');
   const [error, setError] = useState('');
 
@@ -29,15 +46,34 @@ export function EnvelopeFormModal({ mode, envelope }) {
       return;
     }
     if (isEdit) {
+      // The base budget is carried through untouched; only name and group can
+      // change here. Sending budgetValue would stamp this month's figure onto
+      // every earlier month that has no row of its own.
+      const base = state.envelopes.find((env) => env.id === envelope.id);
       dispatch({
         type: 'envelope/update',
-        payload: { id: envelope.id, name: name.trim(), monthlyBudget: budgetValue, group: group.trim() },
+        payload: {
+          id: envelope.id,
+          name: name.trim(),
+          monthlyBudget: base?.monthlyBudget ?? budgetValue,
+          group: group.trim(),
+        },
       });
+      if (budgetValue !== resolved?.monthlyBudget) {
+        dispatch({
+          type: 'envelope/setMonthBudget',
+          payload: { envelopeId: envelope.id, monthKey, amount: budgetValue },
+        });
+      }
     } else {
+      // Base 0 plus a row for this month: a new envelope must not add budget
+      // to months in which it did not exist.
+      const id = generateId();
       dispatch({
         type: 'envelope/add',
-        payload: { name: name.trim(), monthlyBudget: budgetValue, group: group.trim() },
+        payload: { id, name: name.trim(), monthlyBudget: 0, group: group.trim() },
       });
+      dispatch({ type: 'envelope/setMonthBudget', payload: { envelopeId: id, monthKey, amount: budgetValue } });
     }
     closeModal();
   }
@@ -57,7 +93,7 @@ export function EnvelopeFormModal({ mode, envelope }) {
           />
         </label>
         <label className="form__field">
-          <span className="form__label">Monthly budget (₱)</span>
+          <span className="form__label">Budget for {monthLabel} (₱)</span>
           <input
             type="number"
             inputMode="decimal"
