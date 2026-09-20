@@ -7,10 +7,10 @@ import { deriveMonthFinancials } from '../utils/derive.js';
 // consumer sees the budget for the month being viewed, not a single global one.
 export function useDerivedFinancials() {
   const { state } = useApp();
-  const { envelopes, transactions, income, accounts, goals, month, envelopeBudgets, monthModes, planSettings } = state;
+  const { envelopes, transactions, income, accounts, goals, month, envelopeBudgets, monthModes, planSettings, paydays, paydayAllocations } = state;
 
   return useMemo(
-    () => deriveMonthFinancials({ envelopes, transactions, income, accounts, goals, month, envelopeBudgets, monthModes, planSettings }),
-    [envelopes, transactions, income, accounts, goals, month, envelopeBudgets, monthModes, planSettings]
+    () => deriveMonthFinancials({ envelopes, transactions, income, accounts, goals, month, envelopeBudgets, monthModes, planSettings, paydays, paydayAllocations }),
+    [envelopes, transactions, income, accounts, goals, month, envelopeBudgets, monthModes, planSettings, paydays, paydayAllocations]
   );
 }

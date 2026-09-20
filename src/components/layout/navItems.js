@@ -10,9 +10,10 @@ export const NAV_ITEMS = [
   { key: 'accounts', label: 'Accounts', Icon: MoreIcon },
 ];
 
-// The three things the centre "+" (phone) and the SideNav's Add button open.
+// What the centre "+" (phone) and the SideNav's Add button open.
 export const ADD_ACTIONS = [
   { key: 'income', label: 'Add Income', Icon: IncomeIcon, modal: 'incomeForm', props: { mode: 'add' } },
   { key: 'expense', label: 'Add Expense', Icon: ExpenseIcon, modal: 'addExpense', props: undefined },
   { key: 'transfer', label: 'Transfer Money', Icon: TransferIcon, modal: 'transferMoney', props: undefined },
+  { key: 'payday', label: 'Payday', Icon: IncomeIcon, modal: 'payday', props: undefined },
 ];

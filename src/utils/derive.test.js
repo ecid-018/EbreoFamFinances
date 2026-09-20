@@ -286,6 +286,48 @@ describe('deriveMonthFinancials with month modes', () => {
   });
 });
 
+describe('deriveMonthFinancials with payday allocations', () => {
+  const payday = { id: 'p1', budgetMonthKey: '2026-09', date: '2026-09-30', total: 100, kind: 'pay' };
+  const alloc = (over) => ({ id: 'a', paydayId: 'p1', kind: 'transfer', amount: 10, ...over });
+
+  it('is unchanged with no paydays logged', () => {
+    const got = deriveMonthFinancials({ ...fixture(), month: SEP, paydays: [], paydayAllocations: [] }, { today: TODAY });
+    const plain = deriveMonthFinancials({ ...fixture(), month: SEP }, { today: TODAY });
+    expect(got.unassigned).toBe(plain.unassigned);
+    expect(got.plannedAllocations).toBe(0);
+  });
+
+  it('subtracts committed transfers and goal allocations', () => {
+    const got = deriveMonthFinancials(
+      {
+        ...fixture(), month: SEP, paydays: [payday],
+        paydayAllocations: [alloc({ amount: 20 }), alloc({ id: 'b', kind: 'goal', amount: 30 })],
+      },
+      { today: TODAY }
+    );
+    expect(got.plannedAllocations).toBe(50);
+    const plain = deriveMonthFinancials({ ...fixture(), month: SEP }, { today: TODAY });
+    expect(got.unassigned).toBe(plain.unassigned - 50);
+  });
+
+  it('excludes income allocations, which would subtract the income twice', () => {
+    const got = deriveMonthFinancials(
+      { ...fixture(), month: SEP, paydays: [payday], paydayAllocations: [alloc({ kind: 'income', amount: 999 })] },
+      { today: TODAY }
+    );
+    expect(got.plannedAllocations).toBe(0);
+  });
+
+  it('ignores allocations belonging to another month', () => {
+    const other = { ...payday, id: 'p2', budgetMonthKey: '2026-10' };
+    const got = deriveMonthFinancials(
+      { ...fixture(), month: SEP, paydays: [other], paydayAllocations: [alloc({ paydayId: 'p2', amount: 40 })] },
+      { today: TODAY }
+    );
+    expect(got.plannedAllocations).toBe(0);
+  });
+});
+
 describe('deriveDayFinancials', () => {
   it('collects a day of expenses with envelope and account resolved', () => {
     const day = deriveDayFinancials(fixture(), '2026-09-03');

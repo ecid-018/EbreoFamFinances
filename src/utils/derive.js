@@ -16,7 +16,7 @@ function sumBy(items, field) {
 }
 
 export function deriveMonthFinancials(
-  { envelopes, transactions, income, accounts, goals, month, envelopeBudgets = [], monthModes = [], planSettings = null },
+  { envelopes, transactions, income, accounts, goals, month, envelopeBudgets = [], monthModes = [], planSettings = null, paydays = [], paydayAllocations = [] },
   { today = new Date() } = {}
 ) {
   // The month dimension stops here. Every envelope below carries the budget
@@ -41,7 +41,19 @@ export function deriveMonthFinancials(
   // With no month tagged, `available` is income and every figure is unchanged.
   const monthMode = getMonthMode(monthModes, monthKey);
   const available = getAvailableToAllocate({ mode: monthMode, totalIncome, goals, planSettings });
-  const unassigned = available.amount - totalBudget;
+
+  // Money a payday has already committed to a transfer or a goal is not
+  // available to budget again. Income allocations are excluded: that money is
+  // the income, already counted above, and subtracting it would remove it
+  // twice. With no paydays logged this is 0 and every figure is as before.
+  const monthPaydayIds = new Set(
+    paydays.filter((p) => p.budgetMonthKey === monthKey).map((p) => p.id)
+  );
+  const plannedAllocations = paydayAllocations
+    .filter((a) => monthPaydayIds.has(a.paydayId) && a.kind !== 'income')
+    .reduce((sum, a) => sum + a.amount, 0);
+
+  const unassigned = available.amount - totalBudget - plannedAllocations;
   const safeToSpend = available.amount - totalSpent;
 
   const envelopeStats = resolvedEnvelopes
@@ -117,6 +129,7 @@ export function deriveMonthFinancials(
     monthUsdIncome,
     monthMode,
     available,
+    plannedAllocations,
     totalPhpAccountBalance,
     totalUsdAccountBalance,
     totalReceivable,
