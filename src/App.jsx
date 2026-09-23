@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AppProvider, useApp } from './context/AppContext.jsx';
+import { useMonthSnapshot } from './hooks/useMonthSnapshot.js';
 import { useAuth } from './context/AuthContext.jsx';
 import { loadTheme } from './data/storage.js';
 import { applyTheme } from './utils/theme.js';
@@ -30,6 +31,8 @@ const TABS = {
 
 function AppShell({ shortPin, onDismissShortPin }) {
   const { activeTab, loading, syncError, openModal } = useApp();
+  // Records the month that just ended, once, on first open in a new month.
+  useMonthSnapshot();
   const ActiveTabComponent = TABS[activeTab] ?? HomeTab;
 
   if (loading) {
