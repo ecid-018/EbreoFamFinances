@@ -180,6 +180,11 @@ create table plan_settings (
   vacation_goal_id uuid references goals(id) on delete set null,
   insurance_goal_id uuid references goals(id) on delete set null,
   trips_goal_id uuid references goals(id) on delete set null,
+  -- The year the household plans to be ashore for good (0011). Null means no
+  -- date set, which the Plan view's countdown renders as nothing rather than
+  -- as a year nobody chose.
+  target_ashore_year integer
+    check (target_ashore_year is null or target_ashore_year between 2000 and 2100),
   updated_by uuid references auth.users(id),
   updated_at timestamptz not null default now()
 );

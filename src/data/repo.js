@@ -154,6 +154,11 @@ function mapPlanSettings(row) {
     vacationGoalId: row.vacation_goal_id ?? null,
     insuranceGoalId: row.insurance_goal_id ?? null,
     tripsGoalId: row.trips_goal_id ?? null,
+    // undefined, not null, when the 0011 column is not there yet: the write
+    // path below uses its presence to decide whether to send the column at
+    // all. A deploy can land before the migration is applied, and an update
+    // naming a column that does not exist fails the WHOLE save.
+    targetAshoreYear: 'target_ashore_year' in row ? (row.target_ashore_year ?? null) : undefined,
     updatedAt: row.updated_at ?? null,
   };
 }
@@ -721,6 +726,10 @@ export const repo = {
         vacation_goal_id: payload.vacationGoalId || null,
         insurance_goal_id: payload.insuranceGoalId || null,
         trips_goal_id: payload.tripsGoalId || null,
+        // Sent only once the column exists, so that saving pay, splits and
+        // targets keeps working in the window between deploy and migration.
+        // Null still round-trips once it does, so a year can be cleared.
+        ...(payload.targetAshoreYear === undefined ? {} : { target_ashore_year: payload.targetAshoreYear }),
         updated_by: userId,
         updated_at: new Date().toISOString(),
       })
