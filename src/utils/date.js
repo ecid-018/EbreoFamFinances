@@ -22,9 +22,11 @@ export function getDaysInMonth(year, monthIndex) {
   return new Date(year, monthIndex + 1, 0).getDate();
 }
 
-export function getCurrentMonth() {
-  const now = new Date();
-  return { year: now.getFullYear(), monthIndex: now.getMonth() };
+// `today` is a parameter for the same reason derive.js takes one: a hidden
+// clock read cannot be unit-tested. Every existing caller passes nothing and
+// gets the current month exactly as before.
+export function getCurrentMonth(today = new Date()) {
+  return { year: today.getFullYear(), monthIndex: today.getMonth() };
 }
 
 export function addMonths({ year, monthIndex }, delta) {

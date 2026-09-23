@@ -47,6 +47,21 @@ function mapPaydayAllocation(row) {
 function mapSplitLineSource(row) {
   return { lineKey: row.line_key, accountId: row.account_id };
 }
+function mapMonthSnapshot(row) {
+  return {
+    monthKey: row.month_key,
+    takenOn: row.taken_on,
+    totalPhp: Number(row.total_php),
+    totalUsd: Number(row.total_usd),
+    usdPhpRate: row.usd_php_rate == null ? null : Number(row.usd_php_rate),
+    bankTotal: Number(row.bank_total ?? 0),
+    cooperativeTotal: Number(row.cooperative_total ?? 0),
+    ewalletTotal: Number(row.ewallet_total ?? 0),
+    cashTotal: Number(row.cash_total ?? 0),
+    receivableTotal: Number(row.receivable_total ?? 0),
+    goalsSavedTotal: Number(row.goals_saved_total ?? 0),
+  };
+}
 function mapAccount(row) {
   return {
     id: row.id,
@@ -186,6 +201,22 @@ function fetchEnvelopeBudgets() {
 // Tolerated as missing for the same reason plan_settings and envelope_budgets
 // are: a deploy can land before the migration is applied. With no rows every
 // month is a sea month, which is exactly the pre-phase behaviour.
+// Tolerated as missing, like every table added since 0004: a deploy can land
+// before the migration is applied. With no snapshots the recorder simply has
+// nothing to show and nothing to compare against.
+function fetchMonthSnapshots() {
+  return supabase
+    .from('month_snapshots')
+    .select('*')
+    .then(({ data, error }) => {
+      if (error) {
+        console.warn('month_snapshots unavailable (migration not applied yet?):', error.message);
+        return [];
+      }
+      return (data ?? []).map(mapMonthSnapshot);
+    });
+}
+
 function fetchSplitLineSources() {
   return supabase
     .from('split_line_sources')
@@ -232,7 +263,7 @@ function fetchPaydayData() {
 }
 
 export async function fetchAll() {
-  const [envelopes, accounts, transactions, income, goals, ledger, profiles, transfers, planSettings, envelopeBudgets, monthModes, paydayData, splitLineSources] =
+  const [envelopes, accounts, transactions, income, goals, ledger, profiles, transfers, planSettings, envelopeBudgets, monthModes, paydayData, splitLineSources, monthSnapshots] =
     await Promise.all([
     supabase.from('envelopes').select('*').then(unwrap),
     supabase.from('accounts').select('*').then(unwrap),
@@ -247,6 +278,7 @@ export async function fetchAll() {
     fetchMonthModes(),
     fetchPaydayData(),
     fetchSplitLineSources(),
+    fetchMonthSnapshots(),
   ]);
 
   return {
@@ -263,6 +295,7 @@ export async function fetchAll() {
     monthModes,
     ...paydayData,
     splitLineSources,
+    monthSnapshots,
   };
 }
 
@@ -370,6 +403,16 @@ export const repo = {
   // contribution the payday implies is written by apply_payday calling the
   // same functions the rest of the app calls — there is no second copy of the
   // balance math here, and a failure anywhere rolls the whole payday back.
+  // Records what the household holds right now under the given month. Every
+  // figure is computed inside the RPC from current balances, so a snapshot can
+  // never disagree with the database; only the USD display rate is passed in,
+  // because the database has no way to know it.
+  async takeMonthSnapshot(payload) {
+    await supabase
+      .rpc('take_month_snapshot', { p_month_key: payload.monthKey, p_usd_php_rate: payload.usdPhpRate ?? null })
+      .then(unwrap);
+  },
+
   async applyPayday(payload) {
     await supabase.rpc('apply_payday', { p_payday: payload }).then(unwrap);
   },

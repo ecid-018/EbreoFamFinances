@@ -14,6 +14,10 @@ export const syncEffects = {
   // goal contributions that the RPC writes atomically. Guessing at all of that
   // locally would be a second copy of the math, so the screen waits for the
   // refetch instead.
+  // No optimistic reducer case, for the same reason as payday/apply: the RPC
+  // computes every figure from current balances, and mirroring that locally
+  // would be a second copy of the math. The screen waits for the refetch.
+  'snapshot/take': (payload) => repo.takeMonthSnapshot(payload),
   'payday/apply': (payload) => repo.applyPayday(payload),
   'month/setMode': (payload, ctx) => repo.setMonthMode(payload, ctx.userId),
   'envelope/setMonthBudget': (payload, ctx) => {
