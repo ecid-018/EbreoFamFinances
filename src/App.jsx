@@ -19,6 +19,7 @@ import { HomeTab } from './components/tabs/HomeTab.jsx';
 import { PlanTab } from './components/tabs/PlanTab.jsx';
 import { BillsTab } from './components/tabs/BillsTab.jsx';
 import { DueSoonCard } from './components/bills/DueSoonCard.jsx';
+import { ChecklistCard } from './components/checklist/ChecklistCard.jsx';
 import { BudgetTab } from './components/tabs/BudgetTab.jsx';
 import { TransactionsTab } from './components/tabs/TransactionsTab.jsx';
 import { GoalsTab } from './components/tabs/GoalsTab.jsx';
@@ -68,6 +69,7 @@ function AppShell({ shortPin, onDismissShortPin }) {
       {/* Overview column (>=1024px). Hidden below 1024px, where these cards
           stay inside HomeTab and the Plan and Bills have their own tabs. */}
       <aside className="page__overview" aria-label="Overview">
+        <ChecklistCard />
         <DueSoonCard />
         <PlanSummaryCard />
         <HouseholdSnapshot />

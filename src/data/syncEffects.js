@@ -34,6 +34,10 @@ export const syncEffects = {
   // guessing the next date locally would be a second copy of a rule that has
   // already caught us out once (a 31st drifting to the 28th). Refetch instead.
   'bill/complete': (payload) => repo.completeScheduleItem(payload),
+
+  'checklist/create': (payload, ctx) => repo.createChecklist(payload, ctx.userId),
+  'checklist/updateItem': (payload) => repo.updateChecklistItem(payload),
+  'checklist/close': (payload) => repo.closeChecklist(payload),
   'month/setMode': (payload, ctx) => repo.setMonthMode(payload, ctx.userId),
   'envelope/setMonthBudget': (payload, ctx) => {
     const envelope = ctx.prevState.envelopes.find((env) => env.id === payload.envelopeId);

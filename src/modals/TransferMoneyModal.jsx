@@ -14,7 +14,10 @@ import { BottomSheet } from './BottomSheet.jsx';
 // inline in each option's own text — two accounts named e.g. "BPI Savings"
 // owned by different people once caused a real mis-selection (an optgroup
 // header alone isn't always visually obvious while scrolling a picker).
-export function TransferMoneyModal({ mode = 'add', transfer }) {
+// `prefill` comes from a transfer checklist (10d): the plan worked out the
+// accounts and the amount, and this form is where the household confirms it.
+// Every field stays editable -- a suggestion is not an instruction.
+export function TransferMoneyModal({ mode = 'add', transfer, prefill = null }) {
   const { state, dispatch, closeModal } = useApp();
   const { session } = useAuth();
   const isEdit = mode === 'edit';
@@ -56,14 +59,18 @@ export function TransferMoneyModal({ mode = 'add', transfer }) {
 
   const [date, setDate] = useState(isEdit ? transfer.date : toISODateString());
   const [fromAccountId, setFromAccountId] = useState(
-    isEdit ? transfer.fromAccountId : accounts[0]?.id ?? ''
+    isEdit ? transfer.fromAccountId : prefill?.fromAccountId ?? accounts[0]?.id ?? ''
   );
   const [toAccountId, setToAccountId] = useState(
-    isEdit ? transfer.toAccountId : accounts.find((a) => a.id !== accounts[0]?.id)?.id ?? ''
+    isEdit
+      ? transfer.toAccountId
+      : prefill?.toAccountId ?? accounts.find((a) => a.id !== accounts[0]?.id)?.id ?? ''
   );
-  const [amount, setAmount] = useState(isEdit ? String(transfer.fromAmount) : '');
+  const [amount, setAmount] = useState(
+    isEdit ? String(transfer.fromAmount) : prefill?.amount > 0 ? String(prefill.amount) : ''
+  );
   const [rate, setRate] = useState('');
-  const [note, setNote] = useState(isEdit ? transfer.note : '');
+  const [note, setNote] = useState(isEdit ? transfer.note : prefill?.note ?? '');
   const [error, setError] = useState('');
 
   const fromAccount = accounts.find((a) => a.id === fromAccountId);

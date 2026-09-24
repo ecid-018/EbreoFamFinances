@@ -63,6 +63,29 @@ function mapBill(row) {
     notes: row.notes ?? '',
   };
 }
+function mapChecklist(row) {
+  return {
+    id: row.id,
+    incomeId: row.income_id,
+    incomeKind: row.income_kind,
+    createdAt: row.created_at,
+    completedAt: row.completed_at ?? null,
+  };
+}
+function mapChecklistItem(row) {
+  return {
+    id: row.id,
+    checklistId: row.checklist_id,
+    fromAccountId: row.from_account_id ?? null,
+    toAccountId: row.to_account_id ?? null,
+    goalId: row.goal_id ?? null,
+    amount: Number(row.amount),
+    reason: row.reason,
+    status: row.status,
+    skipReason: row.skip_reason ?? null,
+    transferId: row.transfer_id ?? null,
+  };
+}
 function mapSplitLineSource(row) {
   return { lineKey: row.line_key, accountId: row.account_id };
 }
@@ -179,6 +202,10 @@ function mapPlanSettings(row) {
     // all. A deploy can land before the migration is applied, and an update
     // naming a column that does not exist fails the WHOLE save.
     targetAshoreYear: 'target_ashore_year' in row ? (row.target_ashore_year ?? null) : undefined,
+    // Same tolerance as target_ashore_year, for the same reason: undefined
+    // means the 0015 column is not there yet, so the write omits it.
+    carGoalId: 'car_goal_id' in row ? (row.car_goal_id ?? null) : undefined,
+    tradingTaxAccountId: 'trading_tax_account_id' in row ? (row.trading_tax_account_id ?? null) : undefined,
     updatedAt: row.updated_at ?? null,
   };
 }
@@ -259,6 +286,26 @@ function fetchBills() {
     });
 }
 
+// Transfer checklists (0015). Tolerated as missing like every table added
+// since 0004: with none, no checklist card appears and the app is exactly as
+// it was before this phase.
+function fetchChecklists() {
+  return Promise.all([
+    supabase.from('transfer_checklists').select('*'),
+    supabase.from('transfer_checklist_items').select('*'),
+  ]).then(([lists, items]) => {
+    if (lists.error || items.error) {
+      console.warn('transfer_checklists unavailable (migration not applied yet?):',
+        (lists.error ?? items.error).message);
+      return { checklists: [], checklistItems: [] };
+    }
+    return {
+      checklists: (lists.data ?? []).map(mapChecklist),
+      checklistItems: (items.data ?? []).map(mapChecklistItem),
+    };
+  });
+}
+
 function fetchSplitLineSources() {
   return supabase
     .from('split_line_sources')
@@ -305,7 +352,7 @@ function fetchPaydayData() {
 }
 
 export async function fetchAll() {
-  const [envelopes, accounts, transactions, income, goals, ledger, profiles, transfers, planSettings, envelopeBudgets, monthModes, paydayData, splitLineSources, monthSnapshots, bills] =
+  const [envelopes, accounts, transactions, income, goals, ledger, profiles, transfers, planSettings, envelopeBudgets, monthModes, paydayData, splitLineSources, monthSnapshots, bills, checklistData] =
     await Promise.all([
     supabase.from('envelopes').select('*').then(unwrap),
     supabase.from('accounts').select('*').then(unwrap),
@@ -322,6 +369,7 @@ export async function fetchAll() {
     fetchSplitLineSources(),
     fetchMonthSnapshots(),
     fetchBills(),
+    fetchChecklists(),
   ]);
 
   return {
@@ -340,6 +388,7 @@ export async function fetchAll() {
     splitLineSources,
     monthSnapshots,
     bills,
+    ...checklistData,
   };
 }
 
@@ -553,6 +602,48 @@ export const repo = {
   // all move a date the same way.
   async completeScheduleItem(payload) {
     await supabase.rpc('complete_schedule_item', { p_bill_id: payload.id }).then(unwrap);
+  },
+
+  // ---- Transfer checklists ----
+  // NOTHING HERE MOVES MONEY. A checklist records what the plan suggested and
+  // what happened to each suggestion; the transfers themselves are made by the
+  // household through the existing transfer RPC.
+  async createChecklist(payload, userId) {
+    await supabase
+      .from('transfer_checklists')
+      .insert({ id: payload.id, income_id: payload.incomeId, income_kind: payload.incomeKind, created_by: userId })
+      .then(unwrap);
+    if (payload.items?.length) {
+      await supabase
+        .from('transfer_checklist_items')
+        .insert(
+          payload.items.map((i) => ({
+            checklist_id: payload.id,
+            from_account_id: i.fromAccountId,
+            to_account_id: i.toAccountId,
+            goal_id: i.goalId,
+            amount: i.amount,
+            reason: i.reason,
+          }))
+        )
+        .then(unwrap);
+    }
+  },
+
+  async updateChecklistItem(payload) {
+    await supabase
+      .from('transfer_checklist_items')
+      .update({ status: payload.status, skip_reason: payload.skipReason ?? null, transfer_id: payload.transferId ?? null })
+      .eq('id', payload.id)
+      .then(unwrap);
+  },
+
+  async closeChecklist(payload) {
+    await supabase
+      .from('transfer_checklists')
+      .update({ completed_at: new Date().toISOString() })
+      .eq('id', payload.id)
+      .then(unwrap);
   },
 
   async takeMonthSnapshot(payload) {
@@ -873,6 +964,10 @@ export const repo = {
         // targets keeps working in the window between deploy and migration.
         // Null still round-trips once it does, so a year can be cleared.
         ...(payload.targetAshoreYear === undefined ? {} : { target_ashore_year: payload.targetAshoreYear }),
+        ...(payload.carGoalId === undefined ? {} : { car_goal_id: payload.carGoalId || null }),
+        ...(payload.tradingTaxAccountId === undefined
+          ? {}
+          : { trading_tax_account_id: payload.tradingTaxAccountId || null }),
         updated_by: userId,
         updated_at: new Date().toISOString(),
       })

@@ -4,6 +4,8 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { toISODateString, getMonthKey, parseMonthKey } from '../utils/date.js';
 import { getOwnAccounts, withCurrentAccount } from '../utils/accounts.js';
 import { BudgetMonthStepper } from '../components/shared/BudgetMonthStepper.jsx';
+import { generateId } from '../utils/id.js';
+import { classifyIncome, buildChecklist } from '../utils/plan/checklist.js';
 import { BottomSheet } from './BottomSheet.jsx';
 
 // `scheduleItem` is an expected payment being ticked off (10d). The form is
@@ -61,8 +63,25 @@ export function IncomeFormModal({ mode = 'add', entry, scheduleItem = null }) {
       budgetMonthKey: getMonthKey(budgetMonth.year, budgetMonth.monthIndex),
     };
 
+    // What the plan says to do with money that just arrived. Only for income
+    // the app can identify: anything else is left for the "What is this
+    // money?" card to ask about, rather than routed on a hunch.
+    function routeIfRecognised(incomeId) {
+      const entry = { ...payload, id: incomeId };
+      const kind = classifyIncome(entry, state.planSettings, state.bills);
+      if (!kind) return;
+      const built = buildChecklist({ entry, kind, settings: state.planSettings, goals: state.goals });
+      if (built.items.length === 0) return;
+      dispatch({
+        type: 'checklist/create',
+        payload: { id: generateId(), incomeId, incomeKind: kind, items: built.items },
+      });
+    }
+
     if (scheduleItem) {
-      dispatch({ type: 'income/add', payload });
+      const incomeId = generateId();
+      dispatch({ type: 'income/add', payload: { ...payload, id: incomeId } });
+      routeIfRecognised(incomeId);
       // Advancing the date is SQL's job, so this waits for the refetch rather
       // than guessing the next occurrence locally.
       dispatch({ type: 'bill/complete', payload: { id: scheduleItem.id } }).then(() => refetchAll());
@@ -73,7 +92,9 @@ export function IncomeFormModal({ mode = 'add', entry, scheduleItem = null }) {
     if (isEdit) {
       dispatch({ type: 'income/update', payload: { id: entry.id, ...payload } });
     } else {
-      dispatch({ type: 'income/add', payload });
+      const incomeId = generateId();
+      dispatch({ type: 'income/add', payload: { ...payload, id: incomeId } });
+      routeIfRecognised(incomeId);
     }
     closeModal();
   }

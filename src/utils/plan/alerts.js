@@ -12,6 +12,7 @@ import { resolveSplit } from './settings.js';
 import { getGoalPace } from './simulate.js';
 import { getBankFloorAccounts } from './floor.js';
 import { getDueSoon, isOverdueIncoming, getKind, SCHEDULE_KINDS } from './bills.js';
+import { isChecklistStale, getIncomeKindMeta, CHECKLIST_STALE_DAYS } from './checklist.js';
 
 export const SEVERITY = { ALERT: 'alert', WARNING: 'warning' };
 
@@ -64,6 +65,8 @@ export function buildAlerts(
     paydays = [],
     paydayAllocations = [],
     bills = [],
+    checklists = [],
+    checklistItems = [],
   } = {},
   { today = new Date() } = {}
 ) {
@@ -285,6 +288,21 @@ export function buildAlerts(
         : `${isTask ? '' : `${formatPHP(bill.amount)}, `}due in ${bill.daysUntilDue} day${bill.daysUntilDue === 1 ? '' : 's'}`,
       amount: bill.amount,
       tab: 'bills',
+    });
+  }
+
+  // --- Transfers the plan asked for that nobody did ---
+  for (const list of checklists) {
+    if (!isChecklistStale(list, today)) continue;
+    const left = checklistItems.filter((i) => i.checklistId === list.id && i.status === 'todo');
+    if (left.length === 0) continue;
+    alerts.push({
+      id: `checklist-stale:${list.id}`,
+      severity: SEVERITY.WARNING,
+      title: `${left.length} transfer${left.length === 1 ? '' : 's'} still to make`,
+      detail: `From the ${getIncomeKindMeta(list.incomeKind).label.toLowerCase()} logged over ${CHECKLIST_STALE_DAYS} days ago`,
+      amount: left.reduce((sum, i) => sum + i.amount, 0),
+      tab: 'home',
     });
   }
 

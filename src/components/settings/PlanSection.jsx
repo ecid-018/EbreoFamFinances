@@ -22,12 +22,14 @@ const ACCOUNT_POINTERS = [
   { key: 'hubAccountId', label: 'Hub account' },
   { key: 'tradingAccountId', label: 'Trading account' },
   { key: 'retirementAccountId', label: 'Retirement account' },
+  { key: 'tradingTaxAccountId', label: 'Trading tax and reserve' },
 ];
 
 const GOAL_POINTERS = [
   { key: 'vacationGoalId', label: 'Vacation fund' },
   { key: 'insuranceGoalId', label: 'Insurance fund' },
   { key: 'tripsGoalId', label: 'Trips fund' },
+  { key: 'carGoalId', label: 'Car fund' },
 ];
 
 // Empty string in a numeric input means "not decided yet", which must round
@@ -223,10 +225,17 @@ export function PlanSection() {
             )}
 
             <div className="plan-settings__group">Which account is which</div>
-            {ACCOUNT_POINTERS.map((f) => pickerInput(f, accounts, 'Not set'))}
+            {/* A pointer whose column has not been migrated yet reads as
+                undefined. Showing it would offer a field that cannot be
+                saved, so it waits until the migration lands. */}
+            {ACCOUNT_POINTERS.filter((f) => planSettings[f.key] !== undefined).map((f) =>
+              pickerInput(f, accounts, 'Not set')
+            )}
 
             <div className="plan-settings__group">Which goal is which</div>
-            {GOAL_POINTERS.map((f) => pickerInput(f, goals, 'Not set'))}
+            {GOAL_POINTERS.filter((f) => planSettings[f.key] !== undefined).map((f) =>
+              pickerInput(f, goals, 'Not set')
+            )}
 
             <button type="button" className="btn-block" onClick={handleSave}>
               {saved ? 'Saved ✓' : 'Save Plan Settings'}

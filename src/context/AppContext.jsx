@@ -27,6 +27,8 @@ const EMPTY_DOMAIN_STATE = {
   splitLineSources: [],
   monthSnapshots: [],
   bills: [],
+  checklists: [],
+  checklistItems: [],
   month: getCurrentMonth(),
 };
 
