@@ -63,14 +63,70 @@ python3 -m venv /tmp/sqlcheck && /tmp/sqlcheck/bin/pip install pglast
 
 Syntax only. A file can parse and still be wrong.
 
-## How to apply
+## How to apply — the order, every time
 
-Nobody applies SQL from a script or from Claude Code. The owner applies each file by hand
-in the Supabase dashboard's **SQL Editor**, in this order:
+Nobody applies SQL from a script or from Claude Code. The owner applies each file by hand in
+the Supabase dashboard's **SQL Editor**.
 
-1. **Staging** — apply, then run the app's manual test script against staging.
-2. **Production** — only after staging passed, and only after taking a backup
-   (Dashboard → Database → Backups).
+**The order is always the same, and merging is always last:**
+
+| # | Step | Why |
+|---|---|---|
+| 1 | Apply to **staging** | Nothing here has run anywhere yet. |
+| 2 | **Test on staging** — the PR's probe and manual script | The only chance to be wrong for free. |
+| 3 | Apply to **production** | Only after step 2 passed. |
+| 4 | **Merge the PR** | Merging deploys. The database must be ready before the app that expects it. |
+
+**A PR with no migration** (e.g. the 10a alerts) skips 1–3 entirely. Just merge.
+
+### Why merge is last
+
+Merging pushes to `main`, and Vercel deploys `main` automatically. So the moment a PR is
+merged, the live app is the new code. If production has not been migrated yet, the new code is
+talking to an old database.
+
+How badly that goes depends on the change:
+
+- **Usually it degrades quietly.** Every table added since `0004` is fetched behind a wrapper
+  that catches "table does not exist" and returns nothing, and every new column is omitted from
+  writes until it exists. The feature simply does not appear. This is deliberate, and it is why
+  merging `0011` and `0012` early did no harm.
+- **Sometimes it does not.** `0013` added a third payday kind. Merging that before production was
+  migrated would have put a **Sign-off** button on screen that failed on a CHECK constraint every
+  time it was pressed. Nothing would have been corrupted — it is one transaction — but it would
+  have looked broken for no reason.
+
+Rather than judging which case applies each time, keep the order fixed. It is never wrong.
+
+### Why staging is not optional
+
+Once a migration has been applied anywhere, its number is spent — see the numbering note above.
+A mistake found on staging is fixed by editing the same file before it goes further. A mistake
+found on production needs a whole new migration to correct, and lives in the history forever.
+
+### Probes
+
+A migration that adds or changes a `SECURITY DEFINER` function ships with a **probe**: a small
+script in the PR that runs the function on staging and prints something that proves it worked.
+Run it at step 2.
+
+This exists because `apply_payday` shipped in Phase 5 having **never once been executed**, and the
+first real call failed on an unqualified `DELETE` that Supabase refuses outright. Every money-moving
+function since has been run before it was trusted.
+
+Note that the Supabase SQL editor shows only the **last** statement's result. A probe that ends in
+`rollback;` will report "Success. No rows returned" and hide the answer — so probes put the
+interesting `select` last, or run as separate blocks.
+
+### Backups
+
+The README used to say "only after taking a backup". The Free plan has no backups, so on this
+project that instruction was unachievable. Judge it per migration instead:
+
+- A migration that only widens a constraint or adds a nullable column **cannot destroy data**.
+  There is nothing for a backup to protect.
+- A migration that creates tables, moves rows, or drops anything deserves a real backup first.
+  `pg_dump` is the Free-tier answer.
 
 Record what was applied where in the PR that introduced the migration.
 
