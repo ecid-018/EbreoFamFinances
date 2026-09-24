@@ -78,10 +78,10 @@ create table income (
   budget_month_key text not null,
   created_by uuid references auth.users(id),
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
   -- Classifies income logged through a payday (0007). Nullable: every row
   -- that predates paydays stays null and behaves exactly as it did.
-  kind text check (kind in ('pay', 'windfall', 'trading_payout', 'other')),
+  kind text check (kind in ('pay', 'windfall', 'trading_payout', 'other'))
 );
 
 create table goals (
