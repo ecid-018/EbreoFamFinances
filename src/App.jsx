@@ -17,6 +17,8 @@ import { NeedsAttentionCard } from './components/home/NeedsAttentionCard.jsx';
 import { PlanSummaryCard } from './components/plan/PlanSummaryCard.jsx';
 import { HomeTab } from './components/tabs/HomeTab.jsx';
 import { PlanTab } from './components/tabs/PlanTab.jsx';
+import { BillsTab } from './components/tabs/BillsTab.jsx';
+import { DueSoonCard } from './components/bills/DueSoonCard.jsx';
 import { BudgetTab } from './components/tabs/BudgetTab.jsx';
 import { TransactionsTab } from './components/tabs/TransactionsTab.jsx';
 import { GoalsTab } from './components/tabs/GoalsTab.jsx';
@@ -26,6 +28,7 @@ import { ModalRoot } from './modals/ModalRoot.jsx';
 const TABS = {
   home: HomeTab,
   plan: PlanTab,
+  bills: BillsTab,
   budget: BudgetTab,
   goals: GoalsTab,
   transactions: TransactionsTab,
@@ -62,10 +65,10 @@ function AppShell({ shortPin, onDismissShortPin }) {
           <ActiveTabComponent />
         </main>
       </div>
-      {/* Overview column (>=1024px). Phase 8's "Due soon" joins these later.
-          Hidden below 1024px, where HouseholdSnapshot and NeedsAttentionCard
-          stay inside HomeTab and the Plan has its own tab. */}
+      {/* Overview column (>=1024px). Hidden below 1024px, where these cards
+          stay inside HomeTab and the Plan and Bills have their own tabs. */}
       <aside className="page__overview" aria-label="Overview">
+        <DueSoonCard />
         <PlanSummaryCard />
         <HouseholdSnapshot />
         <NeedsAttentionCard />

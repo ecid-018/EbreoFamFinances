@@ -2225,3 +2225,16 @@ svg {
   white-space: normal;
   overflow: visible;
 }
+
+/* "Pay" on a bill row. The row itself opens the edit form, so this needs to
+   read as its own control rather than part of the row. */
+.bill-row__pay {
+  margin-left: auto;
+  padding: 4px 14px;
+  border: 1px solid var(--color-separator-strong);
+  border-radius: var(--radius-pill);
+  background: var(--color-card);
+  color: var(--color-accent);
+  font-size: var(--caption-size);
+  font-weight: 600;
+}

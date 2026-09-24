@@ -10,15 +10,26 @@ export const syncEffects = {
     const existing = ctx.prevState.envelopes.find((env) => env.id === payload.id);
     return repo.updateEnvelope(payload, existing, ctx.userId);
   },
+  // No optimistic reducer case: the RPC computes every figure from current
+  // balances, and mirroring that locally would be a second copy of the math.
+  // The screen waits for the refetch.
+  'snapshot/take': (payload) => repo.takeMonthSnapshot(payload),
   // No optimistic reducer case: a payday fans out into income, transfers and
   // goal contributions that the RPC writes atomically. Guessing at all of that
   // locally would be a second copy of the math, so the screen waits for the
   // refetch instead.
-  // No optimistic reducer case, for the same reason as payday/apply: the RPC
-  // computes every figure from current balances, and mirroring that locally
-  // would be a second copy of the math. The screen waits for the refetch.
-  'snapshot/take': (payload) => repo.takeMonthSnapshot(payload),
   'payday/apply': (payload) => repo.applyPayday(payload),
+
+  'bill/add': (payload, ctx) => repo.addBill(payload, ctx.userId),
+  'bill/update': (payload, ctx) => repo.updateBill(payload, ctx.userId),
+  'bill/remove': (payload, ctx) => {
+    const existing = ctx.prevState.bills.find((b) => b.id === payload.id);
+    return repo.removeBill(payload, existing, ctx.userId);
+  },
+  // No optimistic reducer case: paying writes an expense, moves the bill's due
+  // date and draws down a sinking fund, all inside one RPC. The screen waits
+  // for the refetch rather than guessing at three writes.
+  'bill/pay': (payload) => repo.payBill(payload),
   'month/setMode': (payload, ctx) => repo.setMonthMode(payload, ctx.userId),
   'envelope/setMonthBudget': (payload, ctx) => {
     const envelope = ctx.prevState.envelopes.find((env) => env.id === payload.envelopeId);
@@ -97,4 +108,5 @@ export const ACTIONS_NEEDING_ID = new Set([
   'account/add',
   'goal/add',
   'transfer/add',
+  'bill/add',
 ]);
