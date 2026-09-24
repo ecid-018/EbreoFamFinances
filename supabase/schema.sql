@@ -1,3 +1,10 @@
+-- ============================================================================
+-- STOP. FRESH, EMPTY PROJECTS ONLY.
+-- This is the CURRENT snapshot of the whole schema. Running it against a
+-- project that already has data fails on the first `create table`. To change
+-- an existing project, use a numbered file in supabase/migrations/ instead.
+-- Check the project badge in the top bar before you run anything.
+-- ============================================================================
 -- Ebreo Family Finances — Supabase schema, security policies, and atomic
 -- compound-action functions.
 --
