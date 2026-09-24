@@ -6,8 +6,11 @@ import { getOwnAccounts, withCurrentAccount } from '../utils/accounts.js';
 import { BudgetMonthStepper } from '../components/shared/BudgetMonthStepper.jsx';
 import { BottomSheet } from './BottomSheet.jsx';
 
-export function IncomeFormModal({ mode = 'add', entry }) {
-  const { state, dispatch, closeModal } = useApp();
+// `scheduleItem` is an expected payment being ticked off (10d). The form is
+// prefilled from it, and saving both logs the income and moves the item on to
+// its next date -- the same shape as paying a bill from the expense form.
+export function IncomeFormModal({ mode = 'add', entry, scheduleItem = null }) {
+  const { state, dispatch, refetchAll, closeModal } = useApp();
   const { session } = useAuth();
   const isEdit = mode === 'edit';
   // Income is the one flow that can target a USD account directly — everywhere
@@ -20,8 +23,10 @@ export function IncomeFormModal({ mode = 'add', entry }) {
     isEdit ? entry.accountId : null
   );
   const [date, setDate] = useState(isEdit ? entry.date : toISODateString());
-  const [source, setSource] = useState(isEdit ? entry.source : '');
-  const [amount, setAmount] = useState(isEdit ? String(entry.amount) : '');
+  const [source, setSource] = useState(isEdit ? entry.source : (scheduleItem?.name ?? ''));
+  const [amount, setAmount] = useState(
+    isEdit ? String(entry.amount) : scheduleItem?.amount > 0 ? String(scheduleItem.amount) : ''
+  );
   const [accountId, setAccountId] = useState(isEdit ? entry.accountId ?? '' : accounts[0]?.id ?? '');
   const [budgetMonth, setBudgetMonth] = useState(
     isEdit ? parseMonthKey(entry.budgetMonthKey) : state.month
@@ -55,6 +60,15 @@ export function IncomeFormModal({ mode = 'add', entry }) {
       accountId: accountId || null,
       budgetMonthKey: getMonthKey(budgetMonth.year, budgetMonth.monthIndex),
     };
+
+    if (scheduleItem) {
+      dispatch({ type: 'income/add', payload });
+      // Advancing the date is SQL's job, so this waits for the refetch rather
+      // than guessing the next occurrence locally.
+      dispatch({ type: 'bill/complete', payload: { id: scheduleItem.id } }).then(() => refetchAll());
+      closeModal();
+      return;
+    }
 
     if (isEdit) {
       dispatch({ type: 'income/update', payload: { id: entry.id, ...payload } });

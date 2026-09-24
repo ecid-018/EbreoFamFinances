@@ -56,6 +56,11 @@ function mapBill(row) {
     envelopeId: row.envelope_id ?? null,
     goalId: row.goal_id ?? null,
     isActive: row.is_active ?? true,
+    // Defaults match 0014's column defaults, so a row fetched before the
+    // migration lands reads as the bill it already was.
+    kind: row.kind ?? 'bill',
+    remindDays: row.remind_days ?? [7, 1, 0],
+    notes: row.notes ?? '',
   };
 }
 function mapSplitLineSource(row) {
@@ -463,6 +468,11 @@ export const repo = {
         envelope_id: payload.envelopeId || null,
         goal_id: payload.goalId || null,
         is_active: payload.isActive ?? true,
+        // Sent only once 0014 has landed. An update naming a column that does
+        // not exist fails the WHOLE statement, so a deploy arriving before the
+        // migration must not break saving a plain bill.
+        ...(payload.kind === undefined ? {} : { kind: payload.kind }),
+        ...(payload.notes === undefined ? {} : { notes: payload.notes }),
         created_by: userId,
       })
       .then(unwrap);
@@ -489,6 +499,11 @@ export const repo = {
         envelope_id: payload.envelopeId || null,
         goal_id: payload.goalId || null,
         is_active: payload.isActive ?? true,
+        // Sent only once 0014 has landed. An update naming a column that does
+        // not exist fails the WHOLE statement, so a deploy arriving before the
+        // migration must not break saving a plain bill.
+        ...(payload.kind === undefined ? {} : { kind: payload.kind }),
+        ...(payload.notes === undefined ? {} : { notes: payload.notes }),
         updated_at: new Date().toISOString(),
       })
       .eq('id', payload.id)
@@ -531,6 +546,13 @@ export const repo = {
         p_account_id: payload.accountId || null,
       })
       .then(unwrap);
+  },
+
+  // Marks an expected payment received or a task done. The date arithmetic
+  // lives in SQL so that paying a bill, receiving money and finishing a job
+  // all move a date the same way.
+  async completeScheduleItem(payload) {
+    await supabase.rpc('complete_schedule_item', { p_bill_id: payload.id }).then(unwrap);
   },
 
   async takeMonthSnapshot(payload) {

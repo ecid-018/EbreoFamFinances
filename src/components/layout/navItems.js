@@ -10,7 +10,7 @@ import { HomeIcon, BudgetIcon, ActivityIcon, MoreIcon, IncomeIcon, ExpenseIcon, 
 export const NAV_ITEMS = [
   { key: 'home', label: 'Home', Icon: HomeIcon },
   { key: 'plan', label: 'Plan', Icon: PlanIcon, railOnly: true },
-  { key: 'bills', label: 'Bills', Icon: BillIcon, railOnly: true },
+  { key: 'bills', label: 'Schedule', Icon: BillIcon, railOnly: true },
   { key: 'budget', label: 'Budget', Icon: BudgetIcon },
   { key: 'goals', label: 'Goals', Icon: GoalIcon },
   { key: 'transactions', label: 'Transactions', Icon: ActivityIcon },

@@ -18,7 +18,7 @@ export function PlanSegment() {
         options={[
           { value: 'home', label: 'Overview' },
           { value: 'plan', label: 'Plan' },
-          { value: 'bills', label: 'Bills' },
+          { value: 'bills', label: 'Schedule' },
         ]}
       />
     </div>

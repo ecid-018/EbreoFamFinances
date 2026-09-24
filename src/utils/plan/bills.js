@@ -9,6 +9,30 @@
 
 import { getDaysInMonth, pad2, toISODateString } from '../date.js';
 
+// Three things recur, not one. They share a table and every field that
+// matters; what differs is what "done" means for each.
+export const SCHEDULE_KINDS = { BILL: 'bill', INCOMING: 'incoming', TASK: 'task' };
+
+export const SCHEDULE_KIND_META = [
+  { value: SCHEDULE_KINDS.BILL, label: 'Bill', hint: 'Something we pay', action: 'Pay' },
+  { value: SCHEDULE_KINDS.INCOMING, label: 'Expected', hint: 'Money we expect to arrive', action: 'Received' },
+  { value: SCHEDULE_KINDS.TASK, label: 'Task', hint: 'A job with a date', action: 'Done' },
+];
+
+// How many days after its date an expected payment goes from "due" to "hasn't
+// turned up". Money is routinely a day or two late; two days is long enough
+// not to cry wolf and short enough to still chase it.
+export const INCOMING_GRACE_DAYS = 2;
+
+export function getKindMeta(kind) {
+  return SCHEDULE_KIND_META.find((k) => k.value === kind) ?? SCHEDULE_KIND_META[0];
+}
+
+// An item with no kind is a bill: that is what every row was before 0014.
+export function getKind(item) {
+  return item?.kind ?? SCHEDULE_KINDS.BILL;
+}
+
 export const BILL_PERIODS = [
   { value: 'monthly', label: 'Monthly', months: 1 },
   { value: 'quarterly', label: 'Every 3 months', months: 3 },
@@ -33,8 +57,12 @@ export function getMonthlyEquivalent(bill) {
   return bill.amount / getPeriodMonths(bill.period);
 }
 
+// Only what is actually PAID. Counting expected money here would inflate
+// outgoings with income, and counting tasks would add jobs that cost nothing.
 export function getFixedCostsPerMonth(bills = []) {
-  return bills.filter((b) => b.isActive).reduce((total, b) => total + getMonthlyEquivalent(b), 0);
+  return bills
+    .filter((b) => b.isActive && getKind(b) === SCHEDULE_KINDS.BILL)
+    .reduce((total, b) => total + getMonthlyEquivalent(b), 0);
 }
 
 // The next date with this day-of-month, counting today as still to come.
@@ -79,6 +107,25 @@ export function getDueSoon(bills = [], today = new Date(), withinDays = 14) {
     .map((b) => ({ ...b, daysUntilDue: getDaysUntilDue(b, today) }))
     .filter((b) => b.daysUntilDue <= withinDays)
     .sort((a, b) => a.daysUntilDue - b.daysUntilDue);
+}
+
+// An expected payment that has not been logged within the grace period.
+// Nothing here can tell whether the money actually arrived -- it only knows
+// nobody has ticked it off -- so the wording everywhere says "not logged",
+// not "not received".
+export function isOverdueIncoming(item, today = new Date()) {
+  if (getKind(item) !== SCHEDULE_KINDS.INCOMING || !item.isActive) return false;
+  const days = getDaysUntilDue(item, today);
+  return days != null && days < -INCOMING_GRACE_DAYS;
+}
+
+export function groupByKind(items = []) {
+  const active = items.filter((b) => b.isActive);
+  const byDue = (a, b) => String(a.nextDue ?? '9999').localeCompare(String(b.nextDue ?? '9999'));
+  return SCHEDULE_KIND_META.map((meta) => ({
+    ...meta,
+    items: active.filter((b) => getKind(b) === meta.value).sort(byDue),
+  })).filter((group) => group.items.length > 0);
 }
 
 export function splitBills(bills = []) {
