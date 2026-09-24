@@ -8,13 +8,19 @@ import { BottomSheet } from './BottomSheet.jsx';
 export function BillFormModal({ mode = 'add', bill, defaultKind = SCHEDULE_KINDS.BILL }) {
   const { state, dispatch, closeModal } = useApp();
   const isEdit = mode === 'edit';
-  const isBill = kind === SCHEDULE_KINDS.BILL;
   const accounts = getActiveAccounts(state.accounts);
   // Only sinking funds can pay a bill: a savings goal is money being built up
   // for something, not a float that a recurring cost draws down.
   const { sinkingFunds } = splitGoals(state.goals);
 
   const [kind, setKind] = useState(isEdit ? bill.kind ?? SCHEDULE_KINDS.BILL : defaultKind);
+  // Declared after the state it reads, not before: `const` is not hoisted, and
+  // reading it above threw "Cannot access 'kind' before initialization" at
+  // render time. Neither the build nor the linter catches that.
+  const isBill = kind === SCHEDULE_KINDS.BILL;
+  // A job has no amount. "Open the new MP2 account each January" costs
+  // nothing, and demanding a figure would force a fake one into the data.
+  const needsAmount = kind !== SCHEDULE_KINDS.TASK;
   const [name, setName] = useState(isEdit ? bill.name : '');
   const [amount, setAmount] = useState(isEdit ? String(bill.amount) : '');
   const [period, setPeriod] = useState(isEdit ? bill.period : 'monthly');
@@ -43,7 +49,7 @@ export function BillFormModal({ mode = 'add', bill, defaultKind = SCHEDULE_KINDS
       setError('Give it a name.');
       return;
     }
-    if (!amountValue || amountValue <= 0) {
+    if (needsAmount && (!amountValue || amountValue <= 0)) {
       setError('Enter an amount greater than ₱0.');
       return;
     }
@@ -56,7 +62,8 @@ export function BillFormModal({ mode = 'add', bill, defaultKind = SCHEDULE_KINDS
       kind,
       notes: notes.trim(),
       name: name.trim(),
-      amount: amountValue,
+      // The column is NOT NULL, so a task stores zero rather than nothing.
+      amount: needsAmount ? amountValue : amountValue || 0,
       period,
       dueDay: dueDay === '' ? null : Number(dueDay),
       nextDue,
@@ -103,7 +110,7 @@ export function BillFormModal({ mode = 'add', bill, defaultKind = SCHEDULE_KINDS
           />
         </label>
         <label className="form__field">
-          <span className="form__label">Amount (₱)</span>
+          <span className="form__label">Amount (₱){needsAmount ? '' : ' — optional'}</span>
           <input
             type="number"
             inputMode="decimal"
@@ -112,8 +119,8 @@ export function BillFormModal({ mode = 'add', bill, defaultKind = SCHEDULE_KINDS
             className="form__input"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            placeholder="0"
-            required
+            placeholder={needsAmount ? '0' : 'Leave blank — a task has no amount'}
+            required={needsAmount}
           />
         </label>
         <label className="form__field">
