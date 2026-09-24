@@ -199,6 +199,29 @@ export function PlanSection() {
             </label>
             {draft.presignoffActive && moneyInput({ key: 'presignoffVacationAmount', label: 'Held vacation amount' })}
 
+            {/* Hidden until 0011 is applied. The field cannot be saved before
+                the column exists, and an input that silently fails is worse
+                than one that is not there yet. */}
+            {planSettings.targetAshoreYear !== undefined && (
+              <>
+                <div className="plan-settings__group">Going ashore</div>
+                <label className="form__field">
+                  <span className="form__label">Target year ashore</span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min="2000"
+                    max="2100"
+                    step="1"
+                    className="form__input"
+                    value={toInput(draft.targetAshoreYear)}
+                    onChange={(e) => setField('targetAshoreYear', toNumberOrNull(e.target.value))}
+                    placeholder="Not set"
+                  />
+                </label>
+              </>
+            )}
+
             <div className="plan-settings__group">Which account is which</div>
             {ACCOUNT_POINTERS.map((f) => pickerInput(f, accounts, 'Not set'))}
 

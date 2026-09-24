@@ -2126,3 +2126,52 @@ svg {
     padding-top: 0;
   }
 }
+
+/* ---------- Plan view ---------- */
+
+/* Phone-only Home/Plan switch. layout.css hides it from 600px up, where the
+   SideNav carries a Plan item instead. */
+.plan-segment {
+  margin: 0 16px 16px;
+}
+
+.plan-row__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  font-size: var(--caption-size);
+}
+
+/* The palette has no green, so a healthy state is quiet rather than loud:
+   only something wrong earns a colour. */
+.plan-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--color-fill-track);
+  color: var(--color-text-secondary);
+  font-size: var(--caption-size);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Behind on a target date is a nudge; a breached guard-rail is not. */
+.plan-badge--behind {
+  color: var(--color-warning);
+}
+
+.plan-badge--bad {
+  color: var(--color-destructive);
+}
+
+.progress-bar__fill--over {
+  background: var(--color-destructive);
+}
+
+/* The projection missing the date the goal was wanted by. Warning, not
+   destructive: it is a forecast, and forecasts move. */
+.plan-meta--late {
+  color: var(--color-warning);
+}

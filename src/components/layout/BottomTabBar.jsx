@@ -19,14 +19,19 @@ export function BottomTabBar() {
     openModal(action.modal, action.props);
   }
 
-  const [first, second, ...rest] = NAV_ITEMS;
+  // Rail-only items (the Plan) are left out here: the bar is full at six.
+  const [first, second, ...rest] = NAV_ITEMS.filter((item) => !item.railOnly);
+
+  // On phones the Plan is a segment inside Home, so Home stays lit while it
+  // is open — nothing else would be, and an unlit bar reads as a bug.
+  const activeKey = activeTab === 'plan' ? 'home' : activeTab;
 
   function renderTab({ key, label, Icon }) {
     return (
       <button
         key={key}
         type="button"
-        className={`tabbar__item ${activeTab === key ? 'tabbar__item--active' : ''}`.trim()}
+        className={`tabbar__item ${activeKey === key ? 'tabbar__item--active' : ''}`.trim()}
         onClick={() => goToTab(key)}
       >
         <Icon size={22} />

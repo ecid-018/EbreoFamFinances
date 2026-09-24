@@ -14,7 +14,9 @@ import { BottomTabBar } from './components/layout/BottomTabBar.jsx';
 import { SideNav } from './components/layout/SideNav.jsx';
 import { HouseholdSnapshot } from './components/home/HouseholdSnapshot.jsx';
 import { NeedsAttentionCard } from './components/home/NeedsAttentionCard.jsx';
+import { PlanSummaryCard } from './components/plan/PlanSummaryCard.jsx';
 import { HomeTab } from './components/tabs/HomeTab.jsx';
+import { PlanTab } from './components/tabs/PlanTab.jsx';
 import { BudgetTab } from './components/tabs/BudgetTab.jsx';
 import { TransactionsTab } from './components/tabs/TransactionsTab.jsx';
 import { GoalsTab } from './components/tabs/GoalsTab.jsx';
@@ -23,6 +25,7 @@ import { ModalRoot } from './modals/ModalRoot.jsx';
 
 const TABS = {
   home: HomeTab,
+  plan: PlanTab,
   budget: BudgetTab,
   goals: GoalsTab,
   transactions: TransactionsTab,
@@ -59,10 +62,11 @@ function AppShell({ shortPin, onDismissShortPin }) {
           <ActiveTabComponent />
         </main>
       </div>
-      {/* Overview column (>=1024px). Later phases fill this with the Plan
-          summary and "Due soon"; for now it reuses the two read-only Home
-          cards. Hidden below 1024px, where they stay inside HomeTab. */}
+      {/* Overview column (>=1024px). Phase 8's "Due soon" joins these later.
+          Hidden below 1024px, where HouseholdSnapshot and NeedsAttentionCard
+          stay inside HomeTab and the Plan has its own tab. */}
       <aside className="page__overview" aria-label="Overview">
+        <PlanSummaryCard />
         <HouseholdSnapshot />
         <NeedsAttentionCard />
       </aside>

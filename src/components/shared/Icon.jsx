@@ -236,3 +236,13 @@ export function SortIcon(props) {
     </Svg>
   );
 }
+
+// A compass, for the Plan view: the course, not the position.
+export function PlanIcon(props) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="12" r="8" />
+      <path d="M15 9 13 13l-4 2 2-4z" />
+    </Svg>
+  );
+}

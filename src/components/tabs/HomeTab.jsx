@@ -1,4 +1,5 @@
 import { useApp } from '../../context/AppContext.jsx';
+import { PlanSegment } from '../plan/PlanSegment.jsx';
 import { SafeToSpend } from '../hero/SafeToSpend.jsx';
 import { StatsRow } from '../stats/StatsRow.jsx';
 import { HouseholdSnapshot } from '../home/HouseholdSnapshot.jsx';
@@ -11,6 +12,7 @@ export function HomeTab() {
 
   return (
     <>
+      <PlanSegment />
       <SafeToSpend />
       <StatsRow />
       {viewMode === 'day' ? (

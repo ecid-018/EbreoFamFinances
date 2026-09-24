@@ -33,6 +33,13 @@
     display: none;
   }
 
+  /* The SideNav has a Plan item at this width, so the Home/Plan switch is
+     redundant. Both set the same activeTab, so hiding this one cannot strand
+     anyone on the Plan with no way back. */
+  .plan-segment {
+    display: none;
+  }
+
   .page__main {
     min-width: 0;
   }

@@ -1,10 +1,15 @@
-import { HomeIcon, BudgetIcon, ActivityIcon, MoreIcon, IncomeIcon, ExpenseIcon, TransferIcon, GoalIcon } from '../shared/Icon.jsx';
+import { HomeIcon, BudgetIcon, ActivityIcon, MoreIcon, IncomeIcon, ExpenseIcon, TransferIcon, GoalIcon, PlanIcon } from '../shared/Icon.jsx';
 
 // The tab keys here must match the TABS map in App.jsx. Both the phone
 // BottomTabBar and the wider-screen SideNav render from this list, so a new
 // tab only needs adding in two places (here and TABS) rather than in every nav.
+// `railOnly` items appear in the SideNav but not in the phone tab bar. The
+// bar already fits six items at 64-75px each on a 390px screen; a seventh
+// would not. Below 600px the Plan is reached from the segment on Home
+// instead, which sets the same activeTab.
 export const NAV_ITEMS = [
   { key: 'home', label: 'Home', Icon: HomeIcon },
+  { key: 'plan', label: 'Plan', Icon: PlanIcon, railOnly: true },
   { key: 'budget', label: 'Budget', Icon: BudgetIcon },
   { key: 'goals', label: 'Goals', Icon: GoalIcon },
   { key: 'transactions', label: 'Transactions', Icon: ActivityIcon },
