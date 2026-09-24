@@ -1,3 +1,9 @@
+-- ============================================================================
+-- STOP. CHECK THE PROJECT BADGE IN THE TOP BAR BEFORE YOU RUN THIS.
+-- The SQL editor looks identical in staging and production; the badge is the
+-- only tell. Staging first, then production -- and only after a backup
+-- (Dashboard -> Database -> Backups).
+-- ============================================================================
 -- 0001_account_archiving.sql
 -- Phase 0 — "Archive instead of delete" for accounts.
 --

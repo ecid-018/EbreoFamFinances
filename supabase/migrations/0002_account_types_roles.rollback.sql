@@ -1,3 +1,8 @@
+-- ============================================================================
+-- STOP. CHECK THE PROJECT BADGE IN THE TOP BAR BEFORE YOU RUN THIS.
+-- This UNDOES a migration and can destroy data. Read what it drops first.
+-- The SQL editor looks identical in staging and production.
+-- ============================================================================
 -- Rollback for 0002_account_types_roles.sql
 --
 -- WARNING: restoring the original type constraint FAILS if any account has

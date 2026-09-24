@@ -1,3 +1,8 @@
+-- ============================================================================
+-- STOP. CHECK THE PROJECT BADGE IN THE TOP BAR BEFORE YOU RUN THIS.
+-- This UNDOES a migration and can destroy data. Read what it drops first.
+-- The SQL editor looks identical in staging and production.
+-- ============================================================================
 -- Rollback for 0003_goals_plan_fields.sql
 --
 -- Dropping the columns loses any priority/date/grouping the household set.

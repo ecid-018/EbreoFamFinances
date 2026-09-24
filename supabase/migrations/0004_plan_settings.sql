@@ -1,3 +1,9 @@
+-- ============================================================================
+-- STOP. CHECK THE PROJECT BADGE IN THE TOP BAR BEFORE YOU RUN THIS.
+-- The SQL editor looks identical in staging and production; the badge is the
+-- only tell. Staging first, then production -- and only after a backup
+-- (Dashboard -> Database -> Backups).
+-- ============================================================================
 -- 0004_plan_settings.sql
 -- Phase 3 — one shared row of household plan figures.
 --

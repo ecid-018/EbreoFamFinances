@@ -1,3 +1,8 @@
+-- ============================================================================
+-- STOP. CHECK THE PROJECT BADGE IN THE TOP BAR BEFORE YOU RUN THIS.
+-- This UNDOES a migration and can destroy data. Read what it drops first.
+-- The SQL editor looks identical in staging and production.
+-- ============================================================================
 -- Rollback for 0009_fix_payday_validation.sql
 --
 -- There is deliberately nothing here. Rolling back would restore a function

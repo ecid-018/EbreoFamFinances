@@ -1,3 +1,9 @@
+-- ============================================================================
+-- STOP. CHECK THE PROJECT BADGE IN THE TOP BAR BEFORE YOU RUN THIS.
+-- The SQL editor looks identical in staging and production; the badge is the
+-- only tell. Staging first, then production -- and only after a backup
+-- (Dashboard -> Database -> Backups).
+-- ============================================================================
 -- 0009_fix_payday_validation.sql
 -- Fixes apply_payday, which 0008 left unable to run at all.
 --
