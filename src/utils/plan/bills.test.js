@@ -10,6 +10,11 @@ import {
   getDueSoon,
   splitBills,
   getPaymentDraft,
+  SCHEDULE_KINDS,
+  getKind,
+  getKindMeta,
+  isOverdueIncoming,
+  groupByKind,
 } from './bills.js';
 
 // Every figure invented. Fixed clock: 15 June 2026.
@@ -177,5 +182,86 @@ describe('getPaymentDraft', () => {
     const draft = getPaymentDraft(bill(), MID_JUNE);
     expect(draft.categoryId).toBeNull();
     expect(draft.accountId).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Schedule kinds (0014). Every figure invented.
+// ---------------------------------------------------------------------------
+describe('schedule kinds', () => {
+  it('treats an item with no kind as a bill — every row was one before 0014', () => {
+    expect(getKind({ name: 'Old row' })).toBe(SCHEDULE_KINDS.BILL);
+    expect(getKind(null)).toBe(SCHEDULE_KINDS.BILL);
+  });
+
+  it('names what "done" means for each kind', () => {
+    expect(getKindMeta(SCHEDULE_KINDS.BILL).action).toBe('Pay');
+    expect(getKindMeta(SCHEDULE_KINDS.INCOMING).action).toBe('Received');
+    expect(getKindMeta(SCHEDULE_KINDS.TASK).action).toBe('Done');
+  });
+
+  it('falls back to bill for an unrecognised kind rather than rendering nothing', () => {
+    expect(getKindMeta('nonsense').value).toBe(SCHEDULE_KINDS.BILL);
+  });
+});
+
+describe('fixed costs with mixed kinds', () => {
+  it('counts only what is actually paid', () => {
+    const items = [
+      bill({ id: 'a', amount: 500, period: 'monthly', kind: 'bill' }),
+      bill({ id: 'b', amount: 90000, period: 'monthly', kind: 'incoming' }),
+      bill({ id: 'c', amount: 300, period: 'monthly', kind: 'task' }),
+    ];
+    expect(getFixedCostsPerMonth(items)).toBe(500);
+  });
+
+  it('still counts a legacy row with no kind at all', () => {
+    const legacy = [{ ...bill({ amount: 500, period: 'monthly' }), kind: undefined }];
+    expect(getFixedCostsPerMonth(legacy)).toBe(500);
+  });
+});
+
+describe('isOverdueIncoming', () => {
+  const incoming = (over = {}) => bill({ kind: 'incoming', ...over });
+
+  it('is false inside the grace period', () => {
+    expect(isOverdueIncoming(incoming({ nextDue: '2026-06-14' }), MID_JUNE)).toBe(false);
+    expect(isOverdueIncoming(incoming({ nextDue: '2026-06-13' }), MID_JUNE)).toBe(false);
+  });
+
+  it('is true once the grace period has passed', () => {
+    expect(isOverdueIncoming(incoming({ nextDue: '2026-06-12' }), MID_JUNE)).toBe(true);
+  });
+
+  it('never applies to a bill or a task, however late', () => {
+    expect(isOverdueIncoming(bill({ kind: 'bill', nextDue: '2026-01-01' }), MID_JUNE)).toBe(false);
+    expect(isOverdueIncoming(bill({ kind: 'task', nextDue: '2026-01-01' }), MID_JUNE)).toBe(false);
+  });
+
+  it('ignores an inactive item and one with no date', () => {
+    expect(isOverdueIncoming(incoming({ nextDue: '2026-01-01', isActive: false }), MID_JUNE)).toBe(false);
+    expect(isOverdueIncoming(incoming({ nextDue: null }), MID_JUNE)).toBe(false);
+  });
+});
+
+describe('groupByKind', () => {
+  const items = [
+    bill({ id: 't', kind: 'task', nextDue: '2026-07-01' }),
+    bill({ id: 'b2', kind: 'bill', nextDue: '2026-06-25' }),
+    bill({ id: 'b1', kind: 'bill', nextDue: '2026-06-18' }),
+    bill({ id: 'i', kind: 'incoming', nextDue: '2026-06-20' }),
+    bill({ id: 'off', kind: 'task', nextDue: '2026-06-01', isActive: false }),
+  ];
+
+  it('groups in a fixed order, each sorted by when it falls due', () => {
+    const groups = groupByKind(items);
+    expect(groups.map((g) => g.value)).toEqual(['bill', 'incoming', 'task']);
+    expect(groups[0].items.map((i) => i.id)).toEqual(['b1', 'b2']);
+  });
+
+  it('leaves out empty groups and inactive items', () => {
+    expect(groupByKind(items)[2].items.map((i) => i.id)).toEqual(['t']);
+    expect(groupByKind([bill({ kind: 'bill' })]).map((g) => g.value)).toEqual(['bill']);
+    expect(groupByKind([])).toEqual([]);
   });
 });

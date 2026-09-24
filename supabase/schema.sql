@@ -237,6 +237,14 @@ create table bills (
   -- The sinking fund that pays it, if any.
   goal_id uuid references goals(id) on delete set null,
   is_active boolean not null default true,
+  -- Three things recur, not one: money we PAY, money we EXPECT, and JOBS with
+  -- a date (0014). They share every field that matters, so they share the
+  -- table. The app calls this the Schedule; the table keeps its old name
+  -- because renaming is forbidden and churn helps nobody.
+  kind text not null default 'bill' check (kind in ('bill', 'incoming', 'task')),
+  -- Days ahead to push a reminder. No consumer until web push lands.
+  remind_days integer[] not null default '{7,1,0}',
+  notes text,
   created_by uuid references auth.users(id),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -248,6 +256,7 @@ create table bills (
 alter table transactions add column bill_id uuid references bills(id) on delete set null;
 
 create index bills_next_due_idx on bills (next_due) where is_active;
+create index bills_kind_idx on bills (kind) where is_active;
 create index transactions_bill_id_idx on transactions (bill_id);
 
 -- Which account each split line is paid from (0008). SPARSE: a line with no
@@ -1006,9 +1015,79 @@ create policy "bills_insert" on bills for insert to authenticated with check (cr
 create policy "bills_update" on bills for update to authenticated using (true) with check (true);
 create policy "bills_delete" on bills for delete to authenticated using (true);
 
+-- The due-date rule, in one place (0014). Completing a task, receiving an
+-- expected payment and paying a bill all advance a date the same way; three
+-- copies of this arithmetic would eventually be three answers.
+--
+-- Advances from the date it was DUE, not today, so being late does not push
+-- every future occurrence later. Then snaps back to the intended day of the
+-- month where that month is long enough, so a 31st does not become a 28th
+-- permanently after one February.
+create or replace function advance_bill(p_bill_id uuid) returns date
+language plpgsql security definer set search_path = public as $$
+declare
+  v_bill bills%rowtype;
+  v_next date;
+  v_last_day integer;
+begin
+  select * into v_bill from bills where id = p_bill_id;
+  if not found then raise exception 'Schedule item not found'; end if;
+
+  v_next := coalesce(v_bill.next_due, current_date) + case v_bill.period
+    when 'monthly' then interval '1 month'
+    when 'quarterly' then interval '3 months'
+    when 'semiannual' then interval '6 months'
+    when 'annual' then interval '12 months'
+  end;
+
+  if v_bill.due_day is not null then
+    v_last_day := extract(day from (date_trunc('month', v_next) + interval '1 month - 1 day'))::integer;
+    v_next := (date_trunc('month', v_next))::date + (least(v_bill.due_day, v_last_day) - 1);
+  end if;
+
+  update bills set next_due = v_next, updated_at = now() where id = p_bill_id;
+  return v_next;
+end;
+$$;
+
+revoke all on function advance_bill(uuid) from public;
+grant execute on function advance_bill(uuid) to authenticated;
+
+-- Marks a non-payment item done. No money moves: whatever money was involved
+-- was recorded by the income or expense the household logged separately.
+create or replace function complete_schedule_item(p_bill_id uuid) returns date
+language plpgsql security definer set search_path = public as $$
+declare
+  v_bill bills%rowtype;
+  v_next date;
+begin
+  select * into v_bill from bills where id = p_bill_id;
+  if not found then raise exception 'Schedule item not found'; end if;
+
+  -- A bill is completed by PAYING it. Ticking one off here would advance its
+  -- date with no expense recorded against it.
+  if v_bill.kind = 'bill' then
+    raise exception 'Use pay_bill to complete a bill, so the expense is recorded';
+  end if;
+
+  v_next := advance_bill(p_bill_id);
+
+  insert into ledger (date, domain, type, name, amount, created_by)
+  values (current_date, 'Schedule',
+          case v_bill.kind when 'incoming' then 'Expected money received' else 'Task done' end,
+          v_bill.name, coalesce(v_bill.amount, 0), auth.uid());
+
+  return v_next;
+end;
+$$;
+
+revoke all on function complete_schedule_item(uuid) from public;
+grant execute on function complete_schedule_item(uuid) to authenticated;
+
 -- Paying a bill is three things that must all happen or none of them: the
 -- expense, the bill moving to its next due date, and the sinking fund going
--- down if one funds it. add_transaction is called rather than repeated.
+-- down if one funds it. add_transaction and advance_bill are called rather
+-- than repeated.
 create or replace function pay_bill(
   p_bill_id uuid,
   p_transaction_id uuid,
@@ -1022,7 +1101,6 @@ language plpgsql security definer set search_path = public as $$
 declare
   v_bill bills%rowtype;
   v_next date;
-  v_last_day integer;
 begin
   select * into v_bill from bills where id = p_bill_id;
   if not found then raise exception 'Bill not found'; end if;
@@ -1034,21 +1112,7 @@ begin
   perform add_transaction(p_transaction_id, p_date, p_amount, p_note, p_envelope_id, p_account_id);
   update transactions set bill_id = p_bill_id where id = p_transaction_id;
 
-  -- Advance from the date it was DUE, not the date it was paid: paying late
-  -- must not push every future due date later too.
-  v_next := coalesce(v_bill.next_due, p_date) + case v_bill.period
-    when 'monthly' then interval '1 month'
-    when 'quarterly' then interval '3 months'
-    when 'semiannual' then interval '6 months'
-    when 'annual' then interval '12 months'
-  end;
-
-  if v_bill.due_day is not null then
-    v_last_day := extract(day from (date_trunc('month', v_next) + interval '1 month - 1 day'))::integer;
-    v_next := (date_trunc('month', v_next))::date + (least(v_bill.due_day, v_last_day) - 1);
-  end if;
-
-  update bills set next_due = v_next, updated_at = now() where id = p_bill_id;
+  v_next := advance_bill(p_bill_id);
 
   -- withdraw_from_goal refuses to take more than is saved, so a fund that is
   -- short fails the whole payment rather than going negative.

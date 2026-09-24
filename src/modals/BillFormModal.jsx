@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext.jsx';
 import { getActiveAccounts } from '../utils/accounts.js';
-import { BILL_PERIODS, getNextOccurrence } from '../utils/plan/bills.js';
+import { BILL_PERIODS, getNextOccurrence, SCHEDULE_KINDS, SCHEDULE_KIND_META, getKindMeta } from '../utils/plan/bills.js';
 import { splitGoals } from '../utils/plan/goals.js';
 import { BottomSheet } from './BottomSheet.jsx';
 
-export function BillFormModal({ mode = 'add', bill }) {
+export function BillFormModal({ mode = 'add', bill, defaultKind = SCHEDULE_KINDS.BILL }) {
   const { state, dispatch, closeModal } = useApp();
   const isEdit = mode === 'edit';
   const accounts = getActiveAccounts(state.accounts);
@@ -13,6 +13,14 @@ export function BillFormModal({ mode = 'add', bill }) {
   // for something, not a float that a recurring cost draws down.
   const { sinkingFunds } = splitGoals(state.goals);
 
+  const [kind, setKind] = useState(isEdit ? bill.kind ?? SCHEDULE_KINDS.BILL : defaultKind);
+  // Declared after the state it reads, not before: `const` is not hoisted, and
+  // reading it above threw "Cannot access 'kind' before initialization" at
+  // render time. Neither the build nor the linter catches that.
+  const isBill = kind === SCHEDULE_KINDS.BILL;
+  // A job has no amount. "Open the new MP2 account each January" costs
+  // nothing, and demanding a figure would force a fake one into the data.
+  const needsAmount = kind !== SCHEDULE_KINDS.TASK;
   const [name, setName] = useState(isEdit ? bill.name : '');
   const [amount, setAmount] = useState(isEdit ? String(bill.amount) : '');
   const [period, setPeriod] = useState(isEdit ? bill.period : 'monthly');
@@ -22,6 +30,7 @@ export function BillFormModal({ mode = 'add', bill }) {
   const [envelopeId, setEnvelopeId] = useState(isEdit ? bill.envelopeId ?? '' : '');
   const [goalId, setGoalId] = useState(isEdit ? bill.goalId ?? '' : '');
   const [isActive, setIsActive] = useState(isEdit ? bill.isActive : true);
+  const [notes, setNotes] = useState(isEdit ? bill.notes ?? '' : '');
   const [error, setError] = useState('');
 
   // Picking a day fills in the next date it falls on, so the common case needs
@@ -37,10 +46,10 @@ export function BillFormModal({ mode = 'add', bill }) {
     e.preventDefault();
     const amountValue = Number(amount);
     if (!name.trim()) {
-      setError('Give the bill a name.');
+      setError('Give it a name.');
       return;
     }
-    if (!amountValue || amountValue <= 0) {
+    if (needsAmount && (!amountValue || amountValue <= 0)) {
       setError('Enter an amount greater than ₱0.');
       return;
     }
@@ -50,8 +59,11 @@ export function BillFormModal({ mode = 'add', bill }) {
     }
 
     const payload = {
+      kind,
+      notes: notes.trim(),
       name: name.trim(),
-      amount: amountValue,
+      // The column is NOT NULL, so a task stores zero rather than nothing.
+      amount: needsAmount ? amountValue : amountValue || 0,
       period,
       dueDay: dueDay === '' ? null : Number(dueDay),
       nextDue,
@@ -70,8 +82,22 @@ export function BillFormModal({ mode = 'add', bill }) {
   }
 
   return (
-    <BottomSheet title={isEdit ? 'Edit Bill' : 'Add Bill'} onClose={closeModal} fullScreen>
+    <BottomSheet
+      title={`${isEdit ? 'Edit' : 'Add'} ${getKindMeta(kind).label}`}
+      onClose={closeModal}
+      fullScreen
+    >
       <form className="form" onSubmit={handleSubmit}>
+        <div className="form__field">
+          <span className="form__label">What is this?</span>
+          <select className="form__input" value={kind} onChange={(e) => setKind(e.target.value)}>
+            {SCHEDULE_KIND_META.map((k) => (
+              <option key={k.value} value={k.value}>
+                {k.label} — {k.hint}
+              </option>
+            ))}
+          </select>
+        </div>
         <label className="form__field">
           <span className="form__label">Name</span>
           <input
@@ -84,7 +110,7 @@ export function BillFormModal({ mode = 'add', bill }) {
           />
         </label>
         <label className="form__field">
-          <span className="form__label">Amount (₱)</span>
+          <span className="form__label">Amount (₱){needsAmount ? '' : ' — optional'}</span>
           <input
             type="number"
             inputMode="decimal"
@@ -93,8 +119,8 @@ export function BillFormModal({ mode = 'add', bill }) {
             className="form__input"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            placeholder="0"
-            required
+            placeholder={needsAmount ? '0' : 'Leave blank — a task has no amount'}
+            required={needsAmount}
           />
         </label>
         <label className="form__field">
@@ -131,6 +157,7 @@ export function BillFormModal({ mode = 'add', bill }) {
             required
           />
         </label>
+        {isBill && (
         <label className="form__field">
           <span className="form__label">Paid from</span>
           <select className="form__input" value={accountId} onChange={(e) => setAccountId(e.target.value)}>
@@ -142,6 +169,8 @@ export function BillFormModal({ mode = 'add', bill }) {
             ))}
           </select>
         </label>
+        )}
+        {isBill && (
         <label className="form__field">
           <span className="form__label">Envelope</span>
           <select className="form__input" value={envelopeId} onChange={(e) => setEnvelopeId(e.target.value)}>
@@ -153,7 +182,8 @@ export function BillFormModal({ mode = 'add', bill }) {
             ))}
           </select>
         </label>
-        {sinkingFunds.length > 0 && (
+        )}
+        {isBill && sinkingFunds.length > 0 && (
           <label className="form__field">
             <span className="form__label">Funded by</span>
             <select className="form__input" value={goalId} onChange={(e) => setGoalId(e.target.value)}>
@@ -170,6 +200,17 @@ export function BillFormModal({ mode = 'add', bill }) {
             </span>
           </label>
         )}
+        <label className="form__field">
+          <span className="form__label">Notes</span>
+          <input
+            type="text"
+            className="form__input"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Anything worth remembering"
+          />
+        </label>
+
         {isEdit && (
           <label className="form__field form__checkbox">
             <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
@@ -184,7 +225,7 @@ export function BillFormModal({ mode = 'add', bill }) {
         )}
         {error && <p className="form__error">{error}</p>}
         <button type="submit" className="btn-block">
-          {isEdit ? 'Save Changes' : 'Add Bill'}
+          {isEdit ? 'Save Changes' : `Add ${getKindMeta(kind).label}`}
         </button>
       </form>
     </BottomSheet>

@@ -11,7 +11,7 @@ import { formatPHP } from '../currency.js';
 import { resolveSplit } from './settings.js';
 import { getGoalPace } from './simulate.js';
 import { getBankFloorAccounts } from './floor.js';
-import { getDueSoon } from './bills.js';
+import { getDueSoon, isOverdueIncoming, getKind, SCHEDULE_KINDS } from './bills.js';
 
 export const SEVERITY = { ALERT: 'alert', WARNING: 'warning' };
 
@@ -255,13 +255,34 @@ export function buildAlerts(
   // window has not been paid for that cycle — the date IS the check.
   for (const bill of getDueSoon(bills, today, BILL_NOTICE_DAYS)) {
     const late = bill.daysUntilDue < 0;
+    const isIncoming = getKind(bill) === SCHEDULE_KINDS.INCOMING;
+
+    // Money expected but not logged. Inside the grace period it says nothing:
+    // money is routinely a day or two late, and nothing here can tell whether
+    // it arrived or simply has not been ticked off — so the wording never
+    // claims it failed to arrive.
+    if (isIncoming) {
+      if (!late) continue;
+      if (!isOverdueIncoming(bill, today)) continue;
+      alerts.push({
+        id: `incoming-late:${bill.id}:${bill.nextDue}`,
+        severity: SEVERITY.WARNING,
+        title: `${bill.name} hasn't been logged`,
+        detail: `${formatPHP(bill.amount)} was expected ${-bill.daysUntilDue} days ago. Log it if it arrived, or chase it if it didn't.`,
+        amount: bill.amount,
+        tab: 'bills',
+      });
+      continue;
+    }
+
+    const isTask = getKind(bill) === SCHEDULE_KINDS.TASK;
     alerts.push({
       id: `bill-due:${bill.id}:${bill.nextDue}`,
       severity: late ? SEVERITY.ALERT : SEVERITY.WARNING,
       title: late ? `${bill.name} is overdue` : `${bill.name} is due soon`,
       detail: late
-        ? `${formatPHP(bill.amount)}, due ${-bill.daysUntilDue} day${bill.daysUntilDue === -1 ? '' : 's'} ago`
-        : `${formatPHP(bill.amount)}, due in ${bill.daysUntilDue} day${bill.daysUntilDue === 1 ? '' : 's'}`,
+        ? `${isTask ? '' : `${formatPHP(bill.amount)}, `}due ${-bill.daysUntilDue} day${bill.daysUntilDue === -1 ? '' : 's'} ago`
+        : `${isTask ? '' : `${formatPHP(bill.amount)}, `}due in ${bill.daysUntilDue} day${bill.daysUntilDue === 1 ? '' : 's'}`,
       amount: bill.amount,
       tab: 'bills',
     });

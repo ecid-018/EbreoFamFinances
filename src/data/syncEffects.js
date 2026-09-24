@@ -30,6 +30,10 @@ export const syncEffects = {
   // date and draws down a sinking fund, all inside one RPC. The screen waits
   // for the refetch rather than guessing at three writes.
   'bill/pay': (payload) => repo.payBill(payload),
+  // No optimistic reducer case: advancing the due date is SQL's job, and
+  // guessing the next date locally would be a second copy of a rule that has
+  // already caught us out once (a 31st drifting to the 28th). Refetch instead.
+  'bill/complete': (payload) => repo.completeScheduleItem(payload),
   'month/setMode': (payload, ctx) => repo.setMonthMode(payload, ctx.userId),
   'envelope/setMonthBudget': (payload, ctx) => {
     const envelope = ctx.prevState.envelopes.find((env) => env.id === payload.envelopeId);

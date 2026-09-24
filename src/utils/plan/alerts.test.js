@@ -362,3 +362,59 @@ describe('bills falling due', () => {
     expect(first.id).not.toBe(next.id);
   });
 });
+
+describe('expected money that has not been logged', () => {
+  const incoming = (over = {}) => ({
+    id: 'i1', name: 'Allotment', amount: 5000, period: 'monthly',
+    nextDue: '2026-06-18', isActive: true, kind: 'incoming', ...over,
+  });
+
+  it('says nothing while it is merely due', () => {
+    expect(buildAlerts(base({ bills: [incoming()] }), { today: MID_JUNE })).toEqual([]);
+  });
+
+  it('says nothing inside the two-day grace period', () => {
+    expect(buildAlerts(base({ bills: [incoming({ nextDue: '2026-06-13' })] }), { today: MID_JUNE })).toEqual([]);
+  });
+
+  it('warns once the grace period has passed', () => {
+    const alerts = buildAlerts(base({ bills: [incoming({ nextDue: '2026-06-12' })] }), { today: MID_JUNE });
+    expect(alerts[0]).toMatchObject({
+      id: 'incoming-late:i1:2026-06-12',
+      severity: SEVERITY.WARNING,
+      title: "Allotment hasn't been logged",
+      tab: 'bills',
+    });
+  });
+
+  // Nothing in the data can tell whether the money arrived — only that nobody
+  // ticked it off. Saying "not received" would be asserting more than is known.
+  it('does not claim the money failed to arrive', () => {
+    const alert = buildAlerts(base({ bills: [incoming({ nextDue: '2026-06-01' })] }), { today: MID_JUNE })[0];
+    expect(alert.title).not.toMatch(/not received|missing|failed/i);
+    expect(alert.detail).toMatch(/Log it if it arrived/);
+  });
+
+  it('never raises the ALERT severity a missed bill gets', () => {
+    const alerts = buildAlerts(base({ bills: [incoming({ nextDue: '2026-05-01' })] }), { today: MID_JUNE });
+    expect(alerts.every((a) => a.severity === SEVERITY.WARNING)).toBe(true);
+  });
+});
+
+describe('tasks falling due', () => {
+  const task = (over = {}) => ({
+    id: 't1', name: 'Open the MP2 account', amount: 0, period: 'annual',
+    nextDue: '2026-06-18', isActive: true, kind: 'task', ...over,
+  });
+
+  it('warns without quoting an amount it does not have', () => {
+    const alerts = buildAlerts(base({ bills: [task()] }), { today: MID_JUNE });
+    expect(alerts[0].title).toBe('Open the MP2 account is due soon');
+    expect(alerts[0].detail).toBe('due in 3 days');
+  });
+
+  it('raises an alert once overdue', () => {
+    const alerts = buildAlerts(base({ bills: [task({ nextDue: '2026-06-10' })] }), { today: MID_JUNE });
+    expect(alerts[0]).toMatchObject({ severity: SEVERITY.ALERT, title: 'Open the MP2 account is overdue' });
+  });
+});
