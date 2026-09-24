@@ -8,6 +8,7 @@ import {
   getLineSource,
   getExpectedLanding,
   computePaydaySplit,
+  fillVacationReserve,
 } from './payday.js';
 
 // Every figure invented.
@@ -428,5 +429,99 @@ describe('getExpectedLanding', () => {
     expect(getExpectedLanding('nobody', settings, sources)).toBe(0);
     expect(getExpectedLanding(null, settings, sources)).toBe(0);
     expect(getExpectedLanding('his', null, sources)).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Sign-off pay (10d). Every figure invented.
+// ---------------------------------------------------------------------------
+describe('fillVacationReserve', () => {
+  const settings = { vacationGoalId: 'v', vacationReserveTarget: 1000 };
+  const reserveGoal = (saved) => [{ id: 'v', name: 'Vacation reserve', target: 1000, saved, isSinkingFund: true }];
+
+  it('tops the reserve up to target and leaves the rest', () => {
+    const got = fillVacationReserve(800, settings, reserveGoal(400));
+    expect(got).toMatchObject({ toReserve: 600, remainder: 200, goalId: 'v', stillShort: 0 });
+  });
+
+  it('takes only what it needs when the pay covers more than the gap', () => {
+    expect(fillVacationReserve(5000, settings, reserveGoal(900)).toReserve).toBe(100);
+    expect(fillVacationReserve(5000, settings, reserveGoal(900)).remainder).toBe(4900);
+  });
+
+  it('gives everything to the reserve when the pay does not close the gap', () => {
+    const got = fillVacationReserve(200, settings, reserveGoal(0));
+    expect(got).toMatchObject({ toReserve: 200, remainder: 0, stillShort: 800 });
+  });
+
+  it('passes it all through when the reserve is already full', () => {
+    const got = fillVacationReserve(500, settings, reserveGoal(1000));
+    expect(got).toMatchObject({ toReserve: 0, remainder: 500, alreadyFull: true });
+  });
+
+  it('skips the reserve, and says so, when no goal or target is configured', () => {
+    expect(fillVacationReserve(500, {}, [])).toMatchObject({ toReserve: 0, remainder: 500, unconfigured: true });
+    expect(fillVacationReserve(500, { vacationGoalId: 'v' }, reserveGoal(0)))
+      .toMatchObject({ toReserve: 0, remainder: 500, unconfigured: true });
+  });
+
+  it('never returns a negative amount', () => {
+    expect(fillVacationReserve(-50, settings, reserveGoal(0))).toMatchObject({ toReserve: 0, remainder: 0 });
+    expect(fillVacationReserve(null, settings, reserveGoal(0))).toMatchObject({ toReserve: 0, remainder: 0 });
+  });
+});
+
+describe('computePaydaySplit — sign-off', () => {
+  const settings = {
+    hubAccountId: 'hub',
+    vacationGoalId: 'v',
+    vacationReserveTarget: 1000,
+  };
+  const goals = [
+    { id: 'v', name: 'Vacation reserve', target: 1000, saved: 400, isSinkingFund: true, heldInAccountId: 'hub' },
+    { id: 'g1', name: 'First', target: 5000, saved: 0, priority: 1, isSinkingFund: false, heldInAccountId: 'hub' },
+  ];
+
+  it('fills the reserve first, then routes the rest by goal priority', () => {
+    const split = computePaydaySplit({
+      settings, goals, kind: PAYDAY_KINDS.SIGNOFF, amountToSplit: 900,
+    });
+    expect(split.lines).toEqual({ splitVacationReserve: 600, splitGoals: 300 });
+    expect(split.reserve).toMatchObject({ toReserve: 600, remainder: 300 });
+    const byGoal = Object.fromEntries(split.allocations.map((a) => [a.goalId, a.amount]));
+    expect(byGoal).toEqual({ v: 600, g1: 300 });
+  });
+
+  it('reaches the reserve at all — which priority routing alone cannot', () => {
+    // The point of the separate step: routeGoalsLine filters sinking funds out,
+    // so without it every peso would land on g1 and the reserve would stay short.
+    const { routed } = routeGoalsLine(900, goals);
+    expect(routed.map((r) => r.goalId)).toEqual(['g1']);
+
+    const split = computePaydaySplit({ settings, goals, kind: PAYDAY_KINDS.SIGNOFF, amountToSplit: 900 });
+    expect(split.allocations.some((a) => a.goalId === 'v')).toBe(true);
+  });
+
+  it('sends everything to goals once the reserve is full', () => {
+    const full = goals.map((g) => (g.id === 'v' ? { ...g, saved: 1000 } : g));
+    const split = computePaydaySplit({ settings, goals: full, kind: PAYDAY_KINDS.SIGNOFF, amountToSplit: 900 });
+    expect(split.lines).toEqual({ splitVacationReserve: 0, splitGoals: 900 });
+    expect(split.reserve.alreadyFull).toBe(true);
+  });
+
+  it('reports money it could not route rather than dropping it', () => {
+    const tiny = [{ id: 'g1', name: 'First', target: 10, saved: 0, priority: 1, isSinkingFund: false }];
+    const split = computePaydaySplit({
+      settings: { hubAccountId: 'hub' }, goals: tiny, kind: PAYDAY_KINDS.SIGNOFF, amountToSplit: 500,
+    });
+    expect(split.unrouted).toBe(490);
+  });
+
+  it('does not apply the pre-sign-off rule — this IS the sign-off', () => {
+    const withRule = { ...settings, presignoffActive: true, presignoffVacationAmount: 50 };
+    const split = computePaydaySplit({
+      settings: withRule, goals, kind: PAYDAY_KINDS.SIGNOFF, amountToSplit: 900,
+    });
+    expect(split.presignoff.applied).toBe(false);
   });
 });

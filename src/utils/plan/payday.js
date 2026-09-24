@@ -7,7 +7,7 @@
 
 import { SPLIT_FIELDS } from './settings.js';
 
-export const PAYDAY_KINDS = { PAY: 'pay', WINDFALL: 'windfall' };
+export const PAYDAY_KINDS = { PAY: 'pay', WINDFALL: 'windfall', SIGNOFF: 'signoff' };
 
 // The split lines come from SPLIT_FIELDS rather than a list of their own. A
 // second copy here would be one more place to forget when a line is added, and
@@ -75,6 +75,47 @@ export function routeGoalsLine(amount, goals) {
   // Everything already full: the remainder has nowhere to go and must be shown
   // rather than silently dropped.
   return { routed, unrouted: round2(left) };
+}
+
+// Sign-off pay: the leave pay that arrives when a contract ends.
+//
+// The rule is "fill the vacation reserve first, then route the rest by goal
+// priority". That has to happen HERE, before routing, because routeGoalsLine
+// deliberately skips sinking funds and the vacation reserve is one — priority
+// routing can never reach it, by design. So the reserve is topped up as its
+// own step and only the remainder goes to the waterfall.
+//
+// Deliberately not done by making sinking funds routable: that would change a
+// function both the payday screen and the simulator depend on, to serve one
+// case that is better expressed as two steps.
+export function fillVacationReserve(amount, settings, goals = []) {
+  const total = round2(Math.max(0, amount ?? 0));
+  const goal = goals.find((g) => g.id === settings?.vacationGoalId) ?? null;
+  const target = settings?.vacationReserveTarget;
+
+  // No goal named, or no target to fill to, means there is nothing to fill.
+  // The money still has somewhere to go — the goal waterfall — but the screen
+  // must say the reserve was skipped rather than implying it was topped up.
+  if (!goal || target == null || target <= 0) {
+    return { toReserve: 0, remainder: total, goalId: goal?.id ?? null, unconfigured: true, alreadyFull: false };
+  }
+
+  const needed = round2(Math.max(0, target - goal.saved));
+  if (needed <= 0) {
+    return { toReserve: 0, remainder: total, goalId: goal.id, unconfigured: false, alreadyFull: true };
+  }
+
+  const toReserve = round2(Math.min(needed, total));
+  return {
+    toReserve,
+    remainder: round2(total - toReserve),
+    goalId: goal.id,
+    unconfigured: false,
+    alreadyFull: false,
+    // What the reserve still needs after this pay. Zero means this sign-off
+    // finished it.
+    stillShort: round2(needed - toReserve),
+  };
 }
 
 // Where each split line's money is supposed to end up.
@@ -218,6 +259,25 @@ export function groupByDestination(routed, hubAccountId) {
 // The whole calculation for one payday.
 export function computePaydaySplit({ settings, goals = [], kind = PAYDAY_KINDS.PAY, amountToSplit = null, sources = [] }) {
   if (!settings) return null;
+
+  if (kind === PAYDAY_KINDS.SIGNOFF) {
+    const total = round2(amountToSplit ?? 0);
+    const reserve = fillVacationReserve(total, settings, goals);
+    // The reserve top-up rides the ordinary vacation line, so buildRoutedLines
+    // sends it to the vacation goal exactly as a normal payday would. Only the
+    // amounts are worked out differently.
+    const lines = { splitVacationReserve: reserve.toReserve, splitGoals: reserve.remainder };
+    const { items, unrouted } = buildRoutedLines({ lines, settings, goals, sources });
+    return {
+      kind,
+      lines,
+      presignoff: { applied: false },
+      reserve,
+      ...groupByDestination(items, settings.hubAccountId),
+      unrouted,
+      total,
+    };
+  }
 
   if (kind === PAYDAY_KINDS.WINDFALL) {
     const total = round2(amountToSplit ?? 0);
