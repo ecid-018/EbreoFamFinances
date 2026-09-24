@@ -237,6 +237,8 @@ export function PlanPrefillSheet() {
         <SummaryStep
           plan={plan}
           envelopes={envelopeStats}
+          accounts={state.accounts}
+          planSettings={state.planSettings}
           proposed={proposed}
           overlapChoices={overlapChoices}
           goals={state.goals}
