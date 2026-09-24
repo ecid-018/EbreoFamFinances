@@ -81,7 +81,7 @@ create table income (
   updated_at timestamptz not null default now(),
   -- Classifies income logged through a payday (0007). Nullable: every row
   -- that predates paydays stays null and behaves exactly as it did.
-  kind text check (kind in ('pay', 'windfall', 'trading_payout', 'other'))
+  kind text check (kind in ('pay', 'windfall', 'signoff', 'trading_payout', 'other'))
 );
 
 create table goals (
@@ -274,7 +274,8 @@ create table paydays (
   date date not null,
   budget_month_key text not null check (budget_month_key ~ '^\d{4}-(0[1-9]|1[0-2])$'),
   total numeric(12,2) not null,
-  kind text not null default 'pay' check (kind in ('pay', 'windfall')),
+  -- 'signoff' is the leave pay received when a contract ends (0013).
+  kind text not null default 'pay' check (kind in ('pay', 'windfall', 'signoff')),
   created_by uuid references auth.users(id),
   created_at timestamptz not null default now()
 );

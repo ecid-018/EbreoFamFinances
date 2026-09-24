@@ -5,6 +5,12 @@ import { formatPHP } from '../utils/currency.js';
 import { getMonthKey, toISODateString } from '../utils/date.js';
 import { generateId } from '../utils/id.js';
 import { computePaydaySplit, getExpectedLanding, PAYDAY_KINDS, SPLIT_FIELDS } from '../utils/plan/payday.js';
+
+const SOURCE_LABEL = {
+  [PAYDAY_KINDS.PAY]: 'Pay',
+  [PAYDAY_KINDS.WINDFALL]: 'Windfall',
+  [PAYDAY_KINDS.SIGNOFF]: 'Sign-off pay',
+};
 import { SegmentedControl } from '../components/shared/SegmentedControl.jsx';
 import { BottomSheet } from './BottomSheet.jsx';
 
@@ -100,7 +106,7 @@ export function PaydayModal() {
         // What actually landed in the hub, not the total being split — the
         // rest of that total is already sitting in the household account.
         amount: hubAmount,
-        source: kind === PAYDAY_KINDS.WINDFALL ? 'Windfall' : 'Pay',
+        source: SOURCE_LABEL[kind] ?? 'Pay',
       });
     }
 
@@ -144,7 +150,11 @@ export function PaydayModal() {
     closeModal();
   }
 
-  const isWindfall = kind === PAYDAY_KINDS.WINDFALL;
+  const isSignoff = kind === PAYDAY_KINDS.SIGNOFF;
+  // Only an ordinary payday is split against the plan. A windfall and a
+  // sign-off each work out their own two lines, so the household field, the
+  // plan comparison and the split table belong to neither.
+  const isPlanSplit = kind === PAYDAY_KINDS.PAY;
 
   return (
     <BottomSheet title="Payday" onClose={closeModal}>
@@ -157,6 +167,7 @@ export function PaydayModal() {
             options={[
               { value: PAYDAY_KINDS.PAY, label: 'Pay' },
               { value: PAYDAY_KINDS.WINDFALL, label: 'Windfall' },
+              { value: PAYDAY_KINDS.SIGNOFF, label: 'Sign-off' },
             ]}
           />
         </div>
@@ -166,7 +177,7 @@ export function PaydayModal() {
           <input type="date" className="form__input" value={date} onChange={(e) => setDate(e.target.value)} />
         </label>
 
-        {!isWindfall && (
+        {isPlanSplit && (
           <label className="form__field">
             <span className="form__label">Into {accountName(settings.householdAccountId)} (₱)</span>
             <input
@@ -186,7 +197,7 @@ export function PaydayModal() {
             type="number" inputMode="decimal" min="0" step="0.01" className="form__input"
             value={hub} onChange={(e) => setHub(e.target.value)}
           />
-          {!isWindfall && split && (
+          {isPlanSplit && split && (
             <span className="form__checkbox-hint">
               Total to split {formatPHP(amountToSplit ?? 0)} against a plan of {formatPHP(split.plannedTotal)}.{' '}
               {split.difference === 0
@@ -196,7 +207,21 @@ export function PaydayModal() {
           )}
         </label>
 
-        {split && !isWindfall && (
+        {split && isSignoff && (
+          <span className="form__checkbox-hint">
+            {split.reserve.unconfigured
+              ? 'No vacation reserve or target is set, so all of this follows goal priority. Set them in Settings if the reserve should be filled first.'
+              : split.reserve.alreadyFull
+                ? 'The vacation reserve is already at target, so all of this follows goal priority.'
+                : `${formatPHP(split.reserve.toReserve)} tops up the vacation reserve first${
+                    split.reserve.stillShort > 0
+                      ? `, leaving it ${formatPHP(split.reserve.stillShort)} short`
+                      : ', which reaches its target'
+                  }. The remaining ${formatPHP(split.reserve.remainder)} follows goal priority.`}
+          </span>
+        )}
+
+        {split && isPlanSplit && (
           <>
             <h3 className="prefill-heading">The split</h3>
             <table className="prefill-table">
