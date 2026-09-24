@@ -192,6 +192,10 @@ create table plan_settings (
   -- as a year nobody chose.
   target_ashore_year integer
     check (target_ashore_year is null or target_ashore_year between 2000 and 2100),
+  -- Destinations the 10d routing table names (0015). Both nullable: with
+  -- neither set, those income kinds follow goal priority and the screen says so.
+  car_goal_id uuid references goals(id) on delete set null,
+  trading_tax_account_id uuid references accounts(id) on delete set null,
   updated_by uuid references auth.users(id),
   updated_at timestamptz not null default now()
 );
@@ -1129,3 +1133,53 @@ $$;
 
 revoke all on function pay_bill(uuid, uuid, date, numeric, text, uuid, uuid) from public;
 grant execute on function pay_bill(uuid, uuid, date, numeric, text, uuid, uuid) to authenticated;
+
+-- When money arrives, what the plan says to do with it (0015).
+--
+-- NOTHING HERE MOVES MONEY. A checklist records what was suggested and what
+-- happened to each suggestion; the transfers themselves are ordinary rows in
+-- `transfers`, made by the household through the existing RPC.
+create table transfer_checklists (
+  id uuid primary key default gen_random_uuid(),
+  income_id uuid not null references income(id) on delete cascade,
+  income_kind text not null check (income_kind in (
+    'allotment', 'remittance', 'leave_pay', 'instalment', 'trading_payout', 'windfall', 'other'
+  )),
+  created_by uuid references auth.users(id),
+  created_at timestamptz not null default now(),
+  completed_at timestamptz,
+  -- Logging the same money twice is a different problem; routing it twice
+  -- would be this one.
+  unique (income_id)
+);
+
+create table transfer_checklist_items (
+  id uuid primary key default gen_random_uuid(),
+  checklist_id uuid not null references transfer_checklists(id) on delete cascade,
+  from_account_id uuid references accounts(id) on delete set null,
+  to_account_id uuid references accounts(id) on delete set null,
+  goal_id uuid references goals(id) on delete set null,
+  amount numeric(12,2) not null,
+  -- Why the plan says to do this. Written by code, never by the AI.
+  reason text not null,
+  status text not null default 'todo' check (status in ('todo', 'done', 'skipped')),
+  skip_reason text,
+  transfer_id uuid references transfers(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+create index transfer_checklist_items_checklist_idx on transfer_checklist_items (checklist_id);
+create index transfer_checklists_open_idx on transfer_checklists (created_at) where completed_at is null;
+
+alter table transfer_checklists enable row level security;
+alter table transfer_checklist_items enable row level security;
+
+create policy "transfer_checklists_select" on transfer_checklists for select to authenticated using (true);
+create policy "transfer_checklists_insert" on transfer_checklists for insert to authenticated with check (created_by = auth.uid());
+create policy "transfer_checklists_update" on transfer_checklists for update to authenticated using (true) with check (true);
+create policy "transfer_checklists_delete" on transfer_checklists for delete to authenticated using (true);
+
+create policy "transfer_checklist_items_select" on transfer_checklist_items for select to authenticated using (true);
+create policy "transfer_checklist_items_insert" on transfer_checklist_items for insert to authenticated with check (true);
+create policy "transfer_checklist_items_update" on transfer_checklist_items for update to authenticated using (true) with check (true);
+create policy "transfer_checklist_items_delete" on transfer_checklist_items for delete to authenticated using (true);

@@ -2238,3 +2238,47 @@ svg {
   font-size: var(--caption-size);
   font-weight: 600;
 }
+
+/* ---------- Transfer checklist ---------- */
+
+.checklist__item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 11px 16px;
+  background: var(--color-card);
+}
+
+.checklist__actions,
+.checklist__skip,
+.checklist__kinds {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.checklist__kinds {
+  padding: 11px 16px;
+  background: var(--color-card);
+}
+
+.checklist__skip .form__input {
+  flex: 1;
+  min-width: 140px;
+}
+
+.checklist__skip-btn {
+  padding: 4px 14px;
+  border: none;
+  background: none;
+  color: var(--color-text-secondary);
+  font-size: var(--caption-size);
+  font-weight: 600;
+}
+
+/* Done or skipped: still readable, visibly settled. */
+.checklist__done {
+  color: var(--color-text-secondary);
+  text-decoration: line-through;
+}
