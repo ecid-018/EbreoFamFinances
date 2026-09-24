@@ -16,6 +16,7 @@ import {
   summariseSteps,
   runSteps,
   OVERLAP_CHOICE,
+  buildSettingsStep,
 } from './prefill.js';
 
 // Every figure below is invented.
@@ -490,12 +491,12 @@ describe('summariseSteps', () => {
       { kind: 'goalCreate' }, { kind: 'goalUpdate' },
     ];
     expect(summariseSteps(steps)).toEqual({
-      budgets: 2, zeroed: 1, goalsCreated: 1, goalsUpdated: 1, total: 5,
+      budgets: 2, zeroed: 1, goalsCreated: 1, goalsUpdated: 1, settings: 0, total: 5,
     });
   });
 
   it('handles an empty list', () => {
-    expect(summariseSteps([])).toEqual({ budgets: 0, zeroed: 0, goalsCreated: 0, goalsUpdated: 0, total: 0 });
+    expect(summariseSteps([])).toEqual({ budgets: 0, zeroed: 0, goalsCreated: 0, goalsUpdated: 0, settings: 0, total: 0 });
   });
 });
 
@@ -601,5 +602,136 @@ describe('describeJsonError', () => {
 
   it('handles a non-Error being thrown', () => {
     expect(describeJsonError('{}', 'plain string').message).toBe('plain string');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Plan settings from the file. Every figure invented.
+// ---------------------------------------------------------------------------
+describe('buildSettingsStep', () => {
+  // A settings object with every key PRESENT, which is what a fully migrated
+  // database looks like. A key that is absent means the column does not exist.
+  const current = {
+    payHousehold: null, payHub: null,
+    splitVacationReserve: null, splitInsurance: null, splitGoals: null,
+    splitTrips: null, splitRetirement: null, splitTrading: null,
+    bankFloorTarget: null, vacationReserveTarget: null, tradingCapAnnual: null,
+    tripsAnnual: null, insuranceAnnual: null,
+    windfallGoalsPct: null, presignoffActive: false, presignoffVacationAmount: null,
+    householdAccountId: null, hubAccountId: null, tradingAccountId: null,
+    retirementAccountId: null, tradingTaxAccountId: null,
+    vacationGoalId: null, insuranceGoalId: null, tripsGoalId: null, carGoalId: null,
+    targetAshoreYear: null,
+  };
+  const accounts = [{ id: 'a1', name: 'Test Hub' }, { id: 'a2', name: 'Test Tax' }];
+  const goals = [{ id: 'g1', name: 'Test Vacation' }, { id: 'g2', name: 'Test Car' }];
+
+  it('carries pay, split and guardrails across', () => {
+    const plan = {
+      pay: { household: 100, hub: 900 },
+      split: { goals: 500, trips: 400, balancing_line: 'goals' },
+      guardrails: { bank_floor_target: 7000, trips_annual: 1200 },
+    };
+    const { step } = buildSettingsStep({ plan, settings: current, accounts, goals });
+    expect(step.action.type).toBe('planSettings/update');
+    expect(step.action.payload).toMatchObject({
+      payHousehold: 100, payHub: 900, splitGoals: 500, splitTrips: 400,
+      bankFloorTarget: 7000, tripsAnnual: 1200,
+    });
+  });
+
+  // repo.updatePlanSettings writes every column unconditionally, so a partial
+  // payload would blank everything the file does not mention.
+  it('starts from the current settings so untouched fields survive', () => {
+    const settings = { ...current, insuranceAnnual: 4242 };
+    const { step } = buildSettingsStep({ plan: { pay: { hub: 900 } }, settings, accounts, goals });
+    expect(step.action.payload.insuranceAnnual).toBe(4242);
+  });
+
+  it('matches accounts and funds by name, case-insensitively', () => {
+    const plan = { accounts: { hub: 'test hub', trading_tax: 'Test Tax' }, funds: { vacation: 'Test Vacation' } };
+    const { step, unmatched } = buildSettingsStep({ plan, settings: current, accounts, goals });
+    expect(step.action.payload).toMatchObject({
+      hubAccountId: 'a1', tradingTaxAccountId: 'a2', vacationGoalId: 'g1',
+    });
+    expect(unmatched).toEqual([]);
+  });
+
+  // Pointing the hub at the wrong account would misroute every future payday.
+  it('reports a name it cannot find instead of guessing', () => {
+    const plan = { accounts: { hub: 'No such account' } };
+    const { step, unmatched } = buildSettingsStep({ plan, settings: current, accounts, goals });
+    expect(unmatched).toEqual([{ where: 'accounts.hub', name: 'No such account' }]);
+    expect(step).toBeNull();
+  });
+
+  // undefined means the column's migration has not been applied here yet;
+  // sending it would fail the whole save.
+  it('skips a setting this database does not have yet', () => {
+    const older = { ...current };
+    delete older.carGoalId;
+    const plan = { funds: { car: 'Test Car' } };
+    const { step } = buildSettingsStep({ plan, settings: older, accounts, goals });
+    expect(step).toBeNull();
+  });
+
+  it('produces no step at all when nothing would change', () => {
+    const settings = { ...current, payHub: 900 };
+    expect(buildSettingsStep({ plan: { pay: { hub: 900 } }, settings, accounts, goals }).step).toBeNull();
+  });
+
+  it('carries the optional scalars', () => {
+    const plan = { windfall_goals_pct: 90, target_ashore_year: 2032, presignoff: { active: true, vacation_amount: 50 } };
+    const { step } = buildSettingsStep({ plan, settings: current, accounts, goals });
+    expect(step.action.payload).toMatchObject({
+      windfallGoalsPct: 90, targetAshoreYear: 2032, presignoffActive: true, presignoffVacationAmount: 50,
+    });
+  });
+
+  it('survives no plan and no settings', () => {
+    expect(buildSettingsStep({}).step).toBeNull();
+    expect(buildSettingsStep({ plan: {}, settings: null }).step).toBeNull();
+  });
+});
+
+describe('validatePlanFile — the optional blocks', () => {
+  const base = {
+    version: 'v10',
+    pay: { household: 0, hub: 0 },
+    split: { goals: 0, balancing_line: 'goals' },
+    household_targets: [{ label: 'A', sea: 0 }],
+    goals: [],
+  };
+  const check = (extra) => validatePlanFile({ ...base, ...extra });
+
+  it('accepts a file that leaves them all out', () => {
+    expect(check({}).ok).toBe(true);
+  });
+
+  it('rejects a guardrail this tool does not know, naming the ones it does', () => {
+    const got = check({ guardrails: { made_up_target: 1 } });
+    expect(got.ok).toBe(false);
+    expect(got.errors[0]).toMatch(/bank_floor_target/);
+  });
+
+  it('rejects a pointer given as anything but a name', () => {
+    expect(check({ accounts: { hub: 42 } }).errors[0]).toMatch(/must be the name/);
+    expect(check({ funds: { car: '' } }).errors[0]).toMatch(/must be the name/);
+  });
+
+  it('rejects a percentage or year out of range', () => {
+    expect(check({ windfall_goals_pct: 120 }).errors[0]).toMatch(/between 0 and 100/);
+    expect(check({ target_ashore_year: 1900 }).errors[0]).toMatch(/between 2000 and 2100/);
+  });
+
+  it('rejects a malformed pre-sign-off block', () => {
+    expect(check({ presignoff: { active: 'yes' } }).errors[0]).toMatch(/true or false/);
+  });
+
+  it('accepts the committed example file', async () => {
+    const example = JSON.parse(
+      await import('node:fs/promises').then((fs) => fs.readFile('plan.example.json', 'utf8'))
+    );
+    expect(validatePlanFile(example)).toEqual({ ok: true, errors: [] });
   });
 });

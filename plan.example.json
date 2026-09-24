@@ -3,13 +3,19 @@
     "Shape reference for the Settings -> Plan prefill tool. Every amount here is 0:",
     "this file is committed and the repository is public, so it must never carry real",
     "figures. Copy it to plan.local.json (gitignored) and fill that in instead.",
+    "Goal targets are 1, not 0: a goal with no target is meaningless and the tool rejects it, so a file of pure zeroes would not validate. 1 is a placeholder, not a figure.",
     "",
     "household_targets are monthly spending lines, mapped in the tool to your existing",
     "envelope groups or envelopes. 'sea' applies to paid months at sea and is what the",
     "tool writes; 'vacation' is carried through as read-only reference.",
     "",
     "split.balancing_line names the key in 'split' that absorbs the difference when the",
-    "amount actually received differs from pay.hub."
+    "amount actually received differs from pay.hub.",
+    "",
+    "EVERYTHING FROM 'guardrails' DOWN IS OPTIONAL. Leave a block out and the tool",
+    "simply does not touch those settings. Accounts and funds are named, not id'd:",
+    "a plan written by a human cannot know a uuid, so the tool matches on name and",
+    "tells you about anything it could not find rather than guessing."
   ],
   "version": "v10",
   "pay": {
@@ -26,19 +32,75 @@
     "balancing_line": "goals"
   },
   "household_targets": [
-    { "label": "Housing loan", "sea": 0, "vacation": 0 },
-    { "label": "Food and groceries", "sea": 0, "vacation": 0 },
-    { "label": "Utilities and internet", "sea": 0, "vacation": 0 },
-    { "label": "Transport and fuel", "sea": 0, "vacation": 0 },
-    { "label": "Buffer", "sea": 0, "vacation": 0 }
+    {
+      "label": "Housing loan",
+      "sea": 0,
+      "vacation": 0
+    },
+    {
+      "label": "Food and groceries",
+      "sea": 0,
+      "vacation": 0
+    },
+    {
+      "label": "Utilities and internet",
+      "sea": 0,
+      "vacation": 0
+    },
+    {
+      "label": "Transport and fuel",
+      "sea": 0,
+      "vacation": 0
+    },
+    {
+      "label": "Buffer",
+      "sea": 0,
+      "vacation": 0
+    }
   ],
   "goals": [
-    { "name": "Example fund", "target": 0, "priority": 1, "group": "Example group" },
-    { "name": "Example dated goal", "target": 0, "priority": 2, "target_date": "2030-01-01" },
-    { "name": "Example sinking fund", "target": 0, "sinking": true }
+    {
+      "name": "Example fund",
+      "target": 1,
+      "priority": 1,
+      "group": "Example group"
+    },
+    {
+      "name": "Example dated goal",
+      "target": 1,
+      "priority": 2,
+      "target_date": "2030-01-01"
+    },
+    {
+      "name": "Example sinking fund",
+      "target": 1,
+      "sinking": true
+    }
   ],
   "guardrails": {
     "bank_floor_target": 0,
-    "trading_cap_annual": 0
+    "vacation_reserve_target": 0,
+    "trading_cap_annual": 0,
+    "trips_annual": 0,
+    "insurance_annual": 0
+  },
+  "windfall_goals_pct": 0,
+  "target_ashore_year": 2030,
+  "presignoff": {
+    "active": false,
+    "vacation_amount": 0
+  },
+  "accounts": {
+    "household": "Example household account",
+    "hub": "Example hub account",
+    "trading": "Example trading account",
+    "retirement": "Example retirement account",
+    "trading_tax": "Example tax and reserve account"
+  },
+  "funds": {
+    "vacation": "Example sinking fund",
+    "insurance": "Example insurance fund",
+    "trips": "Example trips fund",
+    "car": "Example car fund"
   }
 }

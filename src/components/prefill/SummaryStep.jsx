@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { formatPHP } from '../../utils/currency.js';
-import { buildApplySteps, summariseSteps } from '../../utils/plan/prefill.js';
+import { buildApplySteps, buildSettingsStep, summariseSteps } from '../../utils/plan/prefill.js';
 import { ConfirmDialog } from '../shared/ConfirmDialog.jsx';
 
 // The confirm-and-apply step. Everything is applied through the app's own
@@ -9,6 +9,8 @@ import { ConfirmDialog } from '../shared/ConfirmDialog.jsx';
 export function SummaryStep({
   plan,
   envelopes,
+  accounts,
+  planSettings,
   proposed,
   overlapChoices,
   goals,
@@ -22,7 +24,7 @@ export function SummaryStep({
 }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  const steps = useMemo(
+  const baseSteps = useMemo(
     () =>
       buildApplySteps({
         plan,
@@ -35,6 +37,17 @@ export function SummaryStep({
       }),
     [plan, envelopes, proposed, overlapChoices, goals, goalTargets, targetMonthKey]
   );
+  // The plan settings themselves -- pay, the split, targets, and which account
+  // or fund is which. Until this existed the tool wrote budgets and goals and
+  // left the whole of Settings -> Plan to be typed in by hand.
+  const settings = useMemo(
+    () => buildSettingsStep({ plan, settings: planSettings, accounts, goals }),
+    [plan, planSettings, accounts, goals]
+  );
+  const steps = useMemo(
+    () => (settings.step ? [settings.step, ...baseSteps] : baseSteps),
+    [settings.step, baseSteps]
+  );
   const counts = summariseSteps(steps);
 
   const budgetSteps = steps.filter((step) => step.kind === 'budget' || step.kind === 'zero');
@@ -43,6 +56,14 @@ export function SummaryStep({
   return (
     <div className="prefill-step">
       <h3 className="prefill-heading">{result ? 'What was applied' : 'What would be applied'}</h3>
+
+      {settings.unmatched.length > 0 && (
+        <p className="form__error">
+          Not found, so left alone:{' '}
+          {settings.unmatched.map((u) => `${u.where} = "${u.name}"`).join(', ')}. Check the spelling against
+          your accounts and goals, or set those by hand in Settings.
+        </p>
+      )}
 
       <ul className="prefill-summary">
         <li>
@@ -53,6 +74,13 @@ export function SummaryStep({
         {counts.zeroed > 0 && (
           <li>
             <strong>{counts.zeroed}</strong> overlapping {counts.zeroed === 1 ? 'envelope' : 'envelopes'} set to zero
+          </li>
+        )}
+        {counts.settings > 0 && (
+          <li>
+            <strong>{settings.changes.length}</strong> plan{' '}
+            {settings.changes.length === 1 ? 'setting' : 'settings'} filled in
+            <span className="prefill-table__muted"> ({settings.changes.map((c) => c.label).join(', ')})</span>
           </li>
         )}
         <li>
@@ -165,7 +193,7 @@ export function SummaryStep({
       {confirmOpen && (
         <ConfirmDialog
           title={`Apply ${counts.total} ${counts.total === 1 ? 'change' : 'changes'}?`}
-          message={`${counts.budgets} envelope budgets for ${targetMonthLabel}, ${counts.goalsCreated} goals created, ${counts.goalsUpdated} goal targets changed. Earlier months and every saved amount stay as they are.`}
+          message={`${settings.changes.length} plan settings, ${counts.budgets} envelope budgets for ${targetMonthLabel}, ${counts.goalsCreated} goals created, ${counts.goalsUpdated} goal targets changed. Earlier months and every saved amount stay as they are.`}
           confirmLabel="Apply"
           onCancel={() => setConfirmOpen(false)}
           onConfirm={() => {

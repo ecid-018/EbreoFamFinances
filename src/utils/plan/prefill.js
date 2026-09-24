@@ -281,6 +281,137 @@ export function buildApplySteps({
 //
 // `run` is injected (the app passes its dispatch, which returns the sync
 // promise) so the loop itself is testable without React or a network.
+// How the file's names for things map onto plan_settings.
+//
+// The file names accounts and funds by NAME, because a plan written by a human
+// cannot know a uuid. Matching is exact and case-insensitive; a name that does
+// not match anything is reported rather than guessed at, since pointing the
+// hub at the wrong account would misroute every future payday.
+const SETTINGS_MONEY = [
+  ['pay', 'household', 'payHousehold'],
+  ['pay', 'hub', 'payHub'],
+  ['split', 'vacation_topup', 'splitVacationReserve'],
+  ['split', 'insurance', 'splitInsurance'],
+  ['split', 'goals', 'splitGoals'],
+  ['split', 'trips', 'splitTrips'],
+  ['split', 'retirement', 'splitRetirement'],
+  ['split', 'trading', 'splitTrading'],
+  ['guardrails', 'bank_floor_target', 'bankFloorTarget'],
+  ['guardrails', 'vacation_reserve_target', 'vacationReserveTarget'],
+  ['guardrails', 'trading_cap_annual', 'tradingCapAnnual'],
+  ['guardrails', 'trips_annual', 'tripsAnnual'],
+  ['guardrails', 'insurance_annual', 'insuranceAnnual'],
+];
+
+const SETTINGS_ACCOUNTS = [
+  ['household', 'householdAccountId'],
+  ['hub', 'hubAccountId'],
+  ['trading', 'tradingAccountId'],
+  ['retirement', 'retirementAccountId'],
+  ['trading_tax', 'tradingTaxAccountId'],
+];
+
+const SETTINGS_FUNDS = [
+  ['vacation', 'vacationGoalId'],
+  ['insurance', 'insuranceGoalId'],
+  ['trips', 'tripsGoalId'],
+  ['car', 'carGoalId'],
+];
+
+function findByName(rows, name) {
+  if (typeof name !== 'string' || !name.trim()) return null;
+  const wanted = name.trim().toLowerCase();
+  return rows.find((row) => row.name?.trim().toLowerCase() === wanted) ?? null;
+}
+
+/**
+ * The one step that fills in Settings -> Plan.
+ *
+ * Returns { step, changes, unmatched }. `step` is null when the file changes
+ * nothing, so an unchanged plan produces no work.
+ *
+ * Two rules that matter:
+ *
+ * - The payload starts from the CURRENT settings and overlays the file's
+ *   values. repo.updatePlanSettings writes every column unconditionally, so a
+ *   partial payload would blank everything the file does not mention.
+ * - A key the loaded settings do not have at all is skipped. That means a
+ *   column whose migration has not been applied yet, and sending it would
+ *   fail the whole save.
+ */
+export function buildSettingsStep({ plan, settings, accounts = [], goals = [] }) {
+  if (!plan || !settings) return { step: null, changes: [], unmatched: [] };
+
+  const next = { ...settings };
+  const changes = [];
+  const unmatched = [];
+
+  const set = (key, value, label) => {
+    // undefined means the column is not in this database yet.
+    if (settings[key] === undefined) return;
+    if (value == null || value === settings[key]) return;
+    next[key] = value;
+    changes.push({ key, label, value });
+  };
+
+  for (const [block, fileKey, settingKey] of SETTINGS_MONEY) {
+    const value = plan[block]?.[fileKey];
+    if (isFiniteNumber(value)) set(settingKey, value, `${block}.${fileKey}`);
+  }
+
+  if (isFiniteNumber(plan.windfall_goals_pct)) {
+    set('windfallGoalsPct', plan.windfall_goals_pct, 'windfall_goals_pct');
+  }
+  if (isFiniteNumber(plan.target_ashore_year)) {
+    set('targetAshoreYear', plan.target_ashore_year, 'target_ashore_year');
+  }
+  if (plan.presignoff && typeof plan.presignoff === 'object') {
+    if (typeof plan.presignoff.active === 'boolean' && settings.presignoffActive !== undefined) {
+      if (plan.presignoff.active !== settings.presignoffActive) {
+        next.presignoffActive = plan.presignoff.active;
+        changes.push({ key: 'presignoffActive', label: 'presignoff.active', value: plan.presignoff.active });
+      }
+    }
+    if (isFiniteNumber(plan.presignoff.vacation_amount)) {
+      set('presignoffVacationAmount', plan.presignoff.vacation_amount, 'presignoff.vacation_amount');
+    }
+  }
+
+  for (const [fileKey, settingKey] of SETTINGS_ACCOUNTS) {
+    const name = plan.accounts?.[fileKey];
+    if (name == null) continue;
+    const match = findByName(accounts, name);
+    if (!match) {
+      unmatched.push({ where: `accounts.${fileKey}`, name });
+      continue;
+    }
+    set(settingKey, match.id, `accounts.${fileKey} → ${match.name}`);
+  }
+
+  for (const [fileKey, settingKey] of SETTINGS_FUNDS) {
+    const name = plan.funds?.[fileKey];
+    if (name == null) continue;
+    const match = findByName(goals, name);
+    if (!match) {
+      unmatched.push({ where: `funds.${fileKey}`, name });
+      continue;
+    }
+    set(settingKey, match.id, `funds.${fileKey} → ${match.name}`);
+  }
+
+  if (changes.length === 0) return { step: null, changes: [], unmatched };
+
+  return {
+    step: {
+      kind: 'settings',
+      label: `Plan settings (${changes.length} field${changes.length === 1 ? '' : 's'})`,
+      action: { type: 'planSettings/update', payload: next },
+    },
+    changes,
+    unmatched,
+  };
+}
+
 export async function runSteps(steps = [], run, onProgress) {
   const applied = [];
 
@@ -316,6 +447,7 @@ export function summariseSteps(steps = []) {
     zeroed: steps.filter((step) => step.kind === 'zero').length,
     goalsCreated: steps.filter((step) => step.kind === 'goalCreate').length,
     goalsUpdated: steps.filter((step) => step.kind === 'goalUpdate').length,
+    settings: steps.filter((step) => step.kind === 'settings').length,
     total: steps.length,
   };
 }
@@ -441,6 +573,78 @@ export function validatePlanFile(data) {
         errors.push(`${where}.sinking must be true or false.`);
       }
     });
+  }
+
+  // Everything below is OPTIONAL. A file that leaves a block out simply does
+  // not touch those settings; a block that IS there has to be well formed,
+  // because a typo here points the hub at the wrong account or sets a target
+  // nobody chose.
+  const optionalNumbers = (block, keys) => {
+    const value = data[block];
+    if (value === undefined) return;
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      errors.push(`"${block}" must be an object when present.`);
+      return;
+    }
+    for (const key of Object.keys(value)) {
+      if (!keys.includes(key)) {
+        errors.push(`"${block}.${key}" is not a setting this tool knows. Expected one of: ${keys.join(', ')}.`);
+      } else if (!isFiniteNumber(value[key])) {
+        errors.push(`"${block}.${key}" must be a number.`);
+      } else if (value[key] < 0) {
+        errors.push(`"${block}.${key}" cannot be negative.`);
+      }
+    }
+  };
+
+  optionalNumbers('guardrails', [
+    'bank_floor_target', 'vacation_reserve_target', 'trading_cap_annual', 'trips_annual', 'insurance_annual',
+  ]);
+
+  const optionalNames = (block, keys) => {
+    const value = data[block];
+    if (value === undefined) return;
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      errors.push(`"${block}" must be an object when present.`);
+      return;
+    }
+    for (const key of Object.keys(value)) {
+      if (!keys.includes(key)) {
+        errors.push(`"${block}.${key}" is not something this tool can point at. Expected one of: ${keys.join(', ')}.`);
+      } else if (typeof value[key] !== 'string' || !value[key].trim()) {
+        errors.push(`"${block}.${key}" must be the name of an existing one, as text.`);
+      }
+    }
+  };
+
+  optionalNames('accounts', ['household', 'hub', 'trading', 'retirement', 'trading_tax']);
+  optionalNames('funds', ['vacation', 'insurance', 'trips', 'car']);
+
+  if (data.windfall_goals_pct !== undefined) {
+    if (!isFiniteNumber(data.windfall_goals_pct)) errors.push('"windfall_goals_pct" must be a number.');
+    else if (data.windfall_goals_pct < 0 || data.windfall_goals_pct > 100) {
+      errors.push('"windfall_goals_pct" must be between 0 and 100.');
+    }
+  }
+
+  if (data.target_ashore_year !== undefined) {
+    if (!isFiniteNumber(data.target_ashore_year)) errors.push('"target_ashore_year" must be a number.');
+    else if (data.target_ashore_year < 2000 || data.target_ashore_year > 2100) {
+      errors.push('"target_ashore_year" must be a year between 2000 and 2100.');
+    }
+  }
+
+  if (data.presignoff !== undefined) {
+    if (!data.presignoff || typeof data.presignoff !== 'object' || Array.isArray(data.presignoff)) {
+      errors.push('"presignoff" must be an object when present.');
+    } else {
+      if (data.presignoff.active !== undefined && typeof data.presignoff.active !== 'boolean') {
+        errors.push('"presignoff.active" must be true or false.');
+      }
+      if (data.presignoff.vacation_amount !== undefined && !isFiniteNumber(data.presignoff.vacation_amount)) {
+        errors.push('"presignoff.vacation_amount" must be a number.');
+      }
+    }
   }
 
   return { ok: errors.length === 0, errors };
