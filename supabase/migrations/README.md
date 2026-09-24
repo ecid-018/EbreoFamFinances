@@ -46,6 +46,23 @@ this README is not on screen. The banner is.
 New migrations copy the banner from the most recent file. Rollbacks get the stronger wording,
 and `0000_baseline.sql` gets its own — it must never touch an existing project at all.
 
+## Checking the SQL parses
+
+`../schema.sql` is maintained by hand: every migration's changes are transcribed into it so the
+snapshot stays truthful. Nothing verified that transcription, and it was silently broken for five
+migrations — the `income` table lost a comma when `0007`'s `kind` column was copied across, so the
+snapshot could not create a fresh project at all. Nobody noticed, because the snapshot is only ever
+executed when standing up a NEW project.
+
+After editing any SQL file here or the snapshot:
+
+```sh
+python3 -m venv /tmp/sqlcheck && /tmp/sqlcheck/bin/pip install pglast
+/tmp/sqlcheck/bin/python scripts/check-sql.py
+```
+
+Syntax only. A file can parse and still be wrong.
+
 ## How to apply
 
 Nobody applies SQL from a script or from Claude Code. The owner applies each file by hand
