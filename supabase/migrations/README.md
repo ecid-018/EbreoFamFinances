@@ -36,6 +36,16 @@ numbered +1 relative to the spec**:
 | `0002_goals_plan_fields.sql` (Phase 2) | `0003_goals_plan_fields.sql` |
 | … | … |
 
+## Every file starts with a project-check banner
+
+Each `.sql` file in this folder opens with a banner telling you to check the project badge
+before running it. That is deliberate and belongs in the **file**, not only in this README:
+the SQL editor looks identical in staging and production, and by the time you are pasting,
+this README is not on screen. The banner is.
+
+New migrations copy the banner from the most recent file. Rollbacks get the stronger wording,
+and `0000_baseline.sql` gets its own — it must never touch an existing project at all.
+
 ## How to apply
 
 Nobody applies SQL from a script or from Claude Code. The owner applies each file by hand

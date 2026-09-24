@@ -318,3 +318,47 @@ describe('filterDismissed', () => {
     expect(filterDismissed(alerts)).toEqual(alerts);
   });
 });
+
+describe('bills falling due', () => {
+  const bill = (over = {}) => ({
+    id: 'b1', name: 'Internet', amount: 1200, period: 'monthly',
+    nextDue: '2026-06-18', isActive: true, ...over,
+  });
+
+  it('warns about a bill due inside the notice window', () => {
+    const alerts = buildAlerts(base({ bills: [bill()] }), { today: MID_JUNE });
+    expect(alerts[0]).toMatchObject({
+      id: 'bill-due:b1:2026-06-18',
+      severity: SEVERITY.WARNING,
+      title: 'Internet is due soon',
+      amount: 1200,
+      tab: 'bills',
+    });
+  });
+
+  it('raises an alert, not a warning, once it is overdue', () => {
+    const alerts = buildAlerts(base({ bills: [bill({ nextDue: '2026-06-10' })] }), { today: MID_JUNE });
+    expect(alerts[0]).toMatchObject({ severity: SEVERITY.ALERT, title: 'Internet is overdue' });
+    expect(alerts[0].detail).toContain('5 days ago');
+  });
+
+  it('says nothing about a bill further out than the notice window', () => {
+    expect(buildAlerts(base({ bills: [bill({ nextDue: '2026-07-01' })] }), { today: MID_JUNE })).toEqual([]);
+  });
+
+  it('says nothing about an inactive bill', () => {
+    expect(buildAlerts(base({ bills: [bill({ isActive: false })] }), { today: MID_JUNE })).toEqual([]);
+  });
+
+  // pay_bill advances next_due as part of paying, so a paid bill leaves the
+  // window on its own and needs no expense matching here.
+  it('says nothing once the due date has moved past the window', () => {
+    expect(buildAlerts(base({ bills: [bill({ nextDue: '2026-07-18' })] }), { today: MID_JUNE })).toEqual([]);
+  });
+
+  it('keys the alert on the due date, so next cycle is a fresh alert', () => {
+    const first = buildAlerts(base({ bills: [bill()] }), { today: MID_JUNE })[0];
+    const next = buildAlerts(base({ bills: [bill({ nextDue: '2026-06-19' })] }), { today: MID_JUNE })[0];
+    expect(first.id).not.toBe(next.id);
+  });
+});

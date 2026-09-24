@@ -1,3 +1,9 @@
+-- ============================================================================
+-- STOP. CHECK THE PROJECT BADGE IN THE TOP BAR BEFORE YOU RUN THIS.
+-- The SQL editor looks identical in staging and production; the badge is the
+-- only tell. Staging first, then production -- and only after a backup
+-- (Dashboard -> Database -> Backups).
+-- ============================================================================
 -- 0003_goals_plan_fields.sql
 -- Phase 2 — goals gain ordering, dates, a home account and sinking funds.
 --

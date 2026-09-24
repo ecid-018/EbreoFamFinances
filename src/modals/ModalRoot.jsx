@@ -13,6 +13,7 @@ import { ChangePinModal } from './ChangePinModal.jsx';
 import { SettingsSheet } from './SettingsSheet.jsx';
 import { PlanPrefillSheet } from './PlanPrefillSheet.jsx';
 import { PaydayModal } from './PaydayModal.jsx';
+import { BillFormModal } from './BillFormModal.jsx';
 
 export function ModalRoot() {
   const { modal } = useApp();
@@ -47,6 +48,8 @@ export function ModalRoot() {
       return <PlanPrefillSheet />;
     case 'payday':
       return <PaydayModal />;
+    case 'billForm':
+      return <BillFormModal {...modalProps} />;
     default:
       return null;
   }

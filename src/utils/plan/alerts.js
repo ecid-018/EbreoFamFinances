@@ -11,6 +11,7 @@ import { formatPHP } from '../currency.js';
 import { resolveSplit } from './settings.js';
 import { getGoalPace } from './simulate.js';
 import { getBankFloorAccounts } from './floor.js';
+import { getDueSoon } from './bills.js';
 
 export const SEVERITY = { ALERT: 'alert', WARNING: 'warning' };
 
@@ -23,6 +24,8 @@ const FUNDING_POINTS = 25;
 const CAP_WARNING_FRACTION = 0.75;
 // A payday split logged this many days after the money arrived is late.
 const PAYDAY_GRACE_DAYS = 3;
+// How far ahead a bill starts being mentioned.
+const BILL_NOTICE_DAYS = 7;
 // Float dust from the numeric(12,2) round trip.
 const EPSILON = 0.005;
 
@@ -60,6 +63,7 @@ export function buildAlerts(
     income = [],
     paydays = [],
     paydayAllocations = [],
+    bills = [],
   } = {},
   { today = new Date() } = {}
 ) {
@@ -242,6 +246,25 @@ export function buildAlerts(
         tab: 'plan',
       });
     }
+  }
+
+  // --- Bills falling due, and bills already missed ---
+  //
+  // Nothing here checks for a matching expense. pay_bill moves next_due
+  // forward as part of paying, so a bill still showing a date inside the
+  // window has not been paid for that cycle — the date IS the check.
+  for (const bill of getDueSoon(bills, today, BILL_NOTICE_DAYS)) {
+    const late = bill.daysUntilDue < 0;
+    alerts.push({
+      id: `bill-due:${bill.id}:${bill.nextDue}`,
+      severity: late ? SEVERITY.ALERT : SEVERITY.WARNING,
+      title: late ? `${bill.name} is overdue` : `${bill.name} is due soon`,
+      detail: late
+        ? `${formatPHP(bill.amount)}, due ${-bill.daysUntilDue} day${bill.daysUntilDue === -1 ? '' : 's'} ago`
+        : `${formatPHP(bill.amount)}, due in ${bill.daysUntilDue} day${bill.daysUntilDue === 1 ? '' : 's'}`,
+      amount: bill.amount,
+      tab: 'bills',
+    });
   }
 
   // --- Dated goals drifting off their own straight line ---

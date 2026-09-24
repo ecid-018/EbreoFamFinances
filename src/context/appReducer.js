@@ -728,6 +728,46 @@ export function appReducer(state, action) {
       };
     }
 
+    // Bills are plain records: creating or editing one moves no money, so the
+    // optimistic update is safe here in a way it would not be for paying one.
+    // There is deliberately NO 'bill/pay' case — that goes through the RPC and
+    // the screen waits for the refetch.
+    case 'bill/add': {
+      const {
+        id, name, amount, period, dueDay = null, nextDue = null,
+        accountId = null, envelopeId = null, goalId = null, isActive = true,
+      } = action.payload;
+      return {
+        ...state,
+        bills: [...state.bills, { id, name, amount, period, dueDay, nextDue, accountId, envelopeId, goalId, isActive }],
+        ledger: logEntry(state.ledger, { domain: 'Bill', type: 'Bill added', name, amount }),
+      };
+    }
+
+    case 'bill/update': {
+      return {
+        ...state,
+        bills: state.bills.map((b) => (b.id === action.payload.id ? { ...b, ...action.payload } : b)),
+        ledger: logEntry(state.ledger, {
+          domain: 'Bill',
+          type: 'Bill updated',
+          name: action.payload.name,
+          amount: action.payload.amount,
+        }),
+      };
+    }
+
+    case 'bill/remove': {
+      const existing = state.bills.find((b) => b.id === action.payload.id);
+      return {
+        ...state,
+        bills: state.bills.filter((b) => b.id !== action.payload.id),
+        ledger: existing
+          ? logEntry(state.ledger, { domain: 'Bill', type: 'Bill removed', name: existing.name, amount: existing.amount })
+          : state.ledger,
+      };
+    }
+
     case 'planSettings/update':
       return { ...state, planSettings: { ...state.planSettings, ...action.payload } };
 

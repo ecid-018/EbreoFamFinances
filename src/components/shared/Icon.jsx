@@ -246,3 +246,13 @@ export function PlanIcon(props) {
     </Svg>
   );
 }
+
+// A calendar page, for Bills: things that come round on their own.
+export function BillIcon(props) {
+  return (
+    <Svg {...props}>
+      <rect x="4" y="5.5" width="16" height="14" rx="2" />
+      <path d="M4 10h16M9 3.5v4M15 3.5v4" />
+    </Svg>
+  );
+}

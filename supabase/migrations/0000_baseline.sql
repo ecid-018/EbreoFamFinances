@@ -1,3 +1,8 @@
+-- ============================================================================
+-- STOP. FRESH, EMPTY PROJECTS ONLY.
+-- Never run this against production or staging -- it recreates the whole
+-- schema from nothing. Check the project badge in the top bar.
+-- ============================================================================
 -- =========================================================================
 -- 0000_baseline.sql — BASELINE FOR A FRESH PROJECT ONLY
 -- =========================================================================

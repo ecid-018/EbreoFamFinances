@@ -7,6 +7,7 @@ import { buildGuardRails } from '../utils/plan/guardRails.js';
 import { splitGoals, rollUpGoalGroups, getAccountReconciliation } from '../utils/plan/goals.js';
 import { isPlanConfigured, resolveSplit, getSplitTotal, getSplitRemainder, isSplitBalanced } from '../utils/plan/settings.js';
 import { simulateGoalWaterfall, getGoalPace, getAshoreCountdown, getMonthsLate } from '../utils/plan/simulate.js';
+import { getFixedCostsPerMonth } from '../utils/plan/bills.js';
 
 // Everything the Plan view shows, in one memo over state.
 //
@@ -18,7 +19,7 @@ const ROLE_LABEL = Object.fromEntries(ACCOUNT_ROLES.map((r) => [r.value, r.label
 
 export function usePlanFinancials() {
   const { state } = useApp();
-  const { accounts, goals, planSettings, transfers, paydays, paydayAllocations } = state;
+  const { accounts, goals, planSettings, transfers, paydays, paydayAllocations, bills } = state;
 
   return useMemo(() => {
     // Read once, so every figure below describes the same moment.
@@ -81,8 +82,11 @@ export function usePlanFinancials() {
       sinkingFunds,
       achievedCount: achieved.length,
       guardRails,
+      // Every active bill spread over the months it covers, so a yearly
+      // premium counts as a twelfth each month rather than a spike.
+      fixedCostsPerMonth: getFixedCostsPerMonth(bills),
       roles,
       reconciliation: getAccountReconciliation(accounts, goals).filter((r) => Math.abs(r.gap) >= 1),
     };
-  }, [accounts, goals, planSettings, transfers, paydays, paydayAllocations]);
+  }, [accounts, goals, planSettings, transfers, paydays, paydayAllocations, bills]);
 }

@@ -1,3 +1,8 @@
+-- ============================================================================
+-- STOP. CHECK THE PROJECT BADGE IN THE TOP BAR BEFORE YOU RUN THIS.
+-- This UNDOES a migration and can destroy data. Read what it drops first.
+-- The SQL editor looks identical in staging and production.
+-- ============================================================================
 -- Rollback for 0005_envelope_month_budgets.sql
 --
 -- Safe: envelopes.monthly_budget was never modified by this phase, so dropping

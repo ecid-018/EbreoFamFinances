@@ -13,7 +13,7 @@ export function useAlerts() {
   const { envelopeStats, isCurrentMonth, monthMode } = useDerivedFinancials();
   const {
     accounts, goals, planSettings, transactions, transfers, income,
-    paydays, paydayAllocations, month,
+    paydays, paydayAllocations, month, bills,
   } = state;
 
   return useMemo(() => {
@@ -30,13 +30,13 @@ export function useAlerts() {
       {
         envelopeStats, month, isCurrentMonth, monthMode, guardRails,
         accounts, goals, planSettings, transactions, transfers, income,
-        paydays, paydayAllocations,
+        paydays, paydayAllocations, bills,
       },
       { today }
     );
     return filterDismissed(alerts, dismissedAlerts);
   }, [
     envelopeStats, month, isCurrentMonth, monthMode, accounts, goals, planSettings,
-    transactions, transfers, income, paydays, paydayAllocations, dismissedAlerts,
+    transactions, transfers, income, paydays, paydayAllocations, bills, dismissedAlerts,
   ]);
 }

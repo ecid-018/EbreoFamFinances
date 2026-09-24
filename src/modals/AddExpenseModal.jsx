@@ -3,10 +3,15 @@ import { useApp } from '../context/AppContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { toISODateString } from '../utils/date.js';
 import { getSpendableAccounts, withCurrentAccount } from '../utils/accounts.js';
+import { getPaymentDraft } from '../utils/plan/bills.js';
+import { generateId } from '../utils/id.js';
 import { BottomSheet } from './BottomSheet.jsx';
 
-export function AddExpenseModal({ mode = 'add', transaction }) {
-  const { state, dispatch, closeModal } = useApp();
+// Paying a bill is this same form, prefilled, submitting to pay_bill instead
+// of add_transaction. A bill is a reminder plus a prefilled form, so it would
+// be strange for it to open a different one.
+export function AddExpenseModal({ mode = 'add', transaction, bill = null }) {
+  const { state, dispatch, closeModal, refetchAll } = useApp();
   const { session } = useAuth();
   const isEdit = mode === 'edit';
   const spendableAccounts = withCurrentAccount(
@@ -14,22 +19,24 @@ export function AddExpenseModal({ mode = 'add', transaction }) {
     state.accounts,
     isEdit ? transaction.accountId : null
   );
-  const [date, setDate] = useState(isEdit ? transaction.date : toISODateString());
-  const [amount, setAmount] = useState(isEdit ? String(transaction.amount) : '');
-  const [note, setNote] = useState(isEdit ? transaction.note : '');
-  const [categoryId, setCategoryId] = useState(isEdit ? transaction.categoryId ?? '' : '');
+  const draft = bill ? getPaymentDraft(bill) : null;
+  const [date, setDate] = useState(isEdit ? transaction.date : draft?.date ?? toISODateString());
+  const [amount, setAmount] = useState(isEdit ? String(transaction.amount) : draft ? String(draft.amount) : '');
+  const [note, setNote] = useState(isEdit ? transaction.note : draft?.note ?? '');
+  const [categoryId, setCategoryId] = useState(isEdit ? transaction.categoryId ?? '' : draft?.categoryId ?? '');
   const [accountId, setAccountId] = useState(
-    isEdit ? transaction.accountId ?? '' : spendableAccounts[0]?.id ?? ''
+    isEdit ? transaction.accountId ?? '' : draft?.accountId ?? spendableAccounts[0]?.id ?? ''
   );
+  const [busy, setBusy] = useState(false);
   const [fundGoalId, setFundGoalId] = useState('');
   const [error, setError] = useState('');
 
   const selectedEnvelope = state.envelopes.find((env) => env.id === categoryId);
   // Never re-show the Fund Goal control on edit — the original transaction (if any) already
   // funded a goal when it was first created; re-showing it here would double-count.
-  const isSavingsEnvelope = !isEdit && selectedEnvelope?.group === 'Savings';
+  const isSavingsEnvelope = !isEdit && !bill && selectedEnvelope?.group === 'Savings';
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     const amountValue = Number(amount);
     if (!amountValue || amountValue <= 0) {
@@ -53,6 +60,25 @@ export function AddExpenseModal({ mode = 'add', transaction }) {
       accountId: accountId || null,
     };
 
+    if (bill) {
+      // One RPC writes the expense, moves the bill's next due date and draws
+      // down its sinking fund. Nothing is applied optimistically, so the
+      // screen waits for the refetch rather than showing a half-done payment.
+      setBusy(true);
+      const result = await dispatch({
+        type: 'bill/pay',
+        payload: { billId: bill.id, transactionId: generateId(), ...payload },
+      });
+      setBusy(false);
+      if (result && result.ok === false) {
+        setError("That didn't save — check the amount and try again.");
+        return;
+      }
+      await refetchAll();
+      closeModal();
+      return;
+    }
+
     if (isEdit) {
       dispatch({ type: 'transaction/update', payload: { id: transaction.id, ...payload } });
     } else {
@@ -69,7 +95,7 @@ export function AddExpenseModal({ mode = 'add', transaction }) {
   }
 
   return (
-    <BottomSheet title={isEdit ? 'Edit Expense' : 'Add Expense'} onClose={closeModal} fullScreen>
+    <BottomSheet title={bill ? `Pay ${bill.name}` : isEdit ? 'Edit Expense' : 'Add Expense'} onClose={closeModal} fullScreen>
       <form className="form" onSubmit={handleSubmit}>
         <label className="form__field">
           <span className="form__label">Date</span>
@@ -159,8 +185,8 @@ export function AddExpenseModal({ mode = 'add', transaction }) {
           </label>
         )}
         {error && <p className="form__error">{error}</p>}
-        <button type="submit" className="btn-block">
-          {isEdit ? 'Save Changes' : 'Add Expense'}
+        <button type="submit" className="btn-block" disabled={busy}>
+          {busy ? 'Paying…' : bill ? `Pay ${bill.name}` : isEdit ? 'Save Changes' : 'Add Expense'}
         </button>
       </form>
     </BottomSheet>

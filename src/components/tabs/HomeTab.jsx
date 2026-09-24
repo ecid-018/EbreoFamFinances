@@ -1,5 +1,6 @@
 import { useApp } from '../../context/AppContext.jsx';
 import { PlanSegment } from '../plan/PlanSegment.jsx';
+import { DueSoonCard } from '../bills/DueSoonCard.jsx';
 import { SafeToSpend } from '../hero/SafeToSpend.jsx';
 import { StatsRow } from '../stats/StatsRow.jsx';
 import { HouseholdSnapshot } from '../home/HouseholdSnapshot.jsx';
@@ -23,6 +24,7 @@ export function HomeTab() {
               App.jsx). layout.css hides this copy at that width so they are
               not rendered twice. */}
           <div className="home__overview-cards">
+            <DueSoonCard />
             <HouseholdSnapshot />
             <NeedsAttentionCard />
           </div>

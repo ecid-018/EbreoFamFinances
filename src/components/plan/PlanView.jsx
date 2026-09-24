@@ -41,7 +41,7 @@ function SetUpPrompt() {
 }
 
 export function PlanView() {
-  const { openModal } = useApp();
+  const { openModal, setActiveTab } = useApp();
   const plan = usePlanFinancials();
 
   // Without pay and a split there is nothing true to say, and a screen of
@@ -94,6 +94,20 @@ export function PlanView() {
               </span>
             </div>
           </div>
+
+          {plan.fixedCostsPerMonth > 0 && (
+            <button type="button" className="ios-row-wrap list-row" onClick={() => setActiveTab('bills')}>
+              <div className="list-row__main">
+                <span className="list-row__title">
+                  {formatPHP(plan.fixedCostsPerMonth)} a month in fixed costs
+                </span>
+                <span className="list-row__meta">
+                  Bills and subscriptions, each spread over the months it covers
+                </span>
+              </div>
+              <ChevronRightIcon size={16} className="list-row__chevron" />
+            </button>
+          )}
 
           <button type="button" className="ios-row-wrap list-row" onClick={() => openModal('settings')}>
             <div className="list-row__main">

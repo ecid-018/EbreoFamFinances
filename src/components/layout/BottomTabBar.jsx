@@ -22,9 +22,10 @@ export function BottomTabBar() {
   // Rail-only items (the Plan) are left out here: the bar is full at six.
   const [first, second, ...rest] = NAV_ITEMS.filter((item) => !item.railOnly);
 
-  // On phones the Plan is a segment inside Home, so Home stays lit while it
-  // is open — nothing else would be, and an unlit bar reads as a bug.
-  const activeKey = activeTab === 'plan' ? 'home' : activeTab;
+  // On phones the Plan and Bills are segments inside Home, so Home stays lit
+  // while either is open — nothing else would be, and an unlit bar reads as a
+  // bug.
+  const activeKey = activeTab === 'plan' || activeTab === 'bills' ? 'home' : activeTab;
 
   function renderTab({ key, label, Icon }) {
     return (

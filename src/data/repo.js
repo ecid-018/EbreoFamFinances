@@ -44,6 +44,20 @@ function mapPaydayAllocation(row) {
     label: row.label,
   };
 }
+function mapBill(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    amount: Number(row.amount),
+    period: row.period,
+    dueDay: row.due_day ?? null,
+    nextDue: row.next_due ?? null,
+    accountId: row.account_id ?? null,
+    envelopeId: row.envelope_id ?? null,
+    goalId: row.goal_id ?? null,
+    isActive: row.is_active ?? true,
+  };
+}
 function mapSplitLineSource(row) {
   return { lineKey: row.line_key, accountId: row.account_id };
 }
@@ -83,6 +97,7 @@ function mapTransaction(row) {
     note: row.note ?? '',
     categoryId: row.category_id,
     accountId: row.account_id,
+    billId: row.bill_id ?? null,
     createdBy: row.created_by,
   };
 }
@@ -222,6 +237,23 @@ function fetchMonthSnapshots() {
     });
 }
 
+// Bills (0012). Tolerated as missing for the same reason every table since
+// 0004 is: Vercel deploys on push and the migration is applied by hand
+// afterwards, so a deploy can land first. With no table there are simply no
+// bills, which is exactly how the app behaved before this phase.
+function fetchBills() {
+  return supabase
+    .from('bills')
+    .select('*')
+    .then(({ data, error }) => {
+      if (error) {
+        console.warn('bills unavailable (migration not applied yet?):', error.message);
+        return [];
+      }
+      return (data ?? []).map(mapBill);
+    });
+}
+
 function fetchSplitLineSources() {
   return supabase
     .from('split_line_sources')
@@ -268,7 +300,7 @@ function fetchPaydayData() {
 }
 
 export async function fetchAll() {
-  const [envelopes, accounts, transactions, income, goals, ledger, profiles, transfers, planSettings, envelopeBudgets, monthModes, paydayData, splitLineSources, monthSnapshots] =
+  const [envelopes, accounts, transactions, income, goals, ledger, profiles, transfers, planSettings, envelopeBudgets, monthModes, paydayData, splitLineSources, monthSnapshots, bills] =
     await Promise.all([
     supabase.from('envelopes').select('*').then(unwrap),
     supabase.from('accounts').select('*').then(unwrap),
@@ -284,6 +316,7 @@ export async function fetchAll() {
     fetchPaydayData(),
     fetchSplitLineSources(),
     fetchMonthSnapshots(),
+    fetchBills(),
   ]);
 
   return {
@@ -301,6 +334,7 @@ export async function fetchAll() {
     ...paydayData,
     splitLineSources,
     monthSnapshots,
+    bills,
   };
 }
 
@@ -412,6 +446,93 @@ export const repo = {
   // figure is computed inside the RPC from current balances, so a snapshot can
   // never disagree with the database; only the USD display rate is passed in,
   // because the database has no way to know it.
+  // ---- Bills ----
+  // Plain CRUD: creating or editing a bill moves no money. Paying one does,
+  // and that goes through the RPC below.
+  async addBill(payload, userId) {
+    await supabase
+      .from('bills')
+      .insert({
+        id: payload.id,
+        name: payload.name,
+        amount: payload.amount,
+        period: payload.period,
+        due_day: payload.dueDay ?? null,
+        next_due: payload.nextDue ?? null,
+        account_id: payload.accountId || null,
+        envelope_id: payload.envelopeId || null,
+        goal_id: payload.goalId || null,
+        is_active: payload.isActive ?? true,
+        created_by: userId,
+      })
+      .then(unwrap);
+    await insertLedgerEntry({
+      date: null,
+      domain: 'Bill',
+      type: 'Bill added',
+      name: payload.name,
+      amount: payload.amount,
+      userId,
+    });
+  },
+
+  async updateBill(payload, userId) {
+    await supabase
+      .from('bills')
+      .update({
+        name: payload.name,
+        amount: payload.amount,
+        period: payload.period,
+        due_day: payload.dueDay ?? null,
+        next_due: payload.nextDue ?? null,
+        account_id: payload.accountId || null,
+        envelope_id: payload.envelopeId || null,
+        goal_id: payload.goalId || null,
+        is_active: payload.isActive ?? true,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', payload.id)
+      .then(unwrap);
+    await insertLedgerEntry({
+      date: null,
+      domain: 'Bill',
+      type: 'Bill updated',
+      name: payload.name,
+      amount: payload.amount,
+      userId,
+    });
+  },
+
+  async removeBill(payload, existing, userId) {
+    await supabase.from('bills').delete().eq('id', payload.id).then(unwrap);
+    if (existing) {
+      await insertLedgerEntry({
+        date: null,
+        domain: 'Bill',
+        type: 'Bill removed',
+        name: existing.name,
+        amount: existing.amount,
+        userId,
+      });
+    }
+  },
+
+  // The expense, the bill's next due date and the sinking fund all move
+  // together or not at all. The client does not do any of the three itself.
+  async payBill(payload) {
+    await supabase
+      .rpc('pay_bill', {
+        p_bill_id: payload.billId,
+        p_transaction_id: payload.transactionId,
+        p_date: payload.date,
+        p_amount: payload.amount,
+        p_note: payload.note ?? '',
+        p_envelope_id: payload.categoryId || null,
+        p_account_id: payload.accountId || null,
+      })
+      .then(unwrap);
+  },
+
   async takeMonthSnapshot(payload) {
     await supabase
       .rpc('take_month_snapshot', { p_month_key: payload.monthKey, p_usd_php_rate: payload.usdPhpRate ?? null })
