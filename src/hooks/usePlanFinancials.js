@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext.jsx';
 import { getCurrentMonth } from '../utils/date.js';
 import { getActiveAccounts } from '../utils/accounts.js';
 import { ACCOUNT_ROLES } from '../utils/plan/accountTypes.js';
-import { getBankFloorStatus } from '../utils/plan/floor.js';
+import { buildGuardRails } from '../utils/plan/guardRails.js';
 import { splitGoals, rollUpGoalGroups, getAccountReconciliation } from '../utils/plan/goals.js';
 import { isPlanConfigured, resolveSplit, getSplitTotal, getSplitRemainder, isSplitBalanced } from '../utils/plan/settings.js';
 import { simulateGoalWaterfall, getGoalPace, getAshoreCountdown, getMonthsLate } from '../utils/plan/simulate.js';
@@ -15,31 +15,6 @@ import { simulateGoalWaterfall, getGoalPace, getAshoreCountdown, getMonthsLate }
 // Goals tab, figures in Settings — so there is nothing here that could write.
 
 const ROLE_LABEL = Object.fromEntries(ACCOUNT_ROLES.map((r) => [r.value, r.label]));
-
-function sumTransfersInto(transfers, accountId, year) {
-  if (!accountId) return null;
-  const prefix = `${year}-`;
-  return transfers
-    .filter((t) => t.toAccountId === accountId && t.date.startsWith(prefix))
-    .reduce((total, t) => total + t.toAmount, 0);
-}
-
-// What the paydays of this year put into one goal.
-//
-// Deliberately NOT read from the ledger. Every goal contribution writes a
-// ledger row, which would make the ledger the complete source, but those rows
-// identify the goal only by the name it had at the time — renaming a goal
-// would silently rewrite its history and two goals sharing a name would merge.
-// payday_allocations carries the goal's id, so this figure is exact for what
-// it counts, and the view says plainly that it counts paydays only.
-function sumPaydayGoalFunding(paydays, allocations, goalId, year) {
-  if (!goalId) return null;
-  const prefix = `${year}-`;
-  const idsThisYear = new Set(paydays.filter((p) => p.date.startsWith(prefix)).map((p) => p.id));
-  return allocations
-    .filter((a) => a.kind === 'goal' && a.goalId === goalId && idsThisYear.has(a.paydayId))
-    .reduce((total, a) => total + a.amount, 0);
-}
 
 export function usePlanFinancials() {
   const { state } = useApp();
@@ -79,52 +54,14 @@ export function usePlanFinancials() {
       };
     });
 
-    const floor = getBankFloorStatus(accounts, planSettings?.bankFloorTarget);
-    const tradingYtd = sumTransfersInto(transfers, planSettings?.tradingAccountId, year);
-    const tripsYtd = sumPaydayGoalFunding(paydays, paydayAllocations, planSettings?.tripsGoalId, year);
-    const insuranceYtd = sumPaydayGoalFunding(paydays, paydayAllocations, planSettings?.insuranceGoalId, year);
-
-    // `direction` matters: the floor is a minimum to stay above and the
-    // trading figure a maximum to stay under. Rendering them the same way
-    // would call a healthy floor a breach.
-    const guardRails = [
-      {
-        key: 'floor',
-        label: 'Bank floor',
-        direction: 'min',
-        current: floor.current,
-        target: floor.target,
-        isBreached: floor.isMet === false,
-        note: 'Tagged PHP bank accounts, excluding archived ones.',
-      },
-      {
-        key: 'trading',
-        label: 'Trading and apps',
-        direction: 'max',
-        current: tradingYtd,
-        target: planSettings?.tradingCapAnnual ?? null,
-        isBreached: tradingYtd != null && planSettings?.tradingCapAnnual != null && tradingYtd > planSettings.tradingCapAnnual,
-        note: `Transferred in during ${year}.`,
-      },
-      {
-        key: 'trips',
-        label: 'Trips fund',
-        direction: 'target',
-        current: tripsYtd,
-        target: planSettings?.tripsAnnual ?? null,
-        isBreached: false,
-        note: `Funded by paydays in ${year}. Contributions made by hand are not counted.`,
-      },
-      {
-        key: 'insurance',
-        label: 'Insurance fund',
-        direction: 'target',
-        current: insuranceYtd,
-        target: planSettings?.insuranceAnnual ?? null,
-        isBreached: false,
-        note: `Funded by paydays in ${year}. Contributions made by hand are not counted.`,
-      },
-    ].filter((rail) => rail.current != null && rail.target != null);
+    const guardRails = buildGuardRails({
+      accounts,
+      planSettings,
+      transfers,
+      paydays,
+      paydayAllocations,
+      year,
+    });
 
     const roles = getActiveAccounts(accounts)
       .filter((a) => a.role)

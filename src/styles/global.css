@@ -2175,3 +2175,53 @@ svg {
 .plan-meta--late {
   color: var(--color-warning);
 }
+
+/* ---------- Alerts (Needs Attention) ---------- */
+
+/* The row is a flex pair — tap the body to go where the problem is, tap the
+   × to say you have seen it — so the separator moves here from the button.
+   .ios-row-wrap would draw a second one inside the flex row. */
+.alert-item {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  background: var(--color-card);
+}
+
+.alert-item:not(:first-child)::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 0;
+  height: 1px;
+  background: var(--color-separator);
+}
+
+.alert-item__main {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Amber for a warning, red for an alert. The icon carries the severity,
+   because colour alone should never be the only signal. */
+.alert-item--alert .alert-row__icon {
+  color: var(--color-destructive);
+}
+
+.alert-item__dismiss {
+  flex-shrink: 0;
+  width: 44px;
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: 20px;
+  line-height: 1;
+}
+
+/* An alert title that is cut off is an alert that does not get read, so these
+   wrap rather than inheriting the single-line ellipsis of an ordinary row. */
+.alert-item__title {
+  white-space: normal;
+  overflow: visible;
+}

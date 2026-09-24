@@ -4,9 +4,9 @@ import { useAuth } from './AuthContext.jsx';
 import { fetchAll } from '../data/repo.js';
 import { syncEffects, ACTIONS_NEEDING_ID } from '../data/syncEffects.js';
 import { generateId } from '../utils/id.js';
-import { loadTheme, saveTheme } from '../data/storage.js';
+import { loadTheme, saveTheme, loadDismissedAlerts, saveDismissedAlerts } from '../data/storage.js';
 import { applyTheme, updateThemeColorMeta } from '../utils/theme.js';
-import { toISODateString, getCurrentMonth } from '../utils/date.js';
+import { toISODateString, getCurrentMonth, getMonthKey } from '../utils/date.js';
 
 const AppContext = createContext(null);
 
@@ -44,6 +44,30 @@ export function AppProvider({ children }) {
   const [theme, setThemeState] = useState(loadTheme);
   const [viewMode, setViewMode] = useState('month');
   const [viewDay, setViewDay] = useState(() => toISODateString());
+
+  // Dismissed alerts live here rather than in the card, because the card is
+  // mounted twice (HomeTab and the overview column) and layout.css hides one
+  // of them. Two copies of this state would silently disagree.
+  //
+  // Keyed by the real current month, not the month being viewed, so stepping
+  // back through months does not resurrect what was already dismissed.
+  const alertPeriod = useMemo(() => {
+    const now = getCurrentMonth();
+    return getMonthKey(now.year, now.monthIndex);
+  }, []);
+  const [dismissedAlerts, setDismissedAlerts] = useState(() => loadDismissedAlerts(alertPeriod));
+
+  const dismissAlert = useCallback(
+    (id) => {
+      setDismissedAlerts((prev) => {
+        if (prev.includes(id)) return prev;
+        const next = [...prev, id];
+        saveDismissedAlerts(alertPeriod, next);
+        return next;
+      });
+    },
+    [alertPeriod]
+  );
 
   const refetchAll = useCallback(async () => {
     if (!userId) return;
@@ -164,8 +188,10 @@ export function AppProvider({ children }) {
       setViewMode,
       viewDay,
       setViewDay,
+      dismissedAlerts,
+      dismissAlert,
     }),
-    [state, dispatchWithSync, loading, syncError, refetchAll, modal, openModal, closeModal, activeTab, setActiveTab, theme, setTheme, viewMode, viewDay]
+    [state, dispatchWithSync, loading, syncError, refetchAll, modal, openModal, closeModal, activeTab, setActiveTab, theme, setTheme, viewMode, viewDay, dismissedAlerts, dismissAlert]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
