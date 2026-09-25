@@ -18,6 +18,7 @@ import { PlanSummaryCard } from './components/plan/PlanSummaryCard.jsx';
 import { HomeTab } from './components/tabs/HomeTab.jsx';
 import { PlanTab } from './components/tabs/PlanTab.jsx';
 import { BillsTab } from './components/tabs/BillsTab.jsx';
+import { ReportsTab } from './components/tabs/ReportsTab.jsx';
 import { DueSoonCard } from './components/bills/DueSoonCard.jsx';
 import { ChecklistCard } from './components/checklist/ChecklistCard.jsx';
 import { BudgetTab } from './components/tabs/BudgetTab.jsx';
@@ -30,6 +31,7 @@ const TABS = {
   home: HomeTab,
   plan: PlanTab,
   bills: BillsTab,
+  reports: ReportsTab,
   budget: BudgetTab,
   goals: GoalsTab,
   transactions: TransactionsTab,

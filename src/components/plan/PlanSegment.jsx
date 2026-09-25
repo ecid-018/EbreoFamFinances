@@ -13,12 +13,13 @@ export function PlanSegment() {
   return (
     <div className="plan-segment">
       <SegmentedControl
-        value={activeTab === 'plan' || activeTab === 'bills' ? activeTab : 'home'}
+        value={['plan', 'bills', 'reports'].includes(activeTab) ? activeTab : 'home'}
         onChange={setActiveTab}
         options={[
           { value: 'home', label: 'Overview' },
           { value: 'plan', label: 'Plan' },
           { value: 'bills', label: 'Schedule' },
+          { value: 'reports', label: 'Reports' },
         ]}
       />
     </div>
