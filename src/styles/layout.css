@@ -33,6 +33,15 @@
     display: none;
   }
 
+  /* global.css letterboxes .page from 480px up, to frame the narrow phone
+     column on a wider screen. From 600px there is no narrow column to frame:
+     the content fills its grid track. Left on, the letterbox grey showed
+     below wherever the content ended -- a hard horizontal seam across the
+     main column that looked like a broken layout. */
+  .page {
+    background: var(--color-bg);
+  }
+
   /* The SideNav has a Plan item at this width, so the Home/Plan switch is
      redundant. Both set the same activeTab, so hiding this one cannot strand
      anyone on the Plan with no way back. */
@@ -282,15 +291,32 @@
     margin-right: 16px;
   }
 
+  /* Centred in its column rather than pinned left. The main column is
+     `1fr`, so on a large monitor it is far wider than the readable cap --
+     left-aligning put ~590px of dead space on one side at 2000px, which read
+     as a broken layout rather than a margin. */
   .content {
     max-width: 860px;
-    margin-left: 0;
+    margin-left: auto;
+    margin-right: auto;
     padding-left: 8px;
   }
 
   .navbar__bar,
   .navbar__large-wrap {
     max-width: 860px;
-    margin-left: 0;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+/* ==========================  >= 1440px: large desktop  ================== */
+/* Only the cap changes. Wider than this and line lengths stop being
+   comfortable, so the rest of the space stays as margin. */
+@media (min-width: 1440px) {
+  .content,
+  .navbar__bar,
+  .navbar__large-wrap {
+    max-width: 1040px;
   }
 }

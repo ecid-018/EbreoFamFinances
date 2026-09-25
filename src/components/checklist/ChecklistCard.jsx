@@ -116,32 +116,44 @@ export function ChecklistCard() {
 
   return (
     <>
-      {unclassified.slice(0, 2).map((entry) => (
-        <div className="ios-group" key={entry.id}>
+      {/* One card however many are waiting. A card each meant two identical
+          headers and fourteen buttons filling the overview column on a wide
+          screen, which buried everything under it. */}
+      {unclassified.length > 0 && (
+        <div className="ios-group">
           <div className="ios-group__header">
             <span className="ios-group__title">What is this money?</span>
+            {unclassified.length > 3 && (
+              <span className="list-row__meta">{unclassified.length - 3} more</span>
+            )}
           </div>
           <div className="ios-card">
-            <div className="ios-row-wrap list-row">
-              <div className="list-row__main">
-                <span className="list-row__title">
-                  {formatPHP(entry.amount)} — {entry.source}
-                </span>
-                <span className="list-row__meta">
-                  Logged {entry.date}. Tell the app what it is and it will say where the plan sends it.
-                </span>
+            {unclassified.slice(0, 3).map((entry) => (
+              <div className="ios-row-wrap checklist__item" key={entry.id}>
+                <div className="list-row__main">
+                  <span className="list-row__title">
+                    {formatPHP(entry.amount)} — {entry.source}
+                  </span>
+                  <span className="list-row__meta">Logged {entry.date}</span>
+                </div>
+                <div className="checklist__kinds">
+                  {INCOME_KIND_META.map((k) => (
+                    <button
+                      key={k.value}
+                      type="button"
+                      className="bill-row__pay"
+                      title={k.hint}
+                      onClick={() => answer(entry, k.value)}
+                    >
+                      {k.label}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-            <div className="checklist__kinds">
-              {INCOME_KIND_META.map((k) => (
-                <button key={k.value} type="button" className="bill-row__pay" onClick={() => answer(entry, k.value)}>
-                  {k.label}
-                </button>
-              ))}
-            </div>
+            ))}
           </div>
         </div>
-      ))}
+      )}
 
       {open.map((list) => {
         const meta = getIncomeKindMeta(list.incomeKind);
