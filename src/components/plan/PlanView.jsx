@@ -5,6 +5,7 @@ import { formatProjectedMonth } from '../../utils/plan/simulate.js';
 import { ChevronRightIcon } from '../shared/Icon.jsx';
 import { PlanGoalsSection } from './PlanGoalsSection.jsx';
 import { PlanGuardRailsSection } from './PlanGuardRailsSection.jsx';
+import { PlanTradingCard } from './PlanTradingCard.jsx';
 import { PlanAccountsSection } from './PlanAccountsSection.jsx';
 
 // The Plan view. Read-only: every figure here is derived, and the two places
@@ -127,6 +128,7 @@ export function PlanView() {
 
       <PlanGoalsSection goalRows={plan.goalRows} sinkingFunds={plan.sinkingFunds} />
       <PlanGuardRailsSection guardRails={plan.guardRails} />
+      <PlanTradingCard trading={plan.trading} />
       <PlanAccountsSection roles={plan.roles} reconciliation={plan.reconciliation} />
     </div>
   );

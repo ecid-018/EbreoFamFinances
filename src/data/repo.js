@@ -10,7 +10,14 @@ function unwrap({ data, error }) {
 }
 
 function mapEnvelope(row) {
-  return { id: row.id, name: row.name, monthlyBudget: Number(row.monthly_budget), group: row.group_name };
+  return {
+    id: row.id,
+    name: row.name,
+    monthlyBudget: Number(row.monthly_budget),
+    group: row.group_name,
+    // undefined until 0016 lands, so the write path below can omit it.
+    isTradingCost: 'is_trading_cost' in row ? (row.is_trading_cost ?? false) : undefined,
+  };
 }
 function mapEnvelopeBudget(row) {
   return {
@@ -137,6 +144,11 @@ function mapIncome(row) {
     amount: Number(row.amount),
     accountId: row.account_id,
     budgetMonthKey: row.budget_month_key,
+    // Set by apply_payday ('pay' / 'windfall' / 'signoff') and by anything
+    // tagging a trading payout. It was missing here, which left the four
+    // `entry.kind` branches in classifyIncome permanently dead -- they read a
+    // field the mapper never provided.
+    kind: row.kind ?? null,
     createdBy: row.created_by,
   };
 }
@@ -409,6 +421,9 @@ export const repo = {
         name: payload.name,
         monthly_budget: payload.monthlyBudget,
         group_name: payload.group || payload.name,
+        // Sent only once 0016 has landed: naming a column that does not exist
+        // fails the whole insert.
+        ...(payload.isTradingCost === undefined ? {} : { is_trading_cost: payload.isTradingCost }),
         created_by: userId,
       })
       .then(unwrap);
@@ -429,6 +444,7 @@ export const repo = {
         name: payload.name,
         monthly_budget: payload.monthlyBudget,
         group_name: payload.group,
+        ...(payload.isTradingCost === undefined ? {} : { is_trading_cost: payload.isTradingCost }),
         updated_at: new Date().toISOString(),
       })
       .eq('id', payload.id)
@@ -602,6 +618,12 @@ export const repo = {
   // all move a date the same way.
   async completeScheduleItem(payload) {
     await supabase.rpc('complete_schedule_item', { p_bill_id: payload.id }).then(unwrap);
+  },
+
+  // Tags what a piece of income actually was. Moves no money: it only records
+  // a label, which is what lets a trading payout be counted a year later.
+  async setIncomeKind(payload) {
+    await supabase.from('income').update({ kind: payload.kind }).eq('id', payload.id).then(unwrap);
   },
 
   // ---- Transfer checklists ----

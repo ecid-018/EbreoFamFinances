@@ -2282,3 +2282,17 @@ svg {
   color: var(--color-text-secondary);
   text-decoration: line-through;
 }
+
+/* ---------- Trading net ---------- */
+
+/* The headline figure, sized to be read first: the point of the card is the
+   subtraction, not either half of it. */
+.trading-net {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.trading-net--down {
+  color: var(--color-destructive);
+}

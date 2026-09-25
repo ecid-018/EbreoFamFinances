@@ -5,6 +5,7 @@ import { formatPHP } from '../../utils/currency.js';
 import { generateId } from '../../utils/id.js';
 import {
   INCOME_KIND_META,
+  INCOME_KIND_TO_ROW_KIND,
   buildChecklist,
   getIncomeKindMeta,
   isChecklistFinished,
@@ -105,6 +106,12 @@ export function ChecklistCard() {
   const goalName = (id) => state.goals.find((g) => g.id === id)?.name ?? null;
 
   function answer(entry, kind) {
+    // The answer is also what this income WAS. Recording it is what lets a
+    // trading payout still be countable at the end of the year.
+    const rowKind = INCOME_KIND_TO_ROW_KIND[kind];
+    if (rowKind && entry.kind !== rowKind) {
+      dispatch({ type: 'income/setKind', payload: { id: entry.id, kind: rowKind } });
+    }
     const built = buildChecklist({ entry, kind, settings: state.planSettings, goals: state.goals });
     dispatch({
       type: 'checklist/create',

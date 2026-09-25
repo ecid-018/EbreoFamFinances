@@ -7,6 +7,7 @@ import {
   isChecklistStale,
   isChecklistFinished,
   getOpenChecklists,
+  INCOME_KIND_TO_ROW_KIND,
 } from './checklist.js';
 
 // Every figure invented.
@@ -192,5 +193,30 @@ describe('getIncomeKindMeta', () => {
 
   it('falls back to "something else" for anything unrecognised', () => {
     expect(getIncomeKindMeta('nonsense').value).toBe(INCOME_KINDS.OTHER);
+  });
+});
+
+describe('INCOME_KIND_TO_ROW_KIND', () => {
+  it('maps only the three answers that have an exact income.kind', () => {
+    expect(INCOME_KIND_TO_ROW_KIND[INCOME_KINDS.TRADING_PAYOUT]).toBe('trading_payout');
+    expect(INCOME_KIND_TO_ROW_KIND[INCOME_KINDS.WINDFALL]).toBe('windfall');
+    expect(INCOME_KIND_TO_ROW_KIND[INCOME_KINDS.OTHER]).toBe('other');
+  });
+
+  // Mislabelling these would be worse than leaving them null: a payday stamps
+  // its own, and the other two have no equivalent at all.
+  it('leaves the rest alone', () => {
+    expect(INCOME_KIND_TO_ROW_KIND[INCOME_KINDS.ALLOTMENT]).toBeUndefined();
+    expect(INCOME_KIND_TO_ROW_KIND[INCOME_KINDS.LEAVE_PAY]).toBeUndefined();
+    expect(INCOME_KIND_TO_ROW_KIND[INCOME_KINDS.REMITTANCE]).toBeUndefined();
+    expect(INCOME_KIND_TO_ROW_KIND[INCOME_KINDS.INSTALMENT]).toBeUndefined();
+  });
+
+  // Every value it does map has to be one the database will accept.
+  it('only produces values income.kind allows', () => {
+    const allowed = ['pay', 'windfall', 'signoff', 'trading_payout', 'other'];
+    for (const value of Object.values(INCOME_KIND_TO_ROW_KIND)) {
+      expect(allowed).toContain(value);
+    }
   });
 });

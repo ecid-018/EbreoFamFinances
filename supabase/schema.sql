@@ -32,6 +32,10 @@ create table envelopes (
   name text not null,
   monthly_budget numeric(12,2) not null,
   group_name text not null,
+  -- A cost of running the trading account (0016): data feeds, platform fees,
+  -- subscriptions. Flagged rather than moved, so they stay in the budget they
+  -- belong to while still being countable together.
+  is_trading_cost boolean not null default false,
   created_by uuid references auth.users(id),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -305,6 +309,8 @@ create table payday_allocations (
   amount numeric(12,2) not null,
   label text
 );
+
+create index envelopes_trading_cost_idx on envelopes (is_trading_cost) where is_trading_cost;
 
 create index on transactions (category_id);
 create index on transactions (account_id);
