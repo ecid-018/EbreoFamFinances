@@ -256,3 +256,13 @@ export function BillIcon(props) {
     </Svg>
   );
 }
+
+// A rising line, for Reports: what has happened, not what is planned.
+export function ReportIcon(props) {
+  return (
+    <Svg {...props}>
+      <path d="M4 19h16" />
+      <path d="M5.5 15.5 10 10.5l3 3 5-6" />
+    </Svg>
+  );
+}

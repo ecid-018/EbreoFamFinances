@@ -2296,3 +2296,147 @@ svg {
 .trading-net--down {
   color: var(--color-destructive);
 }
+
+/* ---------- Charts (Reports) ---------- */
+
+/* Drawn in real pixels rather than a scaled viewBox, so a 2px line is 2px at
+   every screen size. */
+.chart {
+  width: 100%;
+  padding: 4px 16px 0;
+  background: var(--color-card);
+}
+
+.chart svg {
+  display: block;
+  overflow: visible;
+}
+
+/* One series everywhere. The app's warm palette cannot separate more: its
+   accent, warning and destructive measure deltaE 3.4 apart under deutan
+   vision. Splits are carried by small multiples and the tables. */
+.chart__column,
+.chart__column-foot,
+.chart__marker {
+  fill: var(--color-accent);
+}
+
+/* Everything but the focused column steps back, so the one being read is the
+   one that stands out. */
+.chart__column,
+.chart__column-foot {
+  opacity: 0.45;
+  transition: opacity 120ms ease;
+}
+
+.chart__column--active,
+.chart__column--active + .chart__column-foot {
+  opacity: 1;
+}
+
+.chart__line {
+  stroke: var(--color-accent);
+}
+
+/* A wash, never a saturated block. */
+.chart__area {
+  fill: var(--color-accent);
+  opacity: 0.1;
+}
+
+/* The ring keeps the marker legible where it sits on the line. */
+.chart__marker {
+  stroke: var(--color-card);
+}
+
+.chart__axis,
+.chart__crosshair {
+  stroke: var(--color-separator);
+}
+
+/* Text never wears the data colour — identity comes from the mark beside it. */
+.chart__value {
+  fill: var(--color-text);
+  font-size: var(--footnote-size);
+  font-weight: 600;
+}
+
+.chart__tick {
+  fill: var(--color-text-secondary);
+  font-size: var(--caption-size);
+}
+
+.chart__tick--active {
+  fill: var(--color-text);
+  font-weight: 600;
+}
+
+.chart svg [tabindex]:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+/* Small multiples: one little chart per slice, identity from its label. */
+.chart-multiples {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 4px 12px;
+  padding: 8px 0;
+  background: var(--color-card);
+}
+
+.chart-multiple__label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 16px;
+  font-size: var(--caption-size);
+  color: var(--color-text-secondary);
+}
+
+.chart-multiple__value {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+/* The table beside every chart: the exact figures, and the accessible path. */
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--footnote-size);
+}
+
+.report-table th,
+.report-table td {
+  padding: 7px 16px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.report-table th:first-child,
+.report-table td:first-child {
+  text-align: left;
+}
+
+.report-table thead th {
+  font-size: var(--caption-size);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.report-table tbody tr:not(:last-child) td {
+  border-bottom: 1px solid var(--color-separator);
+}
+
+.report-hero {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.report-scroll {
+  overflow-x: auto;
+}
