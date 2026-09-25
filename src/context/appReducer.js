@@ -768,6 +768,14 @@ export function appReducer(state, action) {
       };
     }
 
+    // A label, not money. No ledger entry: nothing happened, something was
+    // named.
+    case 'income/setKind':
+      return {
+        ...state,
+        income: state.income.map((i) => (i.id === action.payload.id ? { ...i, kind: action.payload.kind } : i)),
+      };
+
     case 'planSettings/update':
       return { ...state, planSettings: { ...state.planSettings, ...action.payload } };
 

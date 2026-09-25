@@ -35,6 +35,7 @@ export const syncEffects = {
   // already caught us out once (a 31st drifting to the 28th). Refetch instead.
   'bill/complete': (payload) => repo.completeScheduleItem(payload),
 
+  'income/setKind': (payload) => repo.setIncomeKind(payload),
   'checklist/create': (payload, ctx) => repo.createChecklist(payload, ctx.userId),
   'checklist/updateItem': (payload) => repo.updateChecklistItem(payload),
   'checklist/close': (payload) => repo.closeChecklist(payload),

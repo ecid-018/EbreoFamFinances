@@ -33,6 +33,16 @@ export const INCOME_KIND_META = [
   { value: INCOME_KINDS.OTHER, label: 'Something else', hint: 'No routing — decide yourself' },
 ];
 
+// Which answers to "What is this money?" correspond exactly to a value of
+// income.kind. Only these three: 'allotment' and 'leave_pay' describe money a
+// payday creates and already stamps, and 'remittance' and 'instalment' have no
+// equivalent at all. Mislabelling them would be worse than leaving them null.
+export const INCOME_KIND_TO_ROW_KIND = {
+  [INCOME_KINDS.TRADING_PAYOUT]: 'trading_payout',
+  [INCOME_KINDS.WINDFALL]: 'windfall',
+  [INCOME_KINDS.OTHER]: 'other',
+};
+
 // The trading plan's split. Named rather than inline so the three numbers are
 // visibly one rule that adds to 100.
 const TRADING_SPLIT = { goals: 0.5, tax: 0.3, reinvest: 0.2 };

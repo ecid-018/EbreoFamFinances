@@ -26,6 +26,10 @@ export function EnvelopeFormModal({ mode, envelope }) {
     isEdit ? String(resolved?.monthlyBudget ?? envelope.monthlyBudget) : ''
   );
   const [group, setGroup] = useState(isEdit ? envelope.group : '');
+  // undefined means 0016 has not been applied here yet, so the control is
+  // hidden rather than offering a tick that cannot be saved.
+  const tradingFlagAvailable = state.envelopes.every((env) => env.isTradingCost !== undefined);
+  const [isTradingCost, setIsTradingCost] = useState(isEdit ? envelope.isTradingCost ?? false : false);
   const [error, setError] = useState('');
 
   const existingGroups = [...new Set(state.envelopes.map((env) => env.group))];
@@ -57,6 +61,7 @@ export function EnvelopeFormModal({ mode, envelope }) {
           name: name.trim(),
           monthlyBudget: base?.monthlyBudget ?? budgetValue,
           group: group.trim(),
+          ...(tradingFlagAvailable ? { isTradingCost } : {}),
         },
       });
       if (budgetValue !== resolved?.monthlyBudget) {
@@ -71,7 +76,13 @@ export function EnvelopeFormModal({ mode, envelope }) {
       const id = generateId();
       dispatch({
         type: 'envelope/add',
-        payload: { id, name: name.trim(), monthlyBudget: 0, group: group.trim() },
+        payload: {
+          id,
+          name: name.trim(),
+          monthlyBudget: 0,
+          group: group.trim(),
+          ...(tradingFlagAvailable ? { isTradingCost } : {}),
+        },
       });
       dispatch({ type: 'envelope/setMonthBudget', payload: { envelopeId: id, monthKey, amount: budgetValue } });
     }
@@ -110,6 +121,23 @@ export function EnvelopeFormModal({ mode, envelope }) {
           <span className="form__label">Group</span>
           <GroupSelect groups={existingGroups} value={group} onChange={setGroup} />
         </div>
+        {tradingFlagAvailable && (
+          <label className="form__field form__checkbox">
+            <input
+              type="checkbox"
+              checked={isTradingCost}
+              onChange={(e) => setIsTradingCost(e.target.checked)}
+            />
+            <span>
+              This is a cost of trading
+              <span className="form__checkbox-hint">
+                Data feeds, platform fees, subscriptions. It stays in this group and this budget —
+                the tick only lets the Plan view total them against what trading paid out.
+              </span>
+            </span>
+          </label>
+        )}
+
         {error && <p className="form__error">{error}</p>}
         <button type="submit" className="btn-block">
           {isEdit ? 'Save Changes' : 'Add Envelope'}
