@@ -2258,9 +2258,9 @@ svg {
   gap: 8px;
 }
 
+/* Nested inside a row now, so the row supplies the padding. */
 .checklist__kinds {
-  padding: 11px 16px;
-  background: var(--color-card);
+  gap: 6px;
 }
 
 .checklist__skip .form__input {
