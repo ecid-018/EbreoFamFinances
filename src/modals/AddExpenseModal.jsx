@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useApp } from '../context/AppContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { toISODateString } from '../utils/date.js';
-import { getSpendableAccounts, withCurrentAccount } from '../utils/accounts.js';
+import { getSpendableAccounts, withCurrentAccount, getAccountLabel } from '../utils/accounts.js';
 import { getPaymentDraft } from '../utils/plan/bills.js';
 import { generateId } from '../utils/id.js';
 import { BottomSheet } from './BottomSheet.jsx';
@@ -141,7 +141,7 @@ export function AddExpenseModal({ mode = 'add', transaction, bill = null }) {
             >
               {spendableAccounts.map((account) => (
                 <option key={account.id} value={account.id}>
-                  {account.name}
+                  {getAccountLabel(account, state.accounts, state.profiles)}
                 </option>
               ))}
             </select>

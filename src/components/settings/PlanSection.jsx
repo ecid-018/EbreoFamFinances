@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useApp } from '../../context/AppContext.jsx';
 import { formatPHP } from '../../utils/currency.js';
-import { getActiveAccounts } from '../../utils/accounts.js';
+import { getActiveAccounts, getAccountLabel } from '../../utils/accounts.js';
 import { SPLIT_FIELDS, getSplitTotal, getSplitRemainder, isSplitBalanced } from '../../utils/plan/settings.js';
 
 const MONEY_FIELDS = [
@@ -105,7 +105,9 @@ export function PlanSection() {
     );
   }
 
-  function pickerInput({ key, label }, options, emptyLabel) {
+  // `labelOf` because this renders both accounts and goals: only accounts need
+  // their owner naming, and only when two of them share a name.
+  function pickerInput({ key, label }, options, emptyLabel, labelOf = (o) => o.name) {
     return (
       <label className="form__field" key={key}>
         <span className="form__label">{label}</span>
@@ -117,7 +119,7 @@ export function PlanSection() {
           <option value="">{emptyLabel}</option>
           {options.map((o) => (
             <option key={o.id} value={o.id}>
-              {o.name}
+              {labelOf(o)}
             </option>
           ))}
         </select>
@@ -229,7 +231,7 @@ export function PlanSection() {
                 undefined. Showing it would offer a field that cannot be
                 saved, so it waits until the migration lands. */}
             {ACCOUNT_POINTERS.filter((f) => planSettings[f.key] !== undefined).map((f) =>
-              pickerInput(f, accounts, 'Not set')
+              pickerInput(f, accounts, 'Not set', (a) => getAccountLabel(a, state.accounts, state.profiles))
             )}
 
             <div className="plan-settings__group">Which goal is which</div>
