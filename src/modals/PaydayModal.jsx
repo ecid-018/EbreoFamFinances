@@ -50,8 +50,12 @@ export function PaydayModal() {
   const amountToSplit = hubAmount == null && household === '' ? null : round2((hubAmount ?? 0) + householdSurplus);
 
   const split = useMemo(
-    () => computePaydaySplit({ settings, goals: state.goals, kind, amountToSplit, sources: state.splitLineSources }),
-    [settings, state.goals, kind, amountToSplit, state.splitLineSources]
+    () =>
+      computePaydaySplit({
+        settings, goals: state.goals, kind, amountToSplit,
+        sources: state.splitLineSources, lineItems: state.splitLineItems,
+      }),
+    [settings, state.goals, kind, amountToSplit, state.splitLineSources, state.splitLineItems]
   );
 
   // Each source account can only supply what actually arrived in it, less any
@@ -260,11 +264,17 @@ export function PaydayModal() {
                   </tr>
                 ))}
                 {split.allocations.map((a) => (
-                  <tr key={a.line + (a.goalId ?? '')}>
+                  <tr key={a.line + (a.goalId ?? '') + a.label}>
                     <td>
                       {a.label}
+                      {/* Says WHICH account it stays in. Before split lines
+                          could be paid from anywhere but the hub this was
+                          always the hub; now "stays in the hub" is wrong for
+                          anything funded from another account. */}
                       <span className={a.unconfigured ? 'prefill-down' : 'prefill-table__muted'}>
-                        {a.unconfigured ? ' · no destination set — money stays in the hub' : ' · stays in the hub'}
+                        {a.unconfigured
+                          ? ' · no destination set — the money does not move'
+                          : ` · stays in ${accountName(a.sourceAccountId ?? settings.hubAccountId)}`}
                       </span>
                     </td>
                     <td className="prefill-table__num">{formatPHP(a.amount)}</td>

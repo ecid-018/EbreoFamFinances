@@ -6,6 +6,7 @@
 // the rest of the app uses rather than repeating their logic.
 
 import { SPLIT_FIELDS } from './settings.js';
+import { hasItems, routeLineItems } from './splitItems.js';
 
 export const PAYDAY_KINDS = { PAY: 'pay', WINDFALL: 'windfall', SIGNOFF: 'signoff' };
 
@@ -164,16 +165,40 @@ export function getExpectedLanding(accountId, settings, sources = []) {
   return round2(fromLines + household);
 }
 
-export function buildRoutedLines({ lines, settings, goals = [], sources = [] }) {
+export function buildRoutedLines({ lines, settings, goals = [], sources = [], lineItems = [] }) {
   const items = [];
+  let unroutedTotal = 0;
 
-  const { routed, unrouted } = routeGoalsLine(Math.max(0, lines.splitGoals ?? 0), goals);
-  const goalsSource = getLineSource('splitGoals', settings, sources);
-  for (const r of routed) {
-    items.push({ ...r, line: 'splitGoals', label: r.goalName, missingTarget: false, sourceAccountId: goalsSource });
+  // An ITEMISED line says exactly where each part of it goes, so it bypasses
+  // both the waterfall and the single-source lookup. A line with no items is
+  // untouched by this and behaves as it always has.
+  const itemised = (line) => hasItems(lineItems, line);
+  const pushItems = (line) => {
+    items.push(
+      ...routeLineItems(lineItems, line, {
+        settings,
+        goals,
+        fallbackSource: getLineSource(line, settings, sources),
+      })
+    );
+  };
+
+  if (itemised('splitGoals')) {
+    pushItems('splitGoals');
+  } else {
+    const { routed, unrouted } = routeGoalsLine(Math.max(0, lines.splitGoals ?? 0), goals);
+    const goalsSource = getLineSource('splitGoals', settings, sources);
+    for (const r of routed) {
+      items.push({ ...r, line: 'splitGoals', label: r.goalName, missingTarget: false, sourceAccountId: goalsSource });
+    }
+    unroutedTotal = unrouted;
   }
 
   for (const { line, pointer } of SINKING_LINES) {
+    if (itemised(line)) {
+      pushItems(line);
+      continue;
+    }
     const amount = round2(lines[line] ?? 0);
     if (amount <= 0) continue;
     const goal = goals.find((g) => g.id === settings?.[pointer]);
@@ -192,6 +217,10 @@ export function buildRoutedLines({ lines, settings, goals = [], sources = [] }) 
   }
 
   for (const { line, pointer } of ACCOUNT_LINES) {
+    if (itemised(line)) {
+      pushItems(line);
+      continue;
+    }
     const amount = round2(lines[line] ?? 0);
     if (amount <= 0) continue;
     const accountId = settings?.[pointer] ?? null;
@@ -207,7 +236,7 @@ export function buildRoutedLines({ lines, settings, goals = [], sources = [] }) 
     });
   }
 
-  return { items, unrouted };
+  return { items, unrouted: unroutedTotal };
 }
 
 // Groups routed amounts by where the money has to end up. Anything already in
@@ -229,7 +258,10 @@ export function groupByDestination(routed, hubAccountId) {
       // `||` not `??`: a sinking line can have a goal (missingTarget false) and
       // still have no account on that goal, which is just as unconfigured. `??`
       // short-circuited on the false and reported it as deliberate.
-      unconfigured: Boolean(item.missingTarget) || !item.accountId,
+      //
+      // An itemised line can say "this stays here" deliberately, and that is
+      // the one case where no destination is the right answer.
+      unconfigured: Boolean(item.missingTarget) || (!item.accountId && !item.deliberateStay),
     };
 
     // Money already sitting in the account that funds it needs no transfer —
@@ -257,7 +289,7 @@ export function groupByDestination(routed, hubAccountId) {
 }
 
 // The whole calculation for one payday.
-export function computePaydaySplit({ settings, goals = [], kind = PAYDAY_KINDS.PAY, amountToSplit = null, sources = [] }) {
+export function computePaydaySplit({ settings, goals = [], kind = PAYDAY_KINDS.PAY, amountToSplit = null, sources = [], lineItems = [] }) {
   if (!settings) return null;
 
   if (kind === PAYDAY_KINDS.SIGNOFF) {
@@ -267,7 +299,7 @@ export function computePaydaySplit({ settings, goals = [], kind = PAYDAY_KINDS.P
     // sends it to the vacation goal exactly as a normal payday would. Only the
     // amounts are worked out differently.
     const lines = { splitVacationReserve: reserve.toReserve, splitGoals: reserve.remainder };
-    const { items, unrouted } = buildRoutedLines({ lines, settings, goals, sources });
+    const { items, unrouted } = buildRoutedLines({ lines, settings, goals, sources, lineItems });
     return {
       kind,
       lines,
@@ -285,7 +317,7 @@ export function computePaydaySplit({ settings, goals = [], kind = PAYDAY_KINDS.P
     const toGoals = round2((total * pct) / 100);
     const toTrips = round2(total - toGoals);
     const lines = { splitGoals: toGoals, splitTrips: toTrips };
-    const { items, unrouted } = buildRoutedLines({ lines, settings, goals, sources });
+    const { items, unrouted } = buildRoutedLines({ lines, settings, goals, sources, lineItems });
     return {
       kind,
       lines,
@@ -309,7 +341,7 @@ export function computePaydaySplit({ settings, goals = [], kind = PAYDAY_KINDS.P
   const adjusted = { ...planned, splitGoals: round2((planned.splitGoals ?? 0) + difference) };
 
   const { lines, applied, heldBack } = applyPresignoffRule(adjusted, { settings, goals });
-  const { items, unrouted } = buildRoutedLines({ lines, settings, goals, sources });
+  const { items, unrouted } = buildRoutedLines({ lines, settings, goals, sources, lineItems });
 
   return {
     kind,

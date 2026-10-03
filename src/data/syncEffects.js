@@ -36,6 +36,9 @@ export const syncEffects = {
   'bill/complete': (payload) => repo.completeScheduleItem(payload),
 
   'income/setKind': (payload) => repo.setIncomeKind(payload),
+  // No optimistic reducer case: the rows are replaced wholesale and given
+  // their ids by the database. The screen waits for the refetch.
+  'splitLineItems/save': (payload, ctx) => repo.saveSplitLineItems(payload, ctx.userId),
   'checklist/create': (payload, ctx) => repo.createChecklist(payload, ctx.userId),
   'checklist/updateItem': (payload) => repo.updateChecklistItem(payload),
   'checklist/close': (payload) => repo.closeChecklist(payload),
