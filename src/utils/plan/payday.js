@@ -6,7 +6,7 @@
 // the rest of the app uses rather than repeating their logic.
 
 import { SPLIT_FIELDS } from './settings.js';
-import { hasItems, routeLineItems } from './splitItems.js';
+import { getItemsTotal, hasItems, routeLineItems } from './splitItems.js';
 
 export const PAYDAY_KINDS = { PAY: 'pay', WINDFALL: 'windfall', SIGNOFF: 'signoff' };
 
@@ -181,6 +181,15 @@ export function buildRoutedLines({ lines, settings, goals = [], sources = [], li
         fallbackSource: getLineSource(line, settings, sources),
       })
     );
+    // Items are FIXED amounts, so anything the line carries beyond them has
+    // nowhere to go. That matters most on the goals line, which absorbs the
+    // difference when the pay received differs from the pay planned: without
+    // this the surplus vanished silently, with no row and no warning.
+    //
+    // Only a positive remainder. Items adding up to MORE than the line is a
+    // different fault, and both the reconciliation in Settings and the
+    // per-account shortfall check already say so.
+    unroutedTotal = round2(unroutedTotal + Math.max(0, round2((lines[line] ?? 0) - getItemsTotal(lineItems, line))));
   };
 
   if (itemised('splitGoals')) {
