@@ -2,17 +2,18 @@ import { useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { formatPHP } from '../utils/currency.js';
-import { getMonthKey, toISODateString } from '../utils/date.js';
+import { getMonthKey, getMonthKeyFromDateStr, getMonthName, toISODateString } from '../utils/date.js';
 import { generateId } from '../utils/id.js';
 import { computePaydaySplit, getExpectedLanding, PAYDAY_KINDS, SPLIT_FIELDS } from '../utils/plan/payday.js';
+import { SegmentedControl } from '../components/shared/SegmentedControl.jsx';
+import { BudgetMonthStepper } from '../components/shared/BudgetMonthStepper.jsx';
+import { BottomSheet } from './BottomSheet.jsx';
 
 const SOURCE_LABEL = {
   [PAYDAY_KINDS.PAY]: 'Pay',
   [PAYDAY_KINDS.WINDFALL]: 'Windfall',
   [PAYDAY_KINDS.SIGNOFF]: 'Sign-off pay',
 };
-import { SegmentedControl } from '../components/shared/SegmentedControl.jsx';
-import { BottomSheet } from './BottomSheet.jsx';
 
 // One payday, applied as one transaction. The split is computed by the pure
 // function in utils/plan/payday.js; this screen only shows it, lets the two
@@ -26,6 +27,13 @@ export function PaydayModal() {
 
   const [kind, setKind] = useState(PAYDAY_KINDS.PAY);
   const [date, setDate] = useState(toISODateString());
+  // Which month this pay belongs to. It used to be taken silently from the
+  // month stepper at the top of the app, so a payday could be filed against
+  // the wrong month with nothing on this screen to say so -- and pay that
+  // arrives a week before the month it funds makes that the NORMAL case here,
+  // not an edge one. Defaults to the viewed month, so nothing changes unless
+  // it is touched. The Add Income form has had this control all along.
+  const [budgetMonth, setBudgetMonth] = useState(state.month);
   // Prefilled with what each account is expected to RECEIVE, derived from the
   // lines it funds. pay_household is the spending allowance and pay_hub is the
   // total split across both accounts — neither is a landing figure, and using
@@ -117,7 +125,7 @@ export function PaydayModal() {
     const payload = {
       id: generateId(),
       date,
-      budget_month_key: getMonthKey(state.month.year, state.month.monthIndex),
+      budget_month_key: getMonthKey(budgetMonth.year, budgetMonth.monthIndex),
       kind,
       incomes,
       transfers: split.transfers.map((t) => ({
@@ -154,6 +162,13 @@ export function PaydayModal() {
     closeModal();
   }
 
+  // Said plainly when the two differ, in the same words the income list uses.
+  const arrivedKey = getMonthKeyFromDateStr(date);
+  const budgetKey = getMonthKey(budgetMonth.year, budgetMonth.monthIndex);
+  const countsElsewhere = arrivedKey !== budgetKey;
+  const budgetMonthLabel = `${getMonthName(budgetMonth.year, budgetMonth.monthIndex)} ${budgetMonth.year}`;
+  const nextMonthName = getMonthName(budgetMonth.year, budgetMonth.monthIndex + 1);
+
   const isSignoff = kind === PAYDAY_KINDS.SIGNOFF;
   // Only an ordinary payday is split against the plan. A windfall and a
   // sign-off each work out their own two lines, so the household field, the
@@ -177,9 +192,19 @@ export function PaydayModal() {
         </div>
 
         <label className="form__field">
-          <span className="form__label">Date</span>
+          <span className="form__label">Date the money arrived</span>
           <input type="date" className="form__input" value={date} onChange={(e) => setDate(e.target.value)} />
         </label>
+
+        <div className="form__field">
+          <span className="form__label">Counted toward</span>
+          <BudgetMonthStepper value={budgetMonth} onChange={setBudgetMonth} />
+          <span className="form__checkbox-hint">
+            {countsElsewhere
+              ? `Arrived in a different month from the one it funds. This payday is budgeted as ${budgetMonthLabel}.`
+              : `The month this pay funds. Step it forward if the money has arrived early for ${nextMonthName}.`}
+          </span>
+        </div>
 
         {isPlanSplit && (
           <label className="form__field">
@@ -331,7 +356,7 @@ export function PaydayModal() {
         {error && <p className="form__error">{error}</p>}
 
         <button type="button" className="btn-block" disabled={applying || !split || split.belowZero || shortfalls.length > 0} onClick={handleApply}>
-          {applying ? 'Applying…' : 'Apply payday'}
+          {applying ? 'Applying…' : `Apply payday for ${budgetMonthLabel}`}
         </button>
         <p className="prefill-note">
           Applied as one transaction: if any part fails, none of it is recorded. Logged by{' '}
