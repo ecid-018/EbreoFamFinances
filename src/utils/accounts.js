@@ -66,3 +66,23 @@ export function splitIncomeByCurrency(incomeEntries, accounts) {
     { phpTotal: 0, usdTotal: 0 }
   );
 }
+
+// Two accounts can share a name: this household has a "BPI Savings" each. Where
+// that happens the owner is the only thing telling them apart, so the name
+// carries it; where it does not, adding an owner would be noise on every row.
+//
+// The Payday and Transfer screens each solved this on their own, and every
+// other picker did not -- so choosing between two identically named accounts
+// was guesswork in seven places.
+export function getAccountLabel(account, accounts = [], profiles = []) {
+  if (!account) return 'an account';
+  const sameName = accounts.filter((a) => a.name === account.name);
+  if (sameName.length < 2) return account.name;
+  const owner = profiles.find((p) => p.id === account.ownerId);
+  return owner ? `${account.name} (${owner.displayName})` : account.name;
+}
+
+// The same, by id, for screens that hold an id rather than the row.
+export function getAccountLabelById(id, accounts = [], profiles = []) {
+  return getAccountLabel(accounts.find((a) => a.id === id) ?? null, accounts, profiles);
+}

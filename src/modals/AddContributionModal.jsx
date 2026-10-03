@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useApp } from '../context/AppContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { toISODateString, getMonthKey } from '../utils/date.js';
-import { getSpendableAccounts } from '../utils/accounts.js';
+import { getSpendableAccounts, getAccountLabel } from '../utils/accounts.js';
 import { SegmentedControl } from '../components/shared/SegmentedControl.jsx';
 import { BudgetMonthStepper } from '../components/shared/BudgetMonthStepper.jsx';
 import { BottomSheet } from './BottomSheet.jsx';
@@ -110,7 +110,7 @@ export function AddContributionModal({ goalId, goalName }) {
             <select className="form__input" value={accountId} onChange={(e) => setAccountId(e.target.value)}>
               {spendableAccounts.map((account) => (
                 <option key={account.id} value={account.id}>
-                  {account.name}
+                  {getAccountLabel(account, state.accounts, state.profiles)}
                 </option>
               ))}
             </select>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext.jsx';
-import { getActiveAccounts } from '../utils/accounts.js';
+import { getActiveAccounts, getAccountLabel } from '../utils/accounts.js';
 import { BILL_PERIODS, getNextOccurrence, SCHEDULE_KINDS, SCHEDULE_KIND_META, getKindMeta } from '../utils/plan/bills.js';
 import { splitGoals } from '../utils/plan/goals.js';
 import { BottomSheet } from './BottomSheet.jsx';
@@ -164,7 +164,7 @@ export function BillFormModal({ mode = 'add', bill, defaultKind = SCHEDULE_KINDS
             <option value="">Ask each time</option>
             {accounts.map((a) => (
               <option key={a.id} value={a.id}>
-                {a.name}
+                {getAccountLabel(a, state.accounts, state.profiles)}
               </option>
             ))}
           </select>

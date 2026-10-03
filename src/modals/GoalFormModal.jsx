@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
-import { getOwnAccounts, withCurrentAccount } from '../utils/accounts.js';
+import { getOwnAccounts, withCurrentAccount, getAccountLabel } from '../utils/accounts.js';
 import { BottomSheet } from './BottomSheet.jsx';
 
 export function GoalFormModal({ mode = 'add', goal }) {
@@ -130,7 +130,7 @@ export function GoalFormModal({ mode = 'add', goal }) {
               <option value="">Not tracked to an account</option>
               {accounts.map((account) => (
                 <option key={account.id} value={account.id}>
-                  {account.name}
+                  {getAccountLabel(account, state.accounts, state.profiles)}
                 </option>
               ))}
             </select>

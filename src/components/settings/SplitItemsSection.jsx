@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useApp } from '../../context/AppContext.jsx';
 import { formatPHP } from '../../utils/currency.js';
-import { getActiveAccounts } from '../../utils/accounts.js';
+import { getActiveAccounts, getAccountLabel } from '../../utils/accounts.js';
 import { SPLIT_FIELDS } from '../../utils/plan/settings.js';
 import { getLineItems, getItemsTotal, hasItems } from '../../utils/plan/splitItems.js';
 
@@ -20,7 +20,7 @@ function toNumber(value) {
   return Number.isFinite(n) ? n : 0;
 }
 
-function LineEditor({ accounts, goals, items, planned, onSave, onCancel }) {
+function LineEditor({ accounts, goals, items, planned, labelOf, onSave, onCancel }) {
   const [draft, setDraft] = useState(() =>
     items.length
       ? items.map((i) => ({
@@ -94,7 +94,7 @@ function LineEditor({ accounts, goals, items, planned, onSave, onCancel }) {
               <option value="">Paid from — the line’s usual account</option>
               {accounts.map((a) => (
                 <option key={a.id} value={a.id}>
-                  From {a.name}
+                  From {labelOf(a)}
                 </option>
               ))}
             </select>
@@ -117,7 +117,7 @@ function LineEditor({ accounts, goals, items, planned, onSave, onCancel }) {
               ))}
               {accounts.map((a) => (
                 <option key={a.id} value={`acct:${a.id}`}>
-                  To account: {a.name}
+                  To account: {labelOf(a)}
                 </option>
               ))}
             </select>
@@ -192,6 +192,7 @@ export function SplitItemsSection() {
                 <div className="list-row__title" style={{ padding: '11px 16px 0' }}>{field.label}</div>
                 <LineEditor
                   accounts={accounts}
+                  labelOf={(a) => getAccountLabel(a, state.accounts, state.profiles)}
                   goals={state.goals}
                   items={lineItems}
                   planned={planned}

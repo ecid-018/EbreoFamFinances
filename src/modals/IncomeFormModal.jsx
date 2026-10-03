@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useApp } from '../context/AppContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { toISODateString, getMonthKey, parseMonthKey } from '../utils/date.js';
-import { getOwnAccounts, withCurrentAccount } from '../utils/accounts.js';
+import { getOwnAccounts, withCurrentAccount, getAccountLabel } from '../utils/accounts.js';
 import { BudgetMonthStepper } from '../components/shared/BudgetMonthStepper.jsx';
 import { generateId } from '../utils/id.js';
 import { classifyIncome, buildChecklist } from '../utils/plan/checklist.js';
@@ -143,7 +143,7 @@ export function IncomeFormModal({ mode = 'add', entry, scheduleItem = null }) {
             <select className="form__input" value={accountId} onChange={(e) => setAccountId(e.target.value)}>
               {accounts.map((account) => (
                 <option key={account.id} value={account.id}>
-                  {account.name}
+                  {getAccountLabel(account, state.accounts, state.profiles)}
                   {account.currency === 'USD' ? ' (USD)' : ''}
                 </option>
               ))}
