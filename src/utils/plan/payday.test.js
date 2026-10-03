@@ -525,3 +525,77 @@ describe('computePaydaySplit — sign-off', () => {
     expect(split.presignoff.applied).toBe(false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Itemised split lines (0017). Every figure invented.
+// ---------------------------------------------------------------------------
+describe('buildRoutedLines with itemised lines', () => {
+  const HUB = 'acc-hub';
+  const MUM = 'acc-mum';
+  const DAD = 'acc-dad';
+  const settings = { hubAccountId: HUB, insuranceGoalId: 'g-ins' };
+  const goals = [
+    { id: 'g-baby', name: 'Baby fund', target: 400, saved: 0, priority: 1, isSinkingFund: false, heldInAccountId: 'acc-pafc' },
+    { id: 'g-emer', name: 'Emergency A', target: 480, saved: 0, priority: 2, isSinkingFund: false, heldInAccountId: 'acc-maya' },
+    { id: 'g-ins', name: 'Insurance fund', target: 100, saved: 0, isSinkingFund: true, heldInAccountId: HUB },
+  ];
+  const li = (over) => ({
+    id: Math.random().toString(36).slice(2), lineKey: 'splitGoals', label: 'x', amount: 0,
+    fromAccountId: null, toAccountId: null, goalId: null, sortOrder: 0, ...over,
+  });
+
+  // The waterfall would put the whole line into the first goal. Items fund
+  // both, every month, at the stated amounts.
+  it('funds several goals in parallel instead of filling one at a time', () => {
+    const lineItems = [
+      li({ label: 'Baby', amount: 50, goalId: 'g-baby', fromAccountId: MUM }),
+      li({ label: 'Emergency', amount: 30, goalId: 'g-emer', fromAccountId: DAD, sortOrder: 1 }),
+    ];
+    const { items } = buildRoutedLines({ lines: { splitGoals: 80 }, settings, goals, lineItems });
+    expect(items.map((i) => [i.goalId, i.amount, i.sourceAccountId])).toEqual([
+      ['g-baby', 50, MUM],
+      ['g-emer', 30, DAD],
+    ]);
+
+    // Same line, no items: everything into the top-priority goal.
+    const { items: waterfall } = buildRoutedLines({ lines: { splitGoals: 80 }, settings, goals });
+    expect(waterfall.map((i) => [i.goalId, i.amount])).toEqual([['g-baby', 80]]);
+  });
+
+  it('leaves an unitemised line exactly as it was', () => {
+    const lineItems = [li({ lineKey: 'splitTrading', label: 'Feed', amount: 5, fromAccountId: DAD })];
+    const { items } = buildRoutedLines({
+      lines: { splitGoals: 100, splitInsurance: 40 }, settings, goals, lineItems,
+    });
+    // Goals still ran through the waterfall; insurance still went to its goal.
+    expect(items.find((i) => i.line === 'splitGoals')).toMatchObject({ goalId: 'g-baby', amount: 100 });
+    expect(items.find((i) => i.line === 'splitInsurance')).toMatchObject({ goalId: 'g-ins', amount: 40 });
+  });
+
+  it('reports nothing unrouted once the goals line is itemised', () => {
+    const full = goals.map((g) => ({ ...g, saved: g.target }));
+    const lineItems = [li({ label: 'Baby', amount: 50, goalId: 'g-baby' })];
+    // Unitemised, every goal full: the money has nowhere to go.
+    expect(buildRoutedLines({ lines: { splitGoals: 50 }, settings, goals: full }).unrouted).toBe(50);
+    // Itemised: it goes where the plan says, full or not.
+    expect(buildRoutedLines({ lines: { splitGoals: 50 }, settings, goals: full, lineItems }).unrouted).toBe(0);
+  });
+
+  // A premium auto-debited from the account it already sits in is a correct
+  // arrangement, not a missing destination.
+  it('treats an item that deliberately stays put as configured', () => {
+    const lineItems = [li({ lineKey: 'splitInsurance', label: 'Premium', amount: 8, fromAccountId: MUM })];
+    const { items } = buildRoutedLines({ lines: { splitInsurance: 8 }, settings, goals, lineItems });
+    const { allocations, transfers } = groupByDestination(items, HUB);
+    expect(transfers).toHaveLength(0);
+    expect(allocations).toHaveLength(1);
+    expect(allocations[0]).toMatchObject({ label: 'Premium', unconfigured: false });
+  });
+
+  // But a line that simply has no destination configured still is.
+  it('still flags a sinking line with no goal behind it', () => {
+    const { items } = buildRoutedLines({ lines: { splitTrips: 10 }, settings, goals });
+    const { allocations } = groupByDestination(items, HUB);
+    expect(allocations[0]).toMatchObject({ unconfigured: true });
+  });
+});

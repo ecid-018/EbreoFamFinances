@@ -2440,3 +2440,28 @@ svg {
 .report-scroll {
   overflow-x: auto;
 }
+
+/* ---------- Split line items ---------- */
+
+.split-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-separator);
+}
+
+.split-item__row {
+  display: flex;
+  gap: 8px;
+}
+
+.split-item__row > * {
+  flex: 1;
+  min-width: 0;
+}
+
+/* The amount is short and always read next to the name. */
+.split-item__amount {
+  flex: 0 0 110px;
+}

@@ -1189,3 +1189,42 @@ create policy "transfer_checklist_items_select" on transfer_checklist_items for 
 create policy "transfer_checklist_items_insert" on transfer_checklist_items for insert to authenticated with check (true);
 create policy "transfer_checklist_items_update" on transfer_checklist_items for update to authenticated using (true) with check (true);
 create policy "transfer_checklist_items_delete" on transfer_checklist_items for delete to authenticated using (true);
+
+-- Each split line, broken into the named parts it is actually made of (0017).
+--
+-- SPARSE, like envelope_budgets and split_line_sources. A line with no rows
+-- here behaves exactly as it did before: one source account, and for goals the
+-- priority waterfall. It exists because a real plan allocates a line as
+-- several standing amounts to several funds, paid partly from one bank and
+-- partly from the other -- which one source per line could not say, and which
+-- a waterfall that fills one goal at a time does not do.
+create table split_line_items (
+  id uuid primary key default gen_random_uuid(),
+  line_key text not null check (line_key in (
+    'splitGoals', 'splitRetirement', 'splitTrading',
+    'splitInsurance', 'splitTrips', 'splitVacationReserve'
+  )),
+  label text not null,
+  amount numeric(12,2) not null check (amount >= 0),
+  -- Null falls back to the line's source, then the hub, exactly as before.
+  from_account_id uuid references accounts(id) on delete set null,
+  -- At most ONE destination: a goal credits that goal, an account is a plain
+  -- transfer, and neither means the money stays where it is.
+  to_account_id uuid references accounts(id) on delete set null,
+  goal_id uuid references goals(id) on delete set null,
+  constraint split_line_items_one_destination
+    check (to_account_id is null or goal_id is null),
+  sort_order integer not null default 0,
+  created_by uuid references auth.users(id),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index split_line_items_line_idx on split_line_items (line_key, sort_order);
+
+alter table split_line_items enable row level security;
+
+create policy "split_line_items_select" on split_line_items for select to authenticated using (true);
+create policy "split_line_items_insert" on split_line_items for insert to authenticated with check (created_by = auth.uid());
+create policy "split_line_items_update" on split_line_items for update to authenticated using (true) with check (true);
+create policy "split_line_items_delete" on split_line_items for delete to authenticated using (true);

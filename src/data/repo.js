@@ -93,6 +93,18 @@ function mapChecklistItem(row) {
     transferId: row.transfer_id ?? null,
   };
 }
+function mapSplitLineItem(row) {
+  return {
+    id: row.id,
+    lineKey: row.line_key,
+    label: row.label,
+    amount: Number(row.amount),
+    fromAccountId: row.from_account_id ?? null,
+    toAccountId: row.to_account_id ?? null,
+    goalId: row.goal_id ?? null,
+    sortOrder: row.sort_order ?? 0,
+  };
+}
 function mapSplitLineSource(row) {
   return { lineKey: row.line_key, accountId: row.account_id };
 }
@@ -318,6 +330,22 @@ function fetchChecklists() {
   });
 }
 
+// Split line items (0017). Tolerated as missing like every table since 0004.
+// With none, every line routes exactly as it did before: one source account,
+// and the goal waterfall.
+function fetchSplitLineItems() {
+  return supabase
+    .from('split_line_items')
+    .select('*')
+    .then(({ data, error }) => {
+      if (error) {
+        console.warn('split_line_items unavailable (migration not applied yet?):', error.message);
+        return [];
+      }
+      return (data ?? []).map(mapSplitLineItem);
+    });
+}
+
 function fetchSplitLineSources() {
   return supabase
     .from('split_line_sources')
@@ -364,7 +392,7 @@ function fetchPaydayData() {
 }
 
 export async function fetchAll() {
-  const [envelopes, accounts, transactions, income, goals, ledger, profiles, transfers, planSettings, envelopeBudgets, monthModes, paydayData, splitLineSources, monthSnapshots, bills, checklistData] =
+  const [envelopes, accounts, transactions, income, goals, ledger, profiles, transfers, planSettings, envelopeBudgets, monthModes, paydayData, splitLineSources, monthSnapshots, bills, checklistData, splitLineItems] =
     await Promise.all([
     supabase.from('envelopes').select('*').then(unwrap),
     supabase.from('accounts').select('*').then(unwrap),
@@ -382,6 +410,7 @@ export async function fetchAll() {
     fetchMonthSnapshots(),
     fetchBills(),
     fetchChecklists(),
+    fetchSplitLineItems(),
   ]);
 
   return {
@@ -401,6 +430,7 @@ export async function fetchAll() {
     monthSnapshots,
     bills,
     ...checklistData,
+    splitLineItems,
   };
 }
 
@@ -624,6 +654,33 @@ export const repo = {
   // a label, which is what lets a trading payout be counted a year later.
   async setIncomeKind(payload) {
     await supabase.from('income').update({ kind: payload.kind }).eq('id', payload.id).then(unwrap);
+  },
+
+  // ---- Split line items ----
+  // Configuration, not money: these say how a FUTURE payday should split each
+  // line. Nothing here moves anything.
+  async saveSplitLineItems(payload, userId) {
+    // Replace the line wholesale. Diffing rows would mean reconciling
+    // reorderings and deletions for no benefit -- a line is edited as a whole
+    // and is a handful of rows.
+    await supabase.from('split_line_items').delete().eq('line_key', payload.lineKey).then(unwrap);
+    if (payload.items?.length) {
+      await supabase
+        .from('split_line_items')
+        .insert(
+          payload.items.map((item, index) => ({
+            line_key: payload.lineKey,
+            label: item.label,
+            amount: item.amount,
+            from_account_id: item.fromAccountId || null,
+            to_account_id: item.goalId ? null : item.toAccountId || null,
+            goal_id: item.goalId || null,
+            sort_order: index,
+            created_by: userId,
+          }))
+        )
+        .then(unwrap);
+    }
   },
 
   // ---- Transfer checklists ----
