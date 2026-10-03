@@ -599,3 +599,52 @@ describe('buildRoutedLines with itemised lines', () => {
     expect(allocations[0]).toMatchObject({ unconfigured: true });
   });
 });
+
+describe('an itemised line and the absorbed difference', () => {
+  const HUB = 'acc-hub';
+  const settings = { hubAccountId: HUB };
+  const goals = [
+    { id: 'g1', name: 'Fund one', target: 1000, saved: 0, priority: 1, isSinkingFund: false, heldInAccountId: HUB },
+  ];
+  const li = (over) => ({
+    id: 'x', lineKey: 'splitGoals', label: 'Part', amount: 50,
+    fromAccountId: null, toAccountId: null, goalId: 'g1', sortOrder: 0, ...over,
+  });
+
+  // Pay arrived above plan. computePaydaySplit puts the excess on the goals
+  // line; fixed items cannot absorb it, so it has to be reported rather than
+  // disappear.
+  it('reports money the items cannot absorb', () => {
+    const { items, unrouted } = buildRoutedLines({
+      lines: { splitGoals: 80 }, settings, goals, lineItems: [li({ amount: 50 })],
+    });
+    expect(items).toHaveLength(1);
+    expect(items[0].amount).toBe(50);
+    expect(unrouted).toBe(30);
+  });
+
+  it('reports nothing when the items match the line exactly', () => {
+    expect(
+      buildRoutedLines({ lines: { splitGoals: 50 }, settings, goals, lineItems: [li({ amount: 50 })] }).unrouted
+    ).toBe(0);
+  });
+
+  // Items over the line is a different fault, surfaced by the reconciliation
+  // in Settings and by the per-account shortfall check.
+  it('does not report a negative remainder when the items exceed the line', () => {
+    expect(
+      buildRoutedLines({ lines: { splitGoals: 40 }, settings, goals, lineItems: [li({ amount: 50 })] }).unrouted
+    ).toBe(0);
+  });
+
+  it('adds up remainders across several itemised lines', () => {
+    const lineItems = [
+      li({ id: 'a', lineKey: 'splitGoals', amount: 50 }),
+      li({ id: 'b', lineKey: 'splitTrading', amount: 10, goalId: null, toAccountId: HUB }),
+    ];
+    const { unrouted } = buildRoutedLines({
+      lines: { splitGoals: 80, splitTrading: 25 }, settings, goals, lineItems,
+    });
+    expect(unrouted).toBe(45);
+  });
+});
