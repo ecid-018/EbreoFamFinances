@@ -4,7 +4,13 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { formatPHP } from '../utils/currency.js';
 import { getMonthKey, getMonthKeyFromDateStr, getMonthName, toISODateString } from '../utils/date.js';
 import { generateId } from '../utils/id.js';
-import { computePaydaySplit, getExpectedLanding, PAYDAY_KINDS, SPLIT_FIELDS } from '../utils/plan/payday.js';
+import {
+  computePaydaySplit,
+  getCurrencyConflicts,
+  getExpectedLanding,
+  PAYDAY_KINDS,
+  SPLIT_FIELDS,
+} from '../utils/plan/payday.js';
 import { SegmentedControl } from '../components/shared/SegmentedControl.jsx';
 import { BudgetMonthStepper } from '../components/shared/BudgetMonthStepper.jsx';
 import { BottomSheet } from './BottomSheet.jsx';
@@ -73,6 +79,15 @@ export function PaydayModal() {
     availableBySource[settings.hubAccountId] = hubAmount ?? 0;
     if (settings.householdAccountId) availableBySource[settings.householdAccountId] = householdSurplus;
   }
+  // Split amounts are pesos and apply_payday moves one figure both ways, so a
+  // line touching a dollar account would move the right number of the wrong
+  // unit. Refused rather than converted: a rate invented here is a rate nobody
+  // agreed to, on a screen that moves real money.
+  const currencyConflicts = getCurrencyConflicts(
+    [...(split?.transfers ?? []).flatMap((t) => t.items), ...(split?.allocations ?? [])],
+    state.accounts
+  );
+
   const shortfalls = Object.entries(split?.bySource ?? {})
     .filter(([id, needed]) => id !== 'none' && needed > (availableBySource[id] ?? 0) + 0.005)
     .map(([id, needed]) => ({ id, needed, available: availableBySource[id] ?? 0 }));
@@ -348,6 +363,11 @@ export function PaydayModal() {
             target or add a goal before applying, or it will sit unallocated in the hub.
           </p>
         )}
+        {currencyConflicts.map((conflict, i) => (
+          <p key={`${conflict.kind}-${conflict.accountId}-${i}`} className="form__error">
+            {conflict.message}
+          </p>
+        ))}
         {split?.belowZero && (
           <p className="form__error">
             The goals line is below zero: the shortfall is larger than it can absorb. Another line has to give.
@@ -355,7 +375,7 @@ export function PaydayModal() {
         )}
         {error && <p className="form__error">{error}</p>}
 
-        <button type="button" className="btn-block" disabled={applying || !split || split.belowZero || shortfalls.length > 0} onClick={handleApply}>
+        <button type="button" className="btn-block" disabled={applying || !split || split.belowZero || shortfalls.length > 0 || currencyConflicts.length > 0} onClick={handleApply}>
           {applying ? 'Applying…' : `Apply payday for ${budgetMonthLabel}`}
         </button>
         <p className="prefill-note">

@@ -248,6 +248,55 @@ export function buildRoutedLines({ lines, settings, goals = [], sources = [], li
   return { items, unrouted: unroutedTotal };
 }
 
+// Every figure in a split line is in pesos: plan_settings stores
+// numeric(12,2) and the screen reads them as PHP. apply_payday then sends the
+// SAME number for both sides of each transfer:
+//
+//   perform add_transfer(..., (v_item ->> 'amount')::numeric,
+//                             (v_item ->> 'amount')::numeric, ...);
+//
+// So a line paid out of a dollar account would take $30,000 where ₱30,000 was
+// meant, and a transfer between accounts of different currencies would move
+// the right number of the wrong unit. Nothing checks this: add_transfer has no
+// currency check, and apply_payday's balance guard only compares the payload
+// against itself.
+//
+// Refusing is the only safe answer. Converting here would mean inventing a
+// rate the household never agreed to, inside a screen that moves real money.
+export function getCurrencyConflicts(items = [], accounts = []) {
+  const currencyOf = (id) => accounts.find((a) => a.id === id)?.currency ?? 'PHP';
+  const nameOf = (id) => accounts.find((a) => a.id === id)?.name ?? 'an account';
+  const conflicts = [];
+
+  for (const item of items) {
+    if (!(item.amount > 0)) continue;
+    // Writes nothing: no goal to credit and nowhere to move it. A budget note,
+    // not a movement, so there is no wrong figure for it to move.
+    if (!item.goalId && !item.accountId) continue;
+    const from = item.sourceAccountId;
+    const to = item.accountId;
+
+    if (from && currencyOf(from) !== 'PHP') {
+      conflicts.push({
+        kind: 'source',
+        label: item.label,
+        accountId: from,
+        message: `${item.label} is paid from ${nameOf(from)}, which holds ${currencyOf(from)}. Split amounts are in pesos, so this would move the wrong figure.`,
+      });
+      continue;
+    }
+    if (from && to && from !== to && currencyOf(from) !== currencyOf(to)) {
+      conflicts.push({
+        kind: 'transfer',
+        label: item.label,
+        accountId: to,
+        message: `${item.label} would move from ${nameOf(from)} to ${nameOf(to)}, which hold different currencies. A payday moves one figure both ways, so use the Transfer screen for this one.`,
+      });
+    }
+  }
+  return conflicts;
+}
+
 // Groups routed amounts by where the money has to end up. Anything already in
 // the hub, or with no destination configured, becomes an allocation rather than
 // a transfer — moving money from the hub to itself would be a no-op with a
@@ -367,7 +416,16 @@ export function computePaydaySplit({ settings, goals = [], kind = PAYDAY_KINDS.P
     total: actual,
     // What each funding account has to cover. The screen needs this to say
     // "his BPI must supply X" rather than assuming one hub does everything.
+    // What each funding account has to cover.
+    //
+    // A goal allocation counts even though the money does not move: it is
+    // spoken for, and apply_payday balances it the same way. But an item with
+    // no goal AND no destination writes nothing at all -- it is a budget the
+    // household spends against, like the trading allowance that simply stays
+    // as cash. Claiming availability for that would reject paydays over money
+    // nothing ever takes.
     bySource: items.reduce((acc, i) => {
+      if (!i.goalId && !i.accountId) return acc;
       const key = i.sourceAccountId ?? 'none';
       acc[key] = round2((acc[key] ?? 0) + i.amount);
       return acc;

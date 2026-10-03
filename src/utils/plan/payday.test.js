@@ -9,6 +9,7 @@ import {
   getExpectedLanding,
   computePaydaySplit,
   fillVacationReserve,
+  getCurrencyConflicts,
 } from './payday.js';
 
 // Every figure invented.
@@ -646,5 +647,106 @@ describe('an itemised line and the absorbed difference', () => {
       lines: { splitGoals: 80, splitTrading: 25 }, settings, goals, lineItems,
     });
     expect(unrouted).toBe(45);
+  });
+});
+
+describe('getCurrencyConflicts', () => {
+  // Invented. The shape that matters: one peso account, one dollar account.
+  const accounts = [
+    { id: 'php', name: 'Test BPI', currency: 'PHP' },
+    { id: 'usd', name: 'Test USD Cash', currency: 'USD' },
+    { id: 'usd2', name: 'Test Wise', currency: 'USD' },
+    { id: 'none', name: 'Test Legacy' }, // no currency column: PHP by default
+  ];
+  const item = (over) => ({ line: 'splitTrading', label: 'Trading', amount: 30000,
+    sourceAccountId: 'php', accountId: null, ...over });
+
+  // ₱30,000 credited to a goal out of a dollar account would take $30,000.
+  // It has to WRITE something to be a conflict -- see the "writes nothing"
+  // tests below.
+  it('refuses a line paid out of a dollar account', () => {
+    const got = getCurrencyConflicts([item({ sourceAccountId: 'usd', goalId: 'g1' })], accounts);
+    expect(got).toHaveLength(1);
+    expect(got[0]).toMatchObject({ kind: 'source', accountId: 'usd' });
+    expect(got[0].message).toMatch(/holds USD/);
+  });
+
+  it('refuses a transfer that crosses currencies', () => {
+    const got = getCurrencyConflicts([item({ sourceAccountId: 'php', accountId: 'usd2' })], accounts);
+    expect(got).toHaveLength(1);
+    expect(got[0]).toMatchObject({ kind: 'transfer', accountId: 'usd2' });
+    expect(got[0].message).toMatch(/Transfer screen/);
+  });
+
+  it('allows an ordinary peso-to-peso move', () => {
+    expect(getCurrencyConflicts([item({ accountId: 'php' })], accounts)).toEqual([]);
+  });
+
+  it('allows money that stays where it is', () => {
+    expect(getCurrencyConflicts([item({ accountId: null })], accounts)).toEqual([]);
+  });
+
+  // Nothing moves, so there is no wrong figure for it to move.
+  it('allows a budget that writes nothing, even from a dollar account', () => {
+    expect(getCurrencyConflicts([item({ sourceAccountId: 'usd', accountId: null })], accounts)).toEqual([]);
+  });
+
+  // An account row predating the currency column is PHP, as everywhere else.
+  it('treats a missing currency as pesos', () => {
+    expect(getCurrencyConflicts([item({ sourceAccountId: 'none', accountId: 'php' })], accounts)).toEqual([]);
+  });
+
+  it('reports the source problem once rather than twice', () => {
+    const got = getCurrencyConflicts([item({ sourceAccountId: 'usd', accountId: 'php' })], accounts);
+    expect(got).toHaveLength(1);
+    expect(got[0].kind).toBe('source');
+  });
+
+  it('ignores a zero line and survives no data', () => {
+    expect(getCurrencyConflicts([item({ amount: 0, sourceAccountId: 'usd' })], accounts)).toEqual([]);
+    expect(getCurrencyConflicts()).toEqual([]);
+  });
+});
+
+describe('a line that writes nothing', () => {
+  const HUB = 'acc-hub';
+  const USD = 'acc-usd';
+  const accounts = [
+    { id: HUB, name: 'Test BPI', currency: 'PHP' },
+    { id: USD, name: 'Test USD Cash', currency: 'USD' },
+  ];
+  const settings = { hubAccountId: HUB };
+  // Trading, funded by pay on board, which stays as cash and is spent from.
+  const staysPut = [{
+    id: 't', lineKey: 'splitTrading', label: 'Trading and apps', amount: 30000,
+    fromAccountId: USD, toAccountId: null, goalId: null, sortOrder: 0,
+  }];
+
+  it('claims nothing from the account it sits in', () => {
+    const split = computePaydaySplit({
+      settings, goals: [], amountToSplit: 30000, lineItems: staysPut,
+    });
+    expect(split.bySource).toEqual({});
+  });
+
+  // Nothing moves, so there is no wrong figure for it to move -- even out of
+  // a dollar account.
+  it('raises no currency conflict', () => {
+    const split = computePaydaySplit({
+      settings, goals: [], amountToSplit: 30000, lineItems: staysPut,
+    });
+    const items = [...split.transfers.flatMap((t) => t.items), ...split.allocations];
+    expect(getCurrencyConflicts(items, accounts)).toEqual([]);
+  });
+
+  // A goal allocation is different: it is spoken for and apply_payday
+  // balances it, so it still counts against its source.
+  it('still counts a goal allocation that stays in place', () => {
+    const goals = [{ id: 'g1', name: 'Fund', target: 100000, saved: 0, isSinkingFund: true, heldInAccountId: HUB }];
+    const toGoal = [{ ...staysPut[0], goalId: 'g1', fromAccountId: HUB, lineKey: 'splitInsurance' }];
+    const split = computePaydaySplit({
+      settings: { ...settings, insuranceGoalId: 'g1' }, goals, amountToSplit: 30000, lineItems: toGoal,
+    });
+    expect(split.bySource[HUB]).toBe(30000);
   });
 });
