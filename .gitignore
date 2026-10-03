@@ -35,3 +35,17 @@ dev-dist
 plan.local.json
 ebreo-snapshot-*.json
 Icons_and_logo.zip
+
+# Spreadsheets. Added after a workbook of the real monthly transfer
+# arrangement -- every allotment, every account, every amount -- sat untracked
+# in this directory for a while. Nothing was committed, but a single
+# `git add -A` would have published the household's entire finances.
+#
+# Patterns, not filenames, because the next one will be called something else.
+# No spreadsheet has ever been tracked here, so nothing is lost by this.
+*.xlsx
+*.xls
+*.csv
+*.numbers
+# Excel's lock file for an open workbook.
+~$*
